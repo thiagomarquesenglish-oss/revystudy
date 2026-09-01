@@ -17,6 +17,11 @@ interface Piece {
   textHtml: string;
 }
 
+interface ResolvedDeckAudio {
+  cardId: string | null;
+  url: string | null;
+}
+
 /** Split a card side's HTML into audio / image / text pieces */
 function splitHtml(html: string): Piece {
   const div = document.createElement('div');
@@ -127,7 +132,8 @@ export default function CustomStudyPage() {
   const [mode, setMode] = useState<Mode>('text');
   const [revealed, setRevealed] = useState(false);
   const [seen, setSeen] = useState(0);
-  const [deckAudioUrl, setDeckAudioUrl] = useState<string | null>(null);
+  const [resolvedDeckAudio, setResolvedDeckAudio] = useState<ResolvedDeckAudio>({ cardId: null, url: null });
+  const lastModeRef = useRef<Mode | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -140,11 +146,17 @@ export default function CustomStudyPage() {
   }, [deckId]);
 
   const current = order[index] || null;
+  const currentId = current?.id ?? null;
+  const currentAudioId = current?.audioId ?? null;
 
   // deck-level audio fallback
   useEffect(() => {
-    if (!current?.audioId) {
-      setDeckAudioUrl(null);
+    if (!currentId) {
+      setResolvedDeckAudio({ cardId: null, url: null });
+      return;
+    }
+    if (!currentAudioId) {
+      setResolvedDeckAudio({ cardId: currentId, url: null });
       return;
     }
     let cancelled = false;
@@ -152,21 +164,26 @@ export default function CustomStudyPage() {
       const { data } = await supabase
         .from('deck_audios')
         .select('file_path')
-        .eq('id', current.audioId!)
+        .eq('id', currentAudioId)
         .single();
-      if (!cancelled && data) {
+      if (cancelled) return;
+      if (data) {
         const { data: urlData } = supabase.storage.from('deck-audios').getPublicUrl(data.file_path);
-        setDeckAudioUrl(urlData.publicUrl);
+        setResolvedDeckAudio({ cardId: currentId, url: urlData.publicUrl });
+      } else {
+        setResolvedDeckAudio({ cardId: currentId, url: null });
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [current?.audioId]);
+  }, [currentId, currentAudioId]);
 
   const front = useMemo(() => (current ? splitHtml(current.front) : null), [current]);
   const back = useMemo(() => (current ? splitHtml(current.back) : null), [current]);
 
+  const deckAudioUrl = resolvedDeckAudio.cardId === currentId ? resolvedDeckAudio.url : null;
+  const deckAudioPending = Boolean(currentAudioId && resolvedDeckAudio.cardId !== currentId);
   const audioSrc = front?.audioSrc || back?.audioSrc || deckAudioUrl;
 
   const enabledModes = useMemo(() => {
@@ -187,13 +204,17 @@ export default function CustomStudyPage() {
     return list;
   }, [front, back, audioSrc, enabledModes]);
 
-  // Pick a random available mode whenever the card changes
+  // Pick a random available mode whenever the card changes. When possible,
+  // avoid repeating the same format twice in a row so the practice feels mixed.
   useEffect(() => {
-    if (!current) return;
-    if (availableModes.length === 0) return;
-    setMode(availableModes[Math.floor(Math.random() * availableModes.length)]);
+    if (!started || !currentId || deckAudioPending || availableModes.length === 0) return;
+    const alternatives = availableModes.filter((candidate) => candidate !== lastModeRef.current);
+    const pool = alternatives.length > 0 ? alternatives : availableModes;
+    const nextMode = pool[Math.floor(Math.random() * pool.length)];
+    lastModeRef.current = nextMode;
+    setMode(nextMode);
     setRevealed(false);
-  }, [current?.id, availableModes.length]);
+  }, [started, currentId, deckAudioPending, availableModes]);
 
   const next = useCallback(() => {
     setRevealed(false);
@@ -202,12 +223,18 @@ export default function CustomStudyPage() {
       const n = i + 1;
       if (n >= order.length) {
         // infinite: reshuffle and start again
-        setOrder((o) => shuffle(o));
+        setOrder((o) => {
+          const reshuffled = shuffle(o);
+          if (reshuffled.length > 1 && reshuffled[0].id === current?.id) {
+            [reshuffled[0], reshuffled[1]] = [reshuffled[1], reshuffled[0]];
+          }
+          return reshuffled;
+        });
         return 0;
       }
       return n;
     });
-  }, [order.length]);
+  }, [current?.id, order.length]);
 
   if (loading) {
     return (
@@ -272,6 +299,7 @@ export default function CustomStudyPage() {
                 setOrder(shuffle(cards));
                 setIndex(0);
                 setSeen(0);
+                lastModeRef.current = null;
                 setStarted(true);
               }}
             >
