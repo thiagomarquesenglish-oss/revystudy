@@ -1,0 +1,1 @@
+ALTER TABLE public.cards ADD COLUMN audio_id UUID REFERENCES public.deck_audios(id) ON DELETE SET NULL DEFAULT NULL;

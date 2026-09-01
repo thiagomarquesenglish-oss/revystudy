@@ -1,0 +1,2 @@
+ALTER TABLE public.review_history DROP CONSTRAINT review_history_card_id_fkey;
+ALTER TABLE public.review_history ADD CONSTRAINT review_history_card_id_fkey FOREIGN KEY (card_id) REFERENCES public.cards(id) ON DELETE CASCADE;

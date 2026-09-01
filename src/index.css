@@ -1,0 +1,294 @@
+/* Arial font - system font, no import needed */
+
+* {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input, textarea, [contenteditable="true"] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --app-header-height: 4rem;
+}
+
+html {
+  background-color: hsl(var(--background));
+}
+
+@layer base {
+  :root {
+    /* Dark Anki-inspired theme as default */
+    --background: 0 0% 4%;
+    --foreground: 0 0% 85%;
+
+    --card: 150 4% 9%;
+    --card-foreground: 0 0% 85%;
+
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 85%;
+
+    --primary: 0 0% 85%;
+    --primary-foreground: 0 0% 0%;
+
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 80%;
+
+    --muted: 0 0% 8%;
+    --muted-foreground: 0 0% 50%;
+
+    --accent: 0 0% 13%;
+    --accent-foreground: 0 0% 85%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 0% / 0;
+    --input: 0 0% 0% / 0;
+    --ring: 225 30% 30%;
+
+    --radius: 0.5rem;
+
+    --success: 142 50% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 36 80% 50%;
+    --warning-foreground: 0 0% 10%;
+    --hard: 0 60% 50%;
+    --hard-foreground: 0 0% 100%;
+    --easy: 210 65% 50%;
+    --easy-foreground: 0 0% 100%;
+
+    --col-new: 210 97% 70%;
+    --col-learning: 0 93% 71%;
+    --col-review: 148 67% 46%;
+
+    --heatmap-empty: 150 4% 9%;
+    --heatmap-l1: 220 10% 20%;
+    --heatmap-l2: 150 25% 28%;
+    --heatmap-l3: 142 45% 35%;
+    --heatmap-l4: 142 60% 46%;
+
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 0 0% 85%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 8%;
+    --sidebar-accent-foreground: 0 0% 85%;
+    --sidebar-border: 0 0% 0% / 0;
+    --sidebar-ring: 142 50% 40%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+  }
+}
+
+@layer utilities {
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
+  .text-xs {
+    font-size: 0.95rem !important;
+    line-height: 1.35rem !important;
+  }
+
+  .text-\[10px\],
+  .text-\[11px\] {
+    font-size: 0.95rem !important;
+    line-height: 1.35rem !important;
+  }
+}
+
+/* ── TipTap Editor ───────────────────────────── */
+.rich-editor-content {
+  @apply px-3 py-3 text-sm text-foreground min-h-[120px] outline-none;
+}
+
+.rich-editor-content p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  @apply text-muted-foreground pointer-events-none float-left h-0;
+}
+
+/* ── Rich text render (study card & previews) ── */
+.rich-editor-content,
+.rich-text-render {
+  & p {
+    @apply mb-2 last:mb-0;
+  }
+  & strong {
+    @apply font-bold;
+  }
+  & em {
+    @apply italic;
+  }
+  & u {
+    @apply underline;
+  }
+  & ul {
+    @apply list-disc pl-6 mb-2;
+  }
+  & ol {
+    @apply list-decimal pl-6 mb-2;
+  }
+  & li {
+    @apply mb-0.5;
+  }
+  & li p {
+    @apply mb-0;
+  }
+  & img {
+    @apply max-w-full h-auto my-2 inline-block;
+    max-height: 300px;
+    object-fit: contain;
+  }
+  & audio {
+    display: none !important;
+  }
+  & hr {
+    @apply my-4 border-0;
+    display: block;
+    width: 100%;
+    min-width: 100%;
+    height: 0;
+    border-top: 2px solid hsl(var(--muted-foreground) / 0.45);
+    opacity: 1;
+  }
+  & hr.ProseMirror-selectednode {
+    outline: 2px solid hsl(var(--primary) / 0.35);
+    outline-offset: 4px;
+  }
+}
+
+.rich-text-render {
+  & p {
+    @apply mb-3 last:mb-0;
+    min-height: 1em;
+  }
+  & img {
+    max-height: 400px;
+  }
+  & hr {
+    @apply my-5;
+    border-top-color: hsl(var(--muted-foreground) / 0.55);
+  }
+}
+
+/* ── Audio node ──────────────────────────────── */
+.audio-node {
+  @apply flex items-center gap-2 px-3 py-2 my-2 rounded-lg bg-secondary/50 border border-border w-fit;
+}
+
+.audio-node-icon {
+  font-size: 14px;
+}
+
+.audio-node-name {
+  @apply text-sm text-muted-foreground truncate;
+  max-width: 250px;
+}
+
+.audio-node-element {
+  display: none !important;
+}
+
+/* In study view, hide the visual pill and only keep the hidden audio */
+.rich-text-render .audio-node {
+  @apply bg-transparent border-0 p-0 m-0;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.rich-text-render .audio-node .audio-node-element {
+  display: block !important;
+}
+
+/* ── Explanation block ──────────────────────────── */
+.explanation-block {
+  @apply my-3 px-4 py-3 rounded-lg;
+  background-color: hsl(var(--primary) / 0.06);
+}
+
+.rich-editor-content .explanation-block {
+  @apply my-2 px-3 py-2 rounded-lg;
+  background-color: hsl(var(--primary) / 0.05);
+}
+
+.rich-text-render .explanation-block {
+  @apply my-3 px-4 py-3 rounded-lg text-base leading-relaxed;
+  background-color: hsl(var(--primary) / 0.08);
+}
+
+#lovable-badge {
+  display: none !important;
+}
+
+.safe-area-top {
+  padding-top: calc(env(safe-area-inset-top) + 0.5rem);
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-bottom {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom));
+}
+
+.safe-area-bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@media all and (display-mode: standalone) {
+  .safe-area-bottom-nav {
+    padding-bottom: calc(env(safe-area-inset-bottom) * 0.5);
+  }
+}
+
+.safe-page {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+}
+
+
+/* Modal styling */
+[role="dialog"] {
+  background-color: #0a0a0a !important;
+}
+[role="dialog"] input,
+[role="dialog"] textarea {
+  background-color: #161817 !important;
+  border: none !important;
+}
