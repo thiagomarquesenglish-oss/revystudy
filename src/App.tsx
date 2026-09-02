@@ -37,8 +37,8 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <OfflineBanner />
         <BrowserRouter>
+          <OfflineBanner />
           <TabLayout />
           <Routes>
             <Route path="/auth" element={<AuthRoute />} />
