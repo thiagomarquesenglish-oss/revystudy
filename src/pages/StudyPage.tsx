@@ -4,6 +4,8 @@ import { getStudyQueue, updateCard, getDecks, getCardsByDeck, addReviewHistory, 
 import { processReview } from '@/lib/srs';
 import { Rating, StudyStats, Flashcard, Deck } from '@/lib/types';
 import StudyCard from '@/components/StudyCard';
+import { prepareHtml } from '@/lib/study-media';
+import { toast } from 'sonner';
 import { Brain, MoreVertical, Pencil, Trash2, Clock, Flag } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -93,6 +95,15 @@ export default function StudyPage() {
   const [showOptionsDrawer, setShowOptionsDrawer] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [cardsStudied, setCardsStudied] = useState(0);
+
+  useEffect(() => {
+    const upcoming = queue.filter(card => card.id !== currentCard?.id);
+    const first = pickNextCard(upcoming);
+    const candidates = [currentCard, first >= 0 ? upcoming[first] : null, ...upcoming.slice(0, 2)];
+    candidates.forEach(card => {
+      if (card) { void prepareHtml(card.front); void prepareHtml(card.back); }
+    });
+  }, [queue, currentCard]);
 
   // Pick the next card from the queue and set it as current
   const advanceToNext = useCallback((q: Flashcard[]) => {
@@ -226,8 +237,8 @@ export default function StudyPage() {
     }
 
     // Persist to DB in background
-    updateCard(currentCard.id, updates).catch(() => {});
-    addReviewHistory(currentCard.id, rating).catch(() => {});
+    updateCard(currentCard.id, updates).catch(() => toast.error('Não foi possível salvar o progresso deste cartão.'));
+    addReviewHistory(currentCard.id, rating).catch(() => toast.error('Não foi possível salvar esta revisão no histórico.'));
   }, [currentCard, queue, stats, deck, advanceToNext]);
 
   // Compute remaining counts from the active queue
@@ -339,6 +350,7 @@ export default function StudyPage() {
           </div>
         ) : currentCard ? (
           <StudyCard
+            key={`${currentCard.id}-${cardsStudied}`}
             card={currentCard}
             onRate={handleRate}
             remainingNew={remainingNew}

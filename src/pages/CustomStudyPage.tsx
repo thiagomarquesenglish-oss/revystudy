@@ -1,6 +1,8 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getDecks, getCardsByDeck } from '@/lib/storage';
+import { getDecks, getCardsByDeck, getDeckAudios } from '@/lib/storage';
+import { prepareHtml, prepareAudio } from '@/lib/study-media';
+import StudyMedia from '@/components/StudyMedia';
 import { Deck, Flashcard } from '@/lib/types';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -72,7 +74,8 @@ function AudioButton({ src, big }: { src: string; big?: boolean }) {
 
   useEffect(() => {
     const el = ref.current;
-    if (el) el.play().then(() => setPlaying(true)).catch(() => {});
+    if (el) el.play().catch(() => {});
+    return () => { el?.pause(); };
   }, [src]);
 
   const toggle = () => {
@@ -83,12 +86,11 @@ function AudioButton({ src, big }: { src: string; big?: boolean }) {
       el.currentTime = 0;
     } else {
       el.play().catch(() => {});
-      setPlaying(true);
     }
   };
 
-  const size = big ? 'w-20 h-20' : 'w-9 h-9';
-  const icon = big ? 'w-8 h-8' : 'w-4 h-4';
+  const size = big ? 'w-24 h-24' : 'w-20 h-20';
+  const icon = big ? 'w-10 h-10' : 'w-9 h-9';
 
   return (
     <>
@@ -99,7 +101,7 @@ function AudioButton({ src, big }: { src: string; big?: boolean }) {
       >
         {playing ? <Pause className={`${icon} text-primary`} /> : <Play className={`${icon} text-primary ml-0.5`} />}
       </button>
-      <audio ref={ref} src={src} preload="auto" />
+      <audio ref={ref} src={src} preload="auto" onPlaying={() => setPlaying(true)} onError={() => setPlaying(false)} />
     </>
   );
 }
@@ -149,6 +151,13 @@ export default function CustomStudyPage() {
   const currentId = current?.id ?? null;
   const currentAudioId = current?.audioId ?? null;
 
+  useEffect(() => {
+    order.slice(index, index + 3).forEach(card => {
+      void prepareHtml(card.front);
+      void prepareHtml(card.back);
+    });
+  }, [order, index]);
+
   // deck-level audio fallback
   useEffect(() => {
     if (!currentId) {
@@ -161,23 +170,22 @@ export default function CustomStudyPage() {
     }
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from('deck_audios')
-        .select('file_path')
-        .eq('id', currentAudioId)
-        .single();
+      const data = (await getDeckAudios(deckId!)).find(audio => audio.id === currentAudioId);
       if (cancelled) return;
       if (data) {
         const { data: urlData } = supabase.storage.from('deck-audios').getPublicUrl(data.file_path);
+        prepareAudio(urlData.publicUrl);
         setResolvedDeckAudio({ cardId: currentId, url: urlData.publicUrl });
       } else {
         setResolvedDeckAudio({ cardId: currentId, url: null });
       }
-    })();
+    })().catch(() => {
+      if (!cancelled) setResolvedDeckAudio({ cardId: currentId, url: null });
+    });
     return () => {
       cancelled = true;
     };
-  }, [currentId, currentAudioId]);
+  }, [currentId, currentAudioId, deckId]);
 
   const front = useMemo(() => (current ? splitHtml(current.front) : null), [current]);
   const back = useMemo(() => (current ? splitHtml(current.back) : null), [current]);
@@ -206,7 +214,7 @@ export default function CustomStudyPage() {
 
   // Pick a random available mode whenever the card changes. When possible,
   // avoid repeating the same format twice in a row so the practice feels mixed.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!started || !currentId || deckAudioPending || availableModes.length === 0) return;
     const alternatives = availableModes.filter((candidate) => candidate !== lastModeRef.current);
     const pool = alternatives.length > 0 ? alternatives : availableModes;
@@ -345,6 +353,8 @@ export default function CustomStudyPage() {
           </div>
 
           {/* Prompt */}
+          {deckAudioPending ? <div role="status" aria-label="Preparando cartão" className="min-h-64 w-full bg-muted/20 rounded-xl" /> :
+          <StudyMedia html={mode === 'image' ? promptImages : ''} key={`prompt-${current.id}-${mode}`}>
           <div className="w-full pt-10 flex flex-col items-center gap-4">
             {mode === 'audio' && audioSrc && <AudioButton src={audioSrc} big key={`a-${current.id}`} />}
             {mode === 'image' && promptImages && (
@@ -360,9 +370,11 @@ export default function CustomStudyPage() {
               />
             )}
           </div>
+          </StudyMedia>}
 
           {/* Reveal */}
           {revealed && (
+            <StudyMedia html={front.imagesHtml + back.imagesHtml} key={`reveal-${current.id}`}>
             <div className="w-full mt-8 space-y-4">
               <div className="w-full h-px bg-muted-foreground/20" />
               <div className="flex flex-col items-center gap-3">
@@ -378,6 +390,7 @@ export default function CustomStudyPage() {
                 />
               </div>
             </div>
+            </StudyMedia>
           )}
         </div>
       </main>
