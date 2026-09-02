@@ -353,7 +353,7 @@ export default function CustomStudyPage() {
           </div>
 
           {/* Prompt */}
-          {deckAudioPending ? <div role="status" aria-label="Preparando cartão" className="min-h-64 w-full bg-muted/20 rounded-xl" /> :
+          {!revealed && (deckAudioPending ? <div role="status" aria-label="Preparando cartão" className="min-h-64 w-full bg-muted/20 rounded-xl" /> :
           <StudyMedia html={mode === 'image' ? promptImages : ''} key={`prompt-${current.id}-${mode}`}>
           <div className="w-full pt-10 flex flex-col items-center gap-4">
             {mode === 'audio' && audioSrc && <AudioButton src={audioSrc} big key={`a-${current.id}`} />}
@@ -370,7 +370,7 @@ export default function CustomStudyPage() {
               />
             )}
           </div>
-          </StudyMedia>}
+          </StudyMedia>)}
 
           {/* Reveal */}
           {revealed && (
@@ -378,16 +378,15 @@ export default function CustomStudyPage() {
             <div className="w-full mt-8 space-y-4">
               <div className="w-full h-px bg-muted-foreground/20" />
               <div className="flex flex-col items-center gap-3">
-                {audioSrc && mode !== 'audio' && <AudioButton src={audioSrc} key={`r-${current.id}`} />}
                 <div
                   className="rich-text-render text-2xl text-white text-center leading-relaxed break-words max-w-full"
-                  dangerouslySetInnerHTML={{ __html: front.imagesHtml + front.textHtml }}
+                  dangerouslySetInnerHTML={{ __html: front.textHtml + back.textHtml }}
                 />
-                <div className="w-full h-px bg-muted-foreground/10" />
                 <div
                   className="rich-text-render text-2xl text-white text-center leading-relaxed break-words max-w-full"
-                  dangerouslySetInnerHTML={{ __html: back.imagesHtml + back.textHtml }}
+                  dangerouslySetInnerHTML={{ __html: front.imagesHtml + back.imagesHtml }}
                 />
+                {audioSrc && <AudioButton src={audioSrc} key={`r-${current.id}`} />}
               </div>
             </div>
             </StudyMedia>
