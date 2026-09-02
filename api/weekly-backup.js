@@ -199,6 +199,14 @@ async function generateBackup(admin, userId, suppliedSettings) {
 export default async function handler(request, response) {
   if (!['GET', 'POST'].includes(request.method)) return response.status(405).json({ error: 'Método não permitido.' });
 
+  if (request.method === 'GET' && request.query?.health === '1') {
+    return response.status(200).json({
+      supabaseConnected: Boolean((process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) && process.env.SUPABASE_SERVICE_ROLE_KEY),
+      emailConnected: Boolean(process.env.RESEND_API_KEY),
+      cronConnected: Boolean(process.env.CRON_SECRET),
+    });
+  }
+
   try {
     const admin = getAdminClient();
     if (request.method === 'POST') {

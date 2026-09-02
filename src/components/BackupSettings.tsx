@@ -58,6 +58,7 @@ export default function BackupSettings() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [settings, setSettings] = useState<BackupSettingsRow | null>(null);
   const [lastRun, setLastRun] = useState<BackupRunRow | null>(null);
+  const [serverReady, setServerReady] = useState<boolean | null>(null);
   const [busy, setBusy] = useState<'export' | 'restore' | 'email' | 'toggle' | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingManifest, setPendingManifest] = useState<FullBackupManifest | null>(null);
@@ -65,11 +66,18 @@ export default function BackupSettings() {
   const load = useCallback(async () => {
     if (!user) return;
     const client = supabase;
-    const [{ data: current, error }, { data: runs }] = await Promise.all([
+    const [{ data: current, error }, { data: runs }, healthResponse] = await Promise.all([
       client.from('backup_settings').select('*').eq('user_id', user.id).maybeSingle(),
       client.from('backup_runs').select('status,created_at,size_bytes,error_message')
         .eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
+      fetch('/api/weekly-backup?health=1').catch(() => null),
     ]);
+    if (healthResponse?.ok) {
+      const health = await healthResponse.json();
+      setServerReady(Boolean(health.supabaseConnected && health.emailConnected && health.cronConnected));
+    } else {
+      setServerReady(false);
+    }
     if (error) {
       console.error(error);
       return;
@@ -97,6 +105,10 @@ export default function BackupSettings() {
 
   const toggleAutomatic = async (enabled: boolean) => {
     if (!user || !settings) return;
+    if (enabled && serverReady === false) {
+      toast.error('O envio automático ainda precisa ser conectado ao serviço de e-mail.');
+      return;
+    }
     setBusy('toggle');
     const client = supabase;
     const { data, error } = await client.from('backup_settings').upsert({
@@ -198,13 +210,16 @@ export default function BackupSettings() {
           </div>
           <Switch
             checked={settings?.enabled || false}
-            disabled={!settings || busy === 'toggle'}
+            disabled={!settings || busy === 'toggle' || serverReady === null}
             onCheckedChange={toggleAutomatic}
             aria-label="Ativar backup automático semanal"
           />
         </div>
 
         <div className="px-4 py-3 text-xs text-muted-foreground border-b border-border space-y-1">
+          {serverReady === false && (
+            <p className="text-orange-500">Envio automático aguardando conexão segura do serviço de e-mail.</p>
+          )}
           <p>Último backup automático: <span className="text-foreground">{formatDate(settings?.last_backup_at)}</span></p>
           <p>Último backup neste aparelho: <span className="text-foreground">{formatDate(localBackupAt)}</span></p>
           {lastRun && (
@@ -220,7 +235,7 @@ export default function BackupSettings() {
           <Button variant="outline" className="gap-2" onClick={handleLocalBackup} disabled={busy !== null}>
             <Download className="w-4 h-4" /> {busy === 'export' ? 'Preparando...' : 'Salvar agora'}
           </Button>
-          <Button variant="outline" className="gap-2" onClick={handleEmailBackup} disabled={busy !== null}>
+          <Button variant="outline" className="gap-2" onClick={handleEmailBackup} disabled={busy !== null || serverReady !== true}>
             <Mail className="w-4 h-4" /> {busy === 'email' ? 'Enviando...' : 'Enviar por e-mail'}
           </Button>
           <Button variant="outline" className="gap-2" onClick={() => inputRef.current?.click()} disabled={busy !== null}>

@@ -325,7 +325,9 @@ export async function restoreFullBackup(file: File, mode: RestoreMode) {
 }
 
 export function downloadFullBackup(blob: Blob, generatedAt = new Date()) {
-  const stamp = generatedAt.toISOString().slice(0, 10);
+  const stamp = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(generatedAt);
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
