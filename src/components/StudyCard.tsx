@@ -55,7 +55,7 @@ function extractAudioSrc(html: string): string | null {
   return null;
 }
 
-function AudioPlayButton({ src, centered }: { src: string; centered?: boolean }) {
+function AudioPlayButton({ src, centered, autoPlay = true }: { src: string; centered?: boolean; autoPlay?: boolean }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
 
@@ -75,11 +75,11 @@ function AudioPlayButton({ src, centered }: { src: string; centered?: boolean })
   // Auto-play on mount
   useEffect(() => {
     const el = audioRef.current;
-    if (el) {
+    if (el && autoPlay) {
       el.play().catch(() => {});
     }
     return () => { el?.pause(); };
-  }, [src]);
+  }, [src, autoPlay]);
 
   const toggle = useCallback(() => {
     const el = audioRef.current;
@@ -109,39 +109,25 @@ function AudioPlayButton({ src, centered }: { src: string; centered?: boolean })
   );
 }
 
-function CardContent({ html, audioSrc }: { html: string; audioSrc: string | null }) {
+function CardContent({ html, audioSrc, autoPlay = true }: { html: string; audioSrc: string | null; autoPlay?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const cleanHtml = useMemo(() => {
     const div = document.createElement('div');
     div.innerHTML = html;
     div.querySelectorAll('audio, .audio-node, [data-audio]').forEach(el => el.remove());
-    return div.innerHTML;
+    const images = Array.from(div.querySelectorAll('img'));
+    images.forEach(image => image.remove());
+    return div.innerHTML + images.map(image => image.outerHTML).join('');
   }, [html]);
-  const hasImage = /<img\b/i.test(html);
 
-  if (audioSrc && hasImage) {
-    return (
-      <div className="w-full pt-8 flex flex-col items-center gap-3">
+  return (
+    <div className="w-full pt-8 flex flex-col items-center gap-3">
         <div
           ref={ref}
           className="rich-text-render text-2xl text-white text-center leading-relaxed break-words max-w-full"
           dangerouslySetInnerHTML={{ __html: cleanHtml }}
         />
-        <AudioPlayButton src={audioSrc} centered />
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-full pt-8 flex justify-center">
-      <div className="inline-flex max-w-full items-start gap-3">
-        {audioSrc && <AudioPlayButton src={audioSrc} />}
-        <div
-          ref={ref}
-          className="rich-text-render text-2xl text-white text-center leading-relaxed break-words"
-          dangerouslySetInnerHTML={{ __html: cleanHtml }}
-        />
-      </div>
+        {audioSrc && <AudioPlayButton src={audioSrc} centered autoPlay={autoPlay} />}
     </div>
   );
 }
@@ -232,9 +218,9 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
   return (
     <div className="flex flex-col w-full max-w-lg mx-auto overflow-hidden" style={{ minHeight: 'calc(100vh - 120px)' }}>
       {/* Content */}
-      <StudyMedia html={card.front} key={`front-${card.id}`}>
+      {!flipped && <StudyMedia html={card.front} key={`front-${card.id}`}>
         <CardContent html={card.front} audioSrc={frontAudioSrc} />
-      </StudyMedia>
+      </StudyMedia>}
 
       {isTyping && !flipped && (
         <div className="w-full px-2 mt-8">
@@ -272,9 +258,9 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
 
       {flipped && (
         <>
-          <div className="w-full my-4 h-px bg-muted-foreground/30" />
-          <StudyMedia html={card.back} key={`back-${card.id}`}>
-            <CardContent html={card.back} audioSrc={backAudioSrc} />
+          <StudyMedia html={card.front + card.back} key={`back-${card.id}`}>
+            <CardContent html={card.front + card.back} audioSrc={backAudioSrc || frontAudioSrc} autoPlay={Boolean(backAudioSrc)} />
+            {frontAudioSrc && backAudioSrc && frontAudioSrc !== backAudioSrc && <AudioPlayButton src={frontAudioSrc} centered autoPlay={false} />}
           </StudyMedia>
         </>
       )}
