@@ -347,6 +347,8 @@ export async function deleteDeck(deckId: string): Promise<void> {
   if (cache.cards) cache.cards = cache.cards.filter(c => c.deckId !== deckId);
 
   await persistMutations([{ table: 'decks', action: 'delete', payload: { id: deckId } }]);
+  await localDB.replaceCardsForDeck(deckId, []);
+  await localDB.replaceDeckAudios(deckId, []);
   await localDB.deleteDeck(deckId);
   await localDB.deleteDeckSyncState(deckId);
   installedDecks.delete(deckId);
@@ -642,6 +644,13 @@ export async function getCards(): Promise<Flashcard[]> {
   let localCards: any[] = [];
   try {
     localCards = await localDB.getCards();
+    const localDecks = await localDB.getDecks();
+    const validDeckIds = new Set(localDecks.map((deck: any) => deck.id));
+    const orphanedCards = localCards.filter((card: any) => !validDeckIds.has(card.deck_id));
+    if (orphanedCards.length > 0) {
+      await Promise.allSettled(orphanedCards.map((card: any) => localDB.deleteCard(card.id)));
+      localCards = localCards.filter((card: any) => validDeckIds.has(card.deck_id));
+    }
   } catch (e) {
     console.error('Failed to read local cards:', e);
   }
