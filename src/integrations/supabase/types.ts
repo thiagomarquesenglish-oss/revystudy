@@ -14,6 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
+      backup_runs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          emailed_to: string | null
+          error_message: string | null
+          expires_at: string | null
+          id: string
+          size_bytes: number | null
+          status: string
+          storage_path: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          emailed_to?: string | null
+          error_message?: string | null
+          expires_at?: string | null
+          id?: string
+          size_bytes?: number | null
+          status: string
+          storage_path?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          emailed_to?: string | null
+          error_message?: string | null
+          expires_at?: string | null
+          id?: string
+          size_bytes?: number | null
+          status?: string
+          storage_path?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      backup_settings: {
+        Row: {
+          created_at: string
+          email: string
+          enabled: boolean
+          include_media: boolean
+          last_backup_at: string | null
+          preferences: Json
+          retention_count: number
+          timezone: string
+          updated_at: string
+          user_id: string
+          weekday: number
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          enabled?: boolean
+          include_media?: boolean
+          last_backup_at?: string | null
+          preferences?: Json
+          retention_count?: number
+          timezone?: string
+          updated_at?: string
+          user_id: string
+          weekday?: number
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          enabled?: boolean
+          include_media?: boolean
+          last_backup_at?: string | null
+          preferences?: Json
+          retention_count?: number
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+          weekday?: number
+        }
+        Relationships: []
+      }
       cards: {
         Row: {
           audio_id: string | null

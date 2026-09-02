@@ -211,6 +211,15 @@ export const localDB = {
     await clearStore('review_history');
     await bulkPut('review_history', reviews);
   },
+
+  // A full restore must not keep an older downloaded package beside the
+  // restored cloud snapshot. The next screen load rebuilds these stores from
+  // the restored data.
+  clearForFullRestore: async () => {
+    for (const store of ['decks', 'cards', 'deck_audios', 'review_history', 'queue', 'deck_sync_state']) {
+      await clearStore(store);
+    }
+  },
 };
 
 // ── Mutation queue ──

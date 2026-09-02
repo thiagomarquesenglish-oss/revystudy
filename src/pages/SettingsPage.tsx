@@ -17,6 +17,7 @@ import PageTransition from '@/components/PageTransition';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import DeckAudioPlayer from '@/components/DeckAudioPlayer';
+import BackupSettings from '@/components/BackupSettings';
 import {
   Drawer,
   DrawerContent,
@@ -230,6 +231,8 @@ export default function SettingsPage() {
       <PageHeader title="Configurações" />
       <PageTransition>
         <main className="max-w-3xl mx-auto px-3 py-4 space-y-6 pb-36" style={{ paddingTop: 'calc(var(--app-header-height) + 1rem)' }}>
+          <BackupSettings />
+
           {/* Deck list */}
           <div className="space-y-1">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Meus baralhos</h3>
