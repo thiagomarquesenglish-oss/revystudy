@@ -1,8 +1,13 @@
 import { WifiOff, RefreshCw } from 'lucide-react';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { useLocation } from 'react-router-dom';
 
 export default function OfflineBanner() {
   const { isOnline, isSyncing, pendingCount } = useOnlineStatus();
+  const { pathname } = useLocation();
+
+  // Keep background synchronization, without covering the study header.
+  if (/^\/(study|custom-study)\//.test(pathname)) return null;
 
   if (isOnline && !isSyncing && pendingCount === 0) return null;
 

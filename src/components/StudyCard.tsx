@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Flashcard, Rating } from '@/lib/types';
 import { getNextReviewLabel } from '@/lib/srs';
 import { supabase } from '@/integrations/supabase/client';
+import { getDeckAudios } from '@/lib/storage';
+import StudyMedia from './StudyMedia';
 import { Play, Pause, Check, X } from 'lucide-react';
 
 /** Normalize text for typing comparison: lowercase, strip accents, remove punctuation, collapse spaces */
@@ -74,8 +76,9 @@ function AudioPlayButton({ src, centered }: { src: string; centered?: boolean })
   useEffect(() => {
     const el = audioRef.current;
     if (el) {
-      el.play().then(() => setPlaying(true)).catch(() => {});
+      el.play().catch(() => {});
     }
+    return () => { el?.pause(); };
   }, [src]);
 
   const toggle = useCallback(() => {
@@ -86,7 +89,6 @@ function AudioPlayButton({ src, centered }: { src: string; centered?: boolean })
       el.currentTime = 0;
     } else {
       el.play().catch(() => {});
-      setPlaying(true);
     }
   }, [playing]);
 
@@ -94,21 +96,27 @@ function AudioPlayButton({ src, centered }: { src: string; centered?: boolean })
     <>
       <button
         onClick={toggle}
-        className={`shrink-0 w-8 h-8 rounded-full bg-primary/15 hover:bg-primary/25 flex items-center justify-center transition-all active:scale-95 ${centered ? 'self-center' : 'self-start mt-1'}`}
+        className={`shrink-0 w-20 h-20 rounded-full bg-primary/15 hover:bg-primary/25 flex items-center justify-center transition-colors active:scale-95 ${centered ? 'self-center' : 'self-start mt-1'}`}
         aria-label={playing ? 'Pausar áudio' : 'Reproduzir áudio'}
       >
         {playing
-          ? <Pause className="w-4 h-4 text-primary" />
-          : <Play className="w-4 h-4 text-primary ml-0.5" />
+          ? <Pause className="w-9 h-9 text-primary" />
+          : <Play className="w-9 h-9 text-primary ml-1" />
         }
       </button>
-      <audio ref={audioRef} src={src} preload="auto" />
+      <audio ref={audioRef} src={src} preload="auto" onPlaying={() => setPlaying(true)} onError={() => setPlaying(false)} />
     </>
   );
 }
 
 function CardContent({ html, audioSrc }: { html: string; audioSrc: string | null }) {
   const ref = useRef<HTMLDivElement>(null);
+  const cleanHtml = useMemo(() => {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    div.querySelectorAll('audio, .audio-node, [data-audio]').forEach(el => el.remove());
+    return div.innerHTML;
+  }, [html]);
   const hasImage = /<img\b/i.test(html);
 
   if (audioSrc && hasImage) {
@@ -117,7 +125,7 @@ function CardContent({ html, audioSrc }: { html: string; audioSrc: string | null
         <div
           ref={ref}
           className="rich-text-render text-2xl text-white text-center leading-relaxed break-words max-w-full"
-          dangerouslySetInnerHTML={{ __html: html }}
+          dangerouslySetInnerHTML={{ __html: cleanHtml }}
         />
         <AudioPlayButton src={audioSrc} centered />
       </div>
@@ -131,7 +139,7 @@ function CardContent({ html, audioSrc }: { html: string; audioSrc: string | null
         <div
           ref={ref}
           className="rich-text-render text-2xl text-white text-center leading-relaxed break-words"
-          dangerouslySetInnerHTML={{ __html: html }}
+          dangerouslySetInnerHTML={{ __html: cleanHtml }}
         />
       </div>
     </div>
@@ -157,18 +165,18 @@ export default function StudyCard({ card, onRate, remainingNew, remainingLearnin
       setDeckAudioUrl(null);
       return;
     }
+    let active = true;
+    setDeckAudioUrl(null);
     (async () => {
-      const { data } = await supabase
-        .from('deck_audios')
-        .select('file_path')
-        .eq('id', card.audioId!)
-        .single();
+      const data = (await getDeckAudios(card.deckId)).find(audio => audio.id === card.audioId);
+      if (!active) return;
       if (data) {
         const { data: urlData } = supabase.storage.from('deck-audios').getPublicUrl(data.file_path);
         setDeckAudioUrl(urlData.publicUrl);
       }
-    })();
-  }, [card.audioId]);
+    })().catch(() => {});
+    return () => { active = false; };
+  }, [card.audioId, card.deckId]);
 
   // Determine audio sources for front and back
   const frontEmbeddedAudio = extractAudioSrc(card.front);
@@ -224,7 +232,9 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
   return (
     <div className="flex flex-col w-full max-w-lg mx-auto overflow-hidden" style={{ minHeight: 'calc(100vh - 120px)' }}>
       {/* Content */}
-      <CardContent html={card.front} audioSrc={frontAudioSrc} key={`front-${card.id}`} />
+      <StudyMedia html={card.front} key={`front-${card.id}`}>
+        <CardContent html={card.front} audioSrc={frontAudioSrc} />
+      </StudyMedia>
 
       {isTyping && !flipped && (
         <div className="w-full px-2 mt-8">
@@ -263,7 +273,9 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
       {flipped && (
         <>
           <div className="w-full my-4 h-px bg-muted-foreground/30" />
-          <CardContent html={card.back} audioSrc={backAudioSrc} key={`back-${card.id}`} />
+          <StudyMedia html={card.back} key={`back-${card.id}`}>
+            <CardContent html={card.back} audioSrc={backAudioSrc} />
+          </StudyMedia>
         </>
       )}
 
