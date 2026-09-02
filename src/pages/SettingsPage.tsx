@@ -149,6 +149,12 @@ export default function SettingsPage() {
     try {
       const result = await importDeckFromZip(file);
       toast.success(`"${result.deckName}" importado com ${result.cardCount} cartões!`);
+      if (result.historicalReviewCount > 0 && !result.hasDatedReviewHistory) {
+        toast.info(`${result.historicalReviewCount} revisões acumuladas foram preservadas.`, {
+          description: 'Este ZIP antigo não contém as datas individuais das revisões, por isso calendário e sequência de dias não podem ser recriados por ele.',
+          duration: 9000,
+        });
+      }
       loadData();
       loadAudios();
     } catch (err: any) {
