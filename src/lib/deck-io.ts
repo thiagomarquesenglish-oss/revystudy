@@ -1,7 +1,56 @@
 import JSZip from 'jszip';
 import { supabase } from '@/integrations/supabase/client';
-import { Deck, Flashcard } from './types';
-import { getCardsByDeck, addDeck, addCard, getDeckAudios, DeckAudio, invalidateCache } from './storage';
+import { CardStatus, Deck } from './types';
+import {
+  getCardsByDeck,
+  addDeck,
+  addCardsWithProgressBulk,
+  deleteDeck,
+  getDeckAudios,
+  DeckAudio,
+  invalidateCache,
+} from './storage';
+
+interface LegacyDeckCard {
+  front: string;
+  back: string;
+  audioId?: string | null;
+  status?: string;
+  interval?: number;
+  easeFactor?: number;
+  stepsIndex?: number;
+  repetition?: number;
+  reviewCount?: number;
+  lapseCount?: number;
+}
+
+interface LegacyDeckAudio {
+  id: string;
+  name: string;
+  zipPath: string | null;
+}
+
+interface LegacyDeckManifest {
+  version: number;
+  deck: { name: string; description?: string };
+  cards: LegacyDeckCard[];
+  audios?: LegacyDeckAudio[];
+}
+
+export interface DeckImportInspection {
+  deckName: string;
+  cardCount: number;
+  imageCount: number;
+  embeddedAudioCount: number;
+  historicalReviewCount: number;
+  hasDatedReviewHistory: false;
+}
+
+export type DeckImportResult = DeckImportInspection;
+
+const VALID_CARD_STATUSES = new Set<CardStatus>(['new', 'learning', 'review', 'relearning']);
+const DATA_MEDIA_PATTERN = /data:((?:audio|image)\/[a-z0-9.+-]+);base64,([a-z0-9+/=]+)/gi;
+const MEDIA_PLACEHOLDER_PATTERN = /\{\{MEDIA:([^}]+)\}\}/g;
 
 // ── Helpers ──
 
@@ -39,6 +88,125 @@ function getExtFromContentType(ct: string): string {
     'audio/ogg': 'ogg', 'audio/webm': 'webm',
   };
   return map[ct] || 'bin';
+}
+
+function getContentTypeFromPath(path: string): string {
+  const extension = path.split('.').pop()?.toLowerCase();
+  const map: Record<string, string> = {
+    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
+    webp: 'image/webp', svg: 'image/svg+xml', mp3: 'audio/mpeg', m4a: 'audio/mp4',
+    mp4: 'audio/mp4', wav: 'audio/wav', ogg: 'audio/ogg', webm: 'audio/webm',
+  };
+  return map[extension || ''] || 'application/octet-stream';
+}
+
+function safeNumber(value: unknown, fallback: number, minimum = 0): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? Math.max(minimum, parsed) : fallback;
+}
+
+function safeInteger(value: unknown, fallback: number, minimum = 0): number {
+  return Math.trunc(safeNumber(value, fallback, minimum));
+}
+
+function getMediaPlaceholders(cards: LegacyDeckCard[]): Set<string> {
+  const paths = new Set<string>();
+  for (const card of cards) {
+    for (const html of [card.front, card.back]) {
+      MEDIA_PLACEHOLDER_PATTERN.lastIndex = 0;
+      let match: RegExpExecArray | null;
+      while ((match = MEDIA_PLACEHOLDER_PATTERN.exec(html)) !== null) paths.add(match[1]);
+    }
+  }
+  return paths;
+}
+
+function getEmbeddedDataMedia(cards: LegacyDeckCard[]): Map<string, string> {
+  const media = new Map<string, string>();
+  for (const card of cards) {
+    for (const html of [card.front, card.back]) {
+      DATA_MEDIA_PATTERN.lastIndex = 0;
+      let match: RegExpExecArray | null;
+      while ((match = DATA_MEDIA_PATTERN.exec(html)) !== null) media.set(match[0], match[1].toLowerCase());
+    }
+  }
+  return media;
+}
+
+function decodeBase64DataUri(value: string): Uint8Array {
+  DATA_MEDIA_PATTERN.lastIndex = 0;
+  const match = DATA_MEDIA_PATTERN.exec(value);
+  if (!match || match[0] !== value) throw new Error('Uma mídia embutida no ZIP está danificada.');
+  const binary = atob(match[2]);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
+
+export function sanitizeImportedHtml(html: string): string {
+  const document = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html');
+  document.querySelectorAll('script,iframe,object,embed,form,base,meta,link').forEach((node) => node.remove());
+  document.body.querySelectorAll('*').forEach((element) => {
+    Array.from(element.attributes).forEach((attribute) => {
+      const name = attribute.name.toLowerCase();
+      const value = attribute.value.trim().toLowerCase();
+      if (name.startsWith('on') || name === 'srcdoc' ||
+          ((name === 'src' || name === 'href' || name === 'xlink:href') && /^(?:javascript|vbscript):/.test(value)) ||
+          (name === 'style' && /(?:expression\s*\(|javascript\s*:)/.test(value))) {
+        element.removeAttribute(attribute.name);
+      }
+    });
+  });
+  return document.body.innerHTML;
+}
+
+async function loadLegacyDeckBackup(file: File): Promise<{ zip: JSZip; manifest: LegacyDeckManifest }> {
+  const zip = await JSZip.loadAsync(file);
+  const manifestFile = zip.file('manifest.json');
+  if (!manifestFile) throw new Error('Arquivo inválido: manifest.json não encontrado.');
+
+  let manifest: LegacyDeckManifest;
+  try {
+    manifest = JSON.parse(await manifestFile.async('text')) as LegacyDeckManifest;
+  } catch {
+    throw new Error('Arquivo inválido: o conteúdo do backup está danificado.');
+  }
+
+  if (manifest.version !== 1 || !manifest.deck || typeof manifest.deck.name !== 'string' ||
+      !Array.isArray(manifest.cards) || manifest.cards.length === 0 ||
+      manifest.cards.some((card) => typeof card?.front !== 'string' || typeof card?.back !== 'string')) {
+    throw new Error('Arquivo inválido: formato de baralho não reconhecido.');
+  }
+  if (manifest.cards.length > 50_000) throw new Error('Este arquivo possui cartões demais para uma única importação.');
+  if (manifest.audios && !Array.isArray(manifest.audios)) throw new Error('A lista de áudios do backup está danificada.');
+
+  for (const path of getMediaPlaceholders(manifest.cards)) {
+    if (!path.startsWith('media/') || !zip.file(path)) throw new Error(`Mídia ausente no ZIP: ${path}`);
+  }
+  for (const audio of manifest.audios || []) {
+    if (audio.zipPath && (!audio.zipPath.startsWith('media/') || !zip.file(audio.zipPath))) {
+      throw new Error(`Áudio ausente no ZIP: ${audio.zipPath}`);
+    }
+  }
+  return { zip, manifest };
+}
+
+function summarizeLegacyDeckManifest(manifest: LegacyDeckManifest): DeckImportInspection {
+  const placeholders = getMediaPlaceholders(manifest.cards);
+  const embedded = getEmbeddedDataMedia(manifest.cards);
+  return {
+    deckName: manifest.deck.name,
+    cardCount: manifest.cards.length,
+    imageCount: [...placeholders].filter((path) => getContentTypeFromPath(path).startsWith('image/')).length,
+    embeddedAudioCount: [...embedded.values()].filter((type) => type.startsWith('audio/')).length,
+    historicalReviewCount: manifest.cards.reduce((sum, card) => sum + safeInteger(card.reviewCount, 0), 0),
+    hasDatedReviewHistory: false,
+  };
+}
+
+export async function inspectDeckBackup(file: File): Promise<DeckImportInspection> {
+  const { manifest } = await loadLegacyDeckBackup(file);
+  return summarizeLegacyDeckManifest(manifest);
 }
 
 // ── Export ──
@@ -122,92 +290,110 @@ export async function exportDeckAsZip(deck: Deck): Promise<Blob> {
 
 // ── Import ──
 
-export async function importDeckFromZip(file: File): Promise<{ deckName: string; cardCount: number }> {
-  const zip = await JSZip.loadAsync(file);
-  const manifestFile = zip.file('manifest.json');
-  if (!manifestFile) throw new Error('Arquivo inválido: manifest.json não encontrado');
-
-  const manifest = JSON.parse(await manifestFile.async('text'));
-  if (!manifest.version || !manifest.deck || !manifest.cards) {
-    throw new Error('Arquivo inválido: formato não reconhecido');
-  }
-
+export async function importDeckFromZip(file: File): Promise<DeckImportResult> {
+  if (!navigator.onLine) throw new Error('Conecte-se à internet para importar imagens e áudios.');
+  const { zip, manifest } = await loadLegacyDeckBackup(file);
+  const inspection = summarizeLegacyDeckManifest(manifest);
   const userId = (await supabase.auth.getUser()).data.user?.id;
-  if (!userId) throw new Error('Não autenticado');
+  if (!userId) throw new Error('Sua sessão expirou. Entre novamente.');
 
-  // Create the deck
-  const newDeck = await addDeck(manifest.deck.name, manifest.deck.description || '');
+  let newDeck: Deck | null = null;
+  const uploadedCardMedia: string[] = [];
+  const uploadedDeckAudios: string[] = [];
 
-  // Upload audios and map old IDs to new IDs
-  const audioIdMap = new Map<string, string>();
-  for (const audioMeta of (manifest.audios || [])) {
-    if (!audioMeta.zipPath) continue;
-    const audioFile = zip.file(audioMeta.zipPath);
-    if (!audioFile) continue;
+  try {
+    newDeck = await addDeck(manifest.deck.name, manifest.deck.description || '');
+    const mediaUrlMap = new Map<string, string>();
 
-    const audioData = await audioFile.async('arraybuffer');
-    const ext = audioMeta.zipPath.split('.').pop() || 'mp3';
-    const storagePath = `${userId}/${newDeck.id}/${crypto.randomUUID()}.${ext}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('deck-audios')
-      .upload(storagePath, audioData, { contentType: `audio/${ext === 'mp3' ? 'mpeg' : ext}` });
-
-    if (uploadError) {
-      console.error('Failed to upload audio:', uploadError);
-      continue;
-    }
-
-    const { data: insertData, error: insertError } = await supabase
-      .from('deck_audios')
-      .insert({ deck_id: newDeck.id, name: audioMeta.name, file_path: storagePath, user_id: userId })
-      .select('id')
-      .single();
-
-    if (insertError) {
-      console.error('Failed to insert audio record:', insertError);
-      continue;
-    }
-
-    audioIdMap.set(audioMeta.id, insertData.id);
-  }
-
-  // Process images from zip → base64 data URLs
-  const mediaUrlMap = new Map<string, string>();
-  const imageFiles: { path: string; file: JSZip.JSZipObject }[] = [];
-  zip.folder('media/images')?.forEach((relativePath, file) => {
-    imageFiles.push({ path: `media/images/${relativePath}`, file });
-  });
-
-  for (const { path, file } of imageFiles) {
-    const data = await file.async('arraybuffer');
-    const ext = path.split('.').pop() || 'png';
-    const base64 = btoa(
-      new Uint8Array(data).reduce((str, byte) => str + String.fromCharCode(byte), '')
-    );
-    const mimeMap: Record<string, string> = {
-      png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
-      gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
+    const uploadCardMedia = async (data: ArrayBuffer | Uint8Array, contentType: string, extension: string) => {
+      if (data.byteLength > 25 * 1024 * 1024) throw new Error('Uma mídia do ZIP ultrapassa o limite de 25 MB.');
+      const storagePath = `${userId}/legacy-import/${newDeck!.id}/${crypto.randomUUID()}.${extension}`;
+      const { error } = await supabase.storage.from('card-media').upload(storagePath, data, {
+        contentType,
+        upsert: false,
+      });
+      if (error) throw error;
+      uploadedCardMedia.push(storagePath);
+      return supabase.storage.from('card-media').getPublicUrl(storagePath).data.publicUrl;
     };
-    const mime = mimeMap[ext] || 'image/png';
-    mediaUrlMap.set(path, `data:${mime};base64,${base64}`);
-  }
 
-  // Create cards with updated references
-  for (const cardData of manifest.cards) {
-    let front = cardData.front as string;
-    let back = cardData.back as string;
-
-    for (const [zipPath, url] of mediaUrlMap) {
-      const placeholder = `{{MEDIA:${zipPath}}}`;
-      front = replaceAllOccurrences(front, placeholder, url);
-      back = replaceAllOccurrences(back, placeholder, url);
+    for (const path of getMediaPlaceholders(manifest.cards)) {
+      const entry = zip.file(path);
+      if (!entry) throw new Error(`Mídia ausente no ZIP: ${path}`);
+      const contentType = getContentTypeFromPath(path);
+      const extension = path.split('.').pop()?.toLowerCase() || getExtFromContentType(contentType);
+      mediaUrlMap.set(path, await uploadCardMedia(await entry.async('arraybuffer'), contentType, extension));
     }
 
-    const newAudioId = cardData.audioId ? (audioIdMap.get(cardData.audioId) || null) : null;
-    await addCard(newDeck.id, front, back, newAudioId);
-  }
+    for (const [dataUri, contentType] of getEmbeddedDataMedia(manifest.cards)) {
+      mediaUrlMap.set(dataUri, await uploadCardMedia(
+        decodeBase64DataUri(dataUri),
+        contentType,
+        getExtFromContentType(contentType),
+      ));
+    }
 
-  invalidateCache();
-  return { deckName: newDeck.name, cardCount: manifest.cards.length };
+    const audioIdMap = new Map<string, string>();
+    for (const audioMeta of manifest.audios || []) {
+      if (!audioMeta.zipPath) continue;
+      const audioFile = zip.file(audioMeta.zipPath);
+      if (!audioFile) throw new Error(`Áudio ausente no ZIP: ${audioMeta.zipPath}`);
+      const audioData = await audioFile.async('arraybuffer');
+      if (audioData.byteLength > 25 * 1024 * 1024) throw new Error('Um áudio do ZIP ultrapassa o limite de 25 MB.');
+      const contentType = getContentTypeFromPath(audioMeta.zipPath);
+      const extension = audioMeta.zipPath.split('.').pop()?.toLowerCase() || getExtFromContentType(contentType);
+      const storagePath = `${userId}/${newDeck.id}/${crypto.randomUUID()}.${extension}`;
+      const { error: uploadError } = await supabase.storage.from('deck-audios').upload(storagePath, audioData, {
+        contentType,
+        upsert: false,
+      });
+      if (uploadError) throw uploadError;
+      uploadedDeckAudios.push(storagePath);
+
+      const { data: inserted, error: insertError } = await supabase.from('deck_audios').insert({
+        deck_id: newDeck.id,
+        name: audioMeta.name || 'Áudio importado',
+        file_path: storagePath,
+        user_id: userId,
+      }).select('id').single();
+      if (insertError) throw insertError;
+      audioIdMap.set(audioMeta.id, inserted.id);
+    }
+
+    const dueDate = new Date().toISOString();
+    const cards = manifest.cards.map((source) => {
+      let front = source.front;
+      let back = source.back;
+      for (const [reference, url] of mediaUrlMap) {
+        const search = reference.startsWith('data:') ? reference : `{{MEDIA:${reference}}}`;
+        front = replaceAllOccurrences(front, search, url);
+        back = replaceAllOccurrences(back, search, url);
+      }
+      const status = VALID_CARD_STATUSES.has(source.status as CardStatus)
+        ? source.status as CardStatus
+        : 'new';
+      return {
+        front: sanitizeImportedHtml(front),
+        back: sanitizeImportedHtml(back),
+        audioId: source.audioId ? audioIdMap.get(source.audioId) || null : null,
+        status,
+        interval: safeNumber(source.interval, 0),
+        easeFactor: safeNumber(source.easeFactor, 2.5, 1.3),
+        stepsIndex: safeInteger(source.stepsIndex, 0),
+        repetition: safeInteger(source.repetition, 0),
+        reviewCount: safeInteger(source.reviewCount, 0),
+        lapseCount: safeInteger(source.lapseCount, 0),
+        dueDate,
+      };
+    });
+
+    await addCardsWithProgressBulk(newDeck.id, cards);
+    invalidateCache();
+    return inspection;
+  } catch (error) {
+    if (uploadedCardMedia.length) await supabase.storage.from('card-media').remove(uploadedCardMedia);
+    if (uploadedDeckAudios.length) await supabase.storage.from('deck-audios').remove(uploadedDeckAudios);
+    if (newDeck) await deleteDeck(newDeck.id).catch(() => undefined);
+    throw error;
+  }
 }

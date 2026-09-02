@@ -794,6 +794,65 @@ export async function addCardsBulk(
   return cards;
 }
 
+export interface ImportedCardData {
+  front: string;
+  back: string;
+  audioId?: string | null;
+  status?: CardStatus;
+  interval?: number;
+  easeFactor?: number;
+  stepsIndex?: number;
+  repetition?: number;
+  reviewCount?: number;
+  lapseCount?: number;
+  dueDate?: string;
+  flagged?: boolean;
+  cardType?: 'standard' | 'typing';
+}
+
+/**
+ * Imports cards without resetting their spaced-repetition state. Regular bulk
+ * creation intentionally starts cards as new; backup imports need the original
+ * counters and scheduling fields to survive the move between installations.
+ */
+export async function addCardsWithProgressBulk(
+  deckId: string,
+  items: ImportedCardData[],
+): Promise<Flashcard[]> {
+  const userId = await getCachedUserId();
+  const cards = items.map((item, index) => {
+    const timestamp = new Date(Date.now() + index).toISOString();
+    return {
+      id: crypto.randomUUID(),
+      front: item.front,
+      back: item.back,
+      deckId,
+      audioId: item.audioId || null,
+      status: item.status || 'new',
+      interval: item.interval ?? 0,
+      easeFactor: item.easeFactor ?? 2.5,
+      stepsIndex: item.stepsIndex ?? 0,
+      repetition: item.repetition ?? 0,
+      reviewCount: item.reviewCount ?? 0,
+      lapseCount: item.lapseCount ?? 0,
+      dueDate: item.dueDate || timestamp,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      progressUpdatedAt: timestamp,
+      flagged: item.flagged ?? false,
+      cardType: item.cardType || 'standard',
+    } satisfies Flashcard;
+  });
+  const rows = cards.map((card) => cardToRow(card, userId));
+
+  if (cache.cards) cache.cards.push(...cards);
+  touch('cards');
+  touchDeckCards(deckId);
+  await Promise.all(rows.map((row) => localDB.saveCard(row)));
+  await persistMutations(rows.map((row) => ({ table: 'cards' as const, action: 'insert' as const, payload: row })));
+  return cards;
+}
+
 export async function updateCard(id: string, updates: Partial<Flashcard>): Promise<void> {
   const dbUpdates: Record<string, any> = {};
   if (updates.front !== undefined) dbUpdates.front = updates.front;
