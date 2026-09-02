@@ -2,7 +2,8 @@
   "crons": [
     { "path": "/api/weekly-backup", "schedule": "0 12 * * *" }
   ],
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/.*", "dest": "/index.html" }
   ]
 }
