@@ -476,6 +476,16 @@ export default function SettingsPage() {
               </div>
             </div>
             <DialogFooter>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  if (!editDeck) return;
+                  setShowEditDialog(false);
+                  openDeleteDeck(editDeck);
+                }}
+              >
+                Excluir
+              </Button>
               <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancelar</Button>
               <Button onClick={handleEditDeck} disabled={!editName.trim()}>Salvar</Button>
             </DialogFooter>
