@@ -17,6 +17,7 @@ export interface Flashcard {
   dueDate: string;
   createdAt: string;
   updatedAt: string;
+  progressUpdatedAt: string;
   flagged: boolean;
   cardType: CardType;
 }

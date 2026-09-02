@@ -11,6 +11,8 @@ export interface DeckSyncState {
   deckId: string;
   contentUpdatedAt: string;
   syncedAt: string;
+  cardCount?: number;
+  audioCount?: number;
 }
 
 export interface QueuedMutation {
@@ -20,6 +22,8 @@ export interface QueuedMutation {
   payload: Record<string, any>;
   timestamp: number;
 }
+
+export type NewQueuedMutation = Omit<QueuedMutation, 'id' | 'timestamp'>;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -212,13 +216,14 @@ export const localDB = {
 // ── Mutation queue ──
 
 export const offlineQueue = {
-  async add(mutation: Omit<QueuedMutation, 'id' | 'timestamp'>): Promise<void> {
+  async add(mutation: NewQueuedMutation): Promise<QueuedMutation> {
     const item: QueuedMutation = {
       ...mutation,
       id: crypto.randomUUID(),
       timestamp: Date.now(),
     };
     await putInStore('queue', item);
+    return item;
   },
 
   async getAll(): Promise<QueuedMutation[]> {

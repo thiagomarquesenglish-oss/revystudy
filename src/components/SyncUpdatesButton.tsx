@@ -132,12 +132,15 @@ export default function SyncUpdatesButton({ onInstalled }: SyncUpdatesButtonProp
                     <div className="min-w-0">
                       <p className="font-medium truncate">{update.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {update.cardCount} cartões · {update.audioCount} áudios
+                        Nuvem: {update.cardCount} cartões · {update.audioCount} áudios
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Neste aparelho: {update.localCardCount} cartões · {update.localAudioCount} áudios
                       </p>
                     </div>
                     <Button size="sm" disabled={downloadingId !== null} onClick={() => void download(update)}>
                       <CloudDownload />
-                      Baixar
+                      Baixar tudo
                     </Button>
                   </div>
                   {downloading && progress && (

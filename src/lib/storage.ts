@@ -1,6 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Deck, Flashcard, CardStatus } from './types';
 import { localDB, offlineQueue } from './offline-db';
+import { persistMutations, syncOfflineQueue } from './sync';
+import { assertCompletePackage, DeckManifestSnapshot, mergeDownloadedCardRows, PROGRESS_FIELDS } from './deck-sync';
 
 export interface DeckAudio {
   id: string;
@@ -18,6 +20,8 @@ export interface DeckUpdate {
   contentUpdatedAt: string;
   cardCount: number;
   audioCount: number;
+  localCardCount: number;
+  localAudioCount: number;
 }
 
 export interface PackageSyncProgress {
@@ -193,7 +197,11 @@ async function fetchAllCards(): Promise<any[]> {
 }
 
 async function fetchCardsPage(from: number, to: number, deckId?: string): Promise<any[]> {
-  let query: any = supabase.from('cards').select('*').order('created_at', { ascending: true });
+  let query: any = supabase
+    .from('cards')
+    .select('*')
+    .order('created_at', { ascending: true })
+    .order('id', { ascending: true });
   if (deckId) query = query.eq('deck_id', deckId);
 
   const result = await withTimeout(Promise.resolve(query.range(from, to)), deckId ? 20_000 : 30_000);
@@ -222,6 +230,7 @@ function rowToCard(row: any): Flashcard {
     status: row.status as CardStatus, interval: row.interval, easeFactor: row.ease_factor,
     stepsIndex: row.steps_index, repetition: row.repetition, reviewCount: row.review_count,
     lapseCount: row.lapse_count, dueDate: row.due_date, createdAt: row.created_at, updatedAt: row.updated_at,
+    progressUpdatedAt: row.progress_updated_at || row.updated_at || row.created_at,
     flagged: !!row.flagged,
     cardType: (row.card_type === 'typing' ? 'typing' : 'standard'),
   };
@@ -238,6 +247,7 @@ function cardToRow(c: Flashcard, userId: string): any {
     interval: c.interval, ease_factor: c.easeFactor, steps_index: c.stepsIndex,
     repetition: c.repetition, review_count: c.reviewCount, lapse_count: c.lapseCount,
     due_date: c.dueDate, created_at: c.createdAt, updated_at: c.updatedAt, user_id: userId,
+    progress_updated_at: c.progressUpdatedAt,
     flagged: !!c.flagged,
     card_type: c.cardType || 'standard',
   };
@@ -304,16 +314,10 @@ export async function addDeck(name: string, description: string): Promise<Deck> 
   if (cache.decks) cache.decks.push(deck);
   touch('decks');
 
-  // Persist in background
+  // Persist locally and through the durable cloud outbox.
   const row = deckToRow(deck, userId);
-  if (isOnline()) {
-    supabase.from('decks').insert(row).then(({ error }) => {
-      if (error) console.error('Failed to persist deck:', error);
-    });
-  } else {
-    offlineQueue.add({ table: 'decks', action: 'insert', payload: row }).catch(console.error);
-  }
-  localDB.saveDeck(row).catch(console.error);
+  await localDB.saveDeck(row);
+  await persistMutations([{ table: 'decks', action: 'insert', payload: row }]);
 
   return deck;
 }
@@ -328,18 +332,13 @@ export async function saveDecks(id: string, updates: { name?: string; descriptio
     }
   }
 
-  // Persist in background
-  if (isOnline()) {
-    supabase.from('decks').update(updates).eq('id', id).then(({ error }) => {
-      if (error) console.error('Failed to persist deck update:', error);
-    });
-  } else {
-    offlineQueue.add({ table: 'decks', action: 'update', payload: { id, ...updates } }).catch(console.error);
+  const localDecks = await localDB.getDecks();
+  const localDeck = localDecks.find((d: any) => d.id === id);
+  if (localDeck) {
+    Object.assign(localDeck, updates);
+    await localDB.saveDeck(localDeck);
   }
-  localDB.getDecks().then(localDecks => {
-    const ld = localDecks.find((d: any) => d.id === id);
-    if (ld) { Object.assign(ld, updates); localDB.saveDeck(ld).catch(console.error); }
-  }).catch(console.error);
+  await persistMutations([{ table: 'decks', action: 'update', payload: { id, ...updates } }]);
 }
 
 export async function deleteDeck(deckId: string): Promise<void> {
@@ -347,16 +346,9 @@ export async function deleteDeck(deckId: string): Promise<void> {
   if (cache.decks) cache.decks = cache.decks.filter(d => d.id !== deckId);
   if (cache.cards) cache.cards = cache.cards.filter(c => c.deckId !== deckId);
 
-  // Persist in background
-  if (isOnline()) {
-    supabase.from('decks').delete().eq('id', deckId).then(({ error }) => {
-      if (error) console.error('Failed to delete deck:', error);
-    });
-  } else {
-    offlineQueue.add({ table: 'decks', action: 'delete', payload: { id: deckId } }).catch(console.error);
-  }
-  localDB.deleteDeck(deckId).catch(console.error);
-  localDB.deleteDeckSyncState(deckId).catch(console.error);
+  await persistMutations([{ table: 'decks', action: 'delete', payload: { id: deckId } }]);
+  await localDB.deleteDeck(deckId);
+  await localDB.deleteDeckSyncState(deckId);
   installedDecks.delete(deckId);
 }
 
@@ -464,10 +456,17 @@ export async function checkDeckUpdates(): Promise<DeckUpdate[]> {
   if (result.error) throw result.error;
 
   const states = await localDB.getDeckSyncStates();
-  const syncedVersions = new Map(states.map((state) => [state.deckId, state.contentUpdatedAt]));
-  return (result.data || [])
-    .filter((row) => syncedVersions.get(row.id) !== row.content_updated_at)
-    .map((row) => ({
+  const syncedStates = new Map(states.map((state) => [state.deckId, state]));
+  const changed = (result.data || [])
+    .filter((row) => {
+      const state = syncedStates.get(row.id);
+      return !state ||
+        state.contentUpdatedAt !== row.content_updated_at ||
+        state.cardCount !== row.card_count ||
+        state.audioCount !== row.audio_count;
+    });
+
+  return Promise.all(changed.map(async (row) => ({
       deckId: row.id,
       name: row.name,
       description: row.description || '',
@@ -475,87 +474,146 @@ export async function checkDeckUpdates(): Promise<DeckUpdate[]> {
       contentUpdatedAt: row.content_updated_at,
       cardCount: row.card_count,
       audioCount: row.audio_count,
-    }));
+      localCardCount: (await localDB.getCardsByDeck(row.id)).length,
+      localAudioCount: (await localDB.getDeckAudios(row.id)).length,
+    })));
 }
 
-/** Downloads one coherent deck package and marks its manifest version locally. */
+async function fetchDeckManifest(deckId: string): Promise<DeckManifestSnapshot> {
+  const result = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('decks')
+        .select('id,name,description,created_at,content_updated_at,card_count,audio_count')
+        .eq('id', deckId)
+        .single(),
+    ),
+    15_000,
+  );
+  if (result.error) throw result.error;
+  return result.data as DeckManifestSnapshot;
+}
+
+async function fetchVerifiedDeckPackage(
+  deckId: string,
+  onProgress?: (progress: PackageSyncProgress) => void,
+) {
+  const PAGE_SIZE = 20;
+  let lastError: unknown = null;
+
+  for (let packageAttempt = 0; packageAttempt < 3; packageAttempt += 1) {
+    try {
+      const manifestBefore = await fetchDeckManifest(deckId);
+      const rows: any[] = [];
+      const totalSteps = Math.max(1, Math.ceil(manifestBefore.card_count / PAGE_SIZE)) + 2;
+
+      while (rows.length < manifestBefore.card_count) {
+        onProgress?.({
+          completed: Math.floor(rows.length / PAGE_SIZE),
+          total: totalSteps,
+          label: packageAttempt === 0 ? 'Baixando cartões' : `Conferindo pacote (tentativa ${packageAttempt + 1})`,
+        });
+        const page = await fetchCardsPage(rows.length, rows.length + PAGE_SIZE - 1, deckId);
+        if (page.length === 0) break;
+        rows.push(...page);
+      }
+
+      onProgress?.({ completed: totalSteps - 2, total: totalSteps, label: 'Baixando lista de áudios' });
+      const audios = await withTimeout(
+        Promise.resolve(
+          supabase
+            .from('deck_audios')
+            .select('*')
+            .eq('deck_id', deckId)
+            .order('created_at', { ascending: true })
+            .order('id', { ascending: true }),
+        ),
+        20_000,
+      );
+      if (audios.error) throw audios.error;
+
+      onProgress?.({ completed: totalSteps - 1, total: totalSteps, label: 'Verificando integridade' });
+      const manifestAfter = await fetchDeckManifest(deckId);
+      assertCompletePackage(manifestBefore, manifestAfter, rows, (audios.data || []) as any[]);
+      return { manifest: manifestAfter, rows, audios: (audios.data || []) as any[], totalSteps };
+    } catch (error) {
+      lastError = error;
+      if (packageAttempt < 2) await new Promise((resolve) => window.setTimeout(resolve, 900 * (packageAttempt + 1)));
+    }
+  }
+
+  throw lastError instanceof Error
+    ? new Error(`Não foi possível baixar o baralho completo. Nada foi substituído no celular. ${lastError.message}`)
+    : new Error('Não foi possível baixar o baralho completo. Nada foi substituído no celular.');
+}
+
+/** Downloads one coherent deck package and installs it only after full validation. */
 export async function downloadDeckPackage(
   update: DeckUpdate,
   onProgress?: (progress: PackageSyncProgress) => void,
 ): Promise<Flashcard[]> {
   if (!isOnline()) throw new Error('Você está offline');
-  const PAGE_SIZE = 25;
-  const rows: any[] = [];
-  let from = 0;
-  const totalSteps = Math.max(1, Math.ceil(update.cardCount / PAGE_SIZE)) + 1;
-
-  while (true) {
-    onProgress?.({ completed: Math.floor(rows.length / PAGE_SIZE), total: totalSteps, label: 'Baixando cartões' });
-    let page: any[] | null = null;
-    let lastError: unknown = null;
-    for (let attempt = 0; attempt < 3 && page === null; attempt += 1) {
-      try {
-        page = await fetchCardsPage(from, from + PAGE_SIZE - 1, update.deckId);
-      } catch (error) {
-        lastError = error;
-        if (attempt < 2) await new Promise((resolve) => window.setTimeout(resolve, 700 * (attempt + 1)));
-      }
-    }
-    if (page === null) throw lastError instanceof Error ? lastError : new Error('Falha ao baixar o pacote');
-    rows.push(...page);
-    if (page.length < PAGE_SIZE) break;
-    from += PAGE_SIZE;
+  await syncOfflineQueue();
+  if (await offlineQueue.count()) {
+    throw new Error('Este aparelho ainda tem alterações aguardando a nuvem. Aguarde a sincronização antes de baixar.');
   }
 
-  onProgress?.({ completed: totalSteps - 1, total: totalSteps, label: 'Integrando áudios' });
-  const audios = await withTimeout(
-    Promise.resolve(
-      supabase.from('deck_audios').select('*').eq('deck_id', update.deckId).order('created_at', { ascending: true })
-    ),
-    20_000,
-  );
-  if (audios.error) throw audios.error;
+  const localRows = await localDB.getCardsByDeck(update.deckId);
+  const { manifest, rows: remoteRows, audios, totalSteps } = await fetchVerifiedDeckPackage(update.deckId, onProgress);
+  const { rows, localProgressRows } = mergeDownloadedCardRows(remoteRows, localRows);
 
   await Promise.all([
     syncLocalDeckCards(update.deckId, rows),
-    localDB.replaceDeckAudios(update.deckId, audios.data || []),
+    localDB.replaceDeckAudios(update.deckId, audios),
     localDB.saveDeck({
       id: update.deckId,
-      name: update.name,
-      description: update.description,
-      created_at: update.createdAt,
-      content_updated_at: update.contentUpdatedAt,
-      card_count: update.cardCount,
-      audio_count: update.audioCount,
+      name: manifest.name,
+      description: manifest.description || '',
+      created_at: manifest.created_at,
+      content_updated_at: manifest.content_updated_at,
+      card_count: manifest.card_count,
+      audio_count: manifest.audio_count,
     }),
   ]);
   const downloadedDeck: Deck = {
     id: update.deckId,
-    name: update.name,
-    description: update.description,
-    createdAt: update.createdAt,
-    contentUpdatedAt: update.contentUpdatedAt,
-    cardCount: update.cardCount,
-    audioCount: update.audioCount,
+    name: manifest.name,
+    description: manifest.description || '',
+    createdAt: manifest.created_at,
+    contentUpdatedAt: manifest.content_updated_at,
+    cardCount: manifest.card_count,
+    audioCount: manifest.audio_count,
   };
   cache.decks = cache.decks
     ? [...cache.decks.filter((deck) => deck.id !== update.deckId), downloadedDeck]
         .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
     : [downloadedDeck];
   touch('decks');
-  cache.deckAudios[update.deckId] = (audios.data || []) as DeckAudio[];
+  cache.deckAudios[update.deckId] = audios as DeckAudio[];
   touch(`deckAudios:${update.deckId}`);
 
   const cards = sortCards(rows.map(rowToCard));
   mergeDeckCardsIntoCache(update.deckId, cards);
   await localDB.saveDeckSyncState({
     deckId: update.deckId,
-    contentUpdatedAt: update.contentUpdatedAt,
+    contentUpdatedAt: manifest.content_updated_at,
     syncedAt: new Date().toISOString(),
+    cardCount: manifest.card_count,
+    audioCount: manifest.audio_count,
   });
   await ensureInstalledDecks();
   installedDecks.add(update.deckId);
-  onProgress?.({ completed: totalSteps, total: totalSteps, label: 'Atualização instalada' });
+  if (localProgressRows.length > 0) {
+    await persistMutations(localProgressRows.map((row) => ({
+      table: 'cards' as const,
+      action: 'update' as const,
+      payload: {
+        id: row.id,
+        ...Object.fromEntries(PROGRESS_FIELDS.map((field) => [field, row[field]])),
+      },
+    })));
+  }
+  onProgress?.({ completed: totalSteps, total: totalSteps, label: `${manifest.card_count} cartões conferidos e instalados` });
   return cards;
 }
 
@@ -695,7 +753,8 @@ export async function addCard(deckId: string, front: string, back: string, audio
   const card: Flashcard = {
     id: crypto.randomUUID(), front, back, deckId, audioId: audioId || null, status: 'new',
     interval: 0, easeFactor: 2.5, stepsIndex: 0, repetition: 0,
-    reviewCount: 0, lapseCount: 0, dueDate: now, createdAt: now, updatedAt: now, flagged: false, cardType,
+    reviewCount: 0, lapseCount: 0, dueDate: now, createdAt: now, updatedAt: now,
+    progressUpdatedAt: now, flagged: false, cardType,
   };
 
   // Update cache immediately
@@ -703,18 +762,36 @@ export async function addCard(deckId: string, front: string, back: string, audio
   touch('cards');
   touchDeckCards(deckId);
 
-  // Persist in background
+  // Persist locally and through the durable cloud outbox.
   const row = cardToRow(card, userId);
-  if (isOnline()) {
-    supabase.from('cards').insert(row).then(({ error }) => {
-      if (error) console.error('Failed to persist card:', error);
-    });
-  } else {
-    offlineQueue.add({ table: 'cards', action: 'insert', payload: row }).catch(console.error);
-  }
-  localDB.saveCard(row).catch(console.error);
+  await localDB.saveCard(row);
+  await persistMutations([{ table: 'cards', action: 'insert', payload: row }]);
 
   return card;
+}
+
+export async function addCardsBulk(
+  deckId: string,
+  items: Array<{ front: string; back: string }>,
+): Promise<Flashcard[]> {
+  const userId = await getCachedUserId();
+  const cards = items.map(({ front, back }, index) => {
+    const timestamp = new Date(Date.now() + index).toISOString();
+    return {
+      id: crypto.randomUUID(), front, back, deckId, audioId: null, status: 'new' as const,
+      interval: 0, easeFactor: 2.5, stepsIndex: 0, repetition: 0,
+      reviewCount: 0, lapseCount: 0, dueDate: timestamp, createdAt: timestamp,
+      updatedAt: timestamp, progressUpdatedAt: timestamp, flagged: false, cardType: 'standard' as const,
+    };
+  });
+  const rows = cards.map((card) => cardToRow(card, userId));
+
+  if (cache.cards) cache.cards.push(...cards);
+  touch('cards');
+  touchDeckCards(deckId);
+  await Promise.all(rows.map((row) => localDB.saveCard(row)));
+  await persistMutations(rows.map((row) => ({ table: 'cards' as const, action: 'insert' as const, payload: row })));
+  return cards;
 }
 
 export async function updateCard(id: string, updates: Partial<Flashcard>): Promise<void> {
@@ -732,30 +809,38 @@ export async function updateCard(id: string, updates: Partial<Flashcard>): Promi
   if (updates.deckId !== undefined) dbUpdates.deck_id = updates.deckId;
   if (updates.audioId !== undefined) dbUpdates.audio_id = updates.audioId;
   if (updates.flagged !== undefined) dbUpdates.flagged = updates.flagged;
+  const progressChanged = [
+    updates.status, updates.interval, updates.easeFactor, updates.stepsIndex,
+    updates.repetition, updates.reviewCount, updates.lapseCount, updates.dueDate,
+    updates.flagged,
+  ].some((value) => value !== undefined);
+  const now = new Date().toISOString();
+  dbUpdates.updated_at = now;
+  if (progressChanged) dbUpdates.progress_updated_at = now;
 
   // Update cache immediately
   if (cache.cards) {
     const idx = cache.cards.findIndex(c => c.id === id);
     if (idx >= 0) {
       const previousDeckId = cache.cards[idx].deckId;
-      cache.cards[idx] = { ...cache.cards[idx], ...updates };
+      cache.cards[idx] = {
+        ...cache.cards[idx],
+        ...updates,
+        updatedAt: now,
+        ...(progressChanged ? { progressUpdatedAt: now } : {}),
+      };
       touchDeckCards(previousDeckId);
       touchDeckCards(cache.cards[idx].deckId);
     }
   }
 
-  // Persist in background
-  if (isOnline()) {
-    supabase.from('cards').update(dbUpdates).eq('id', id).then(({ error }) => {
-      if (error) console.error('Failed to persist card update:', error);
-    });
-  } else {
-    offlineQueue.add({ table: 'cards', action: 'update', payload: { id, ...dbUpdates } }).catch(console.error);
+  const localCards = await localDB.getCards();
+  const localCard = localCards.find((c: any) => c.id === id);
+  if (localCard) {
+    Object.assign(localCard, dbUpdates);
+    await localDB.saveCard(localCard);
   }
-  localDB.getCards().then(localCards => {
-    const lc = localCards.find((c: any) => c.id === id);
-    if (lc) { Object.assign(lc, dbUpdates); localDB.saveCard(lc).catch(console.error); }
-  }).catch(console.error);
+  await persistMutations([{ table: 'cards', action: 'update', payload: { id, ...dbUpdates } }]);
 }
 
 export async function deleteCard(cardId: string): Promise<void> {
@@ -766,15 +851,8 @@ export async function deleteCard(cardId: string): Promise<void> {
   // Cascade: invalidate review history cache since DB cascade deletes related reviews
   invalidateCache('reviewHistory');
 
-  // Persist in background
-  if (isOnline()) {
-    supabase.from('cards').delete().eq('id', cardId).then(({ error }) => {
-      if (error) console.error('Failed to delete card:', error);
-    });
-  } else {
-    offlineQueue.add({ table: 'cards', action: 'delete', payload: { id: cardId } }).catch(console.error);
-  }
-  localDB.deleteCard(cardId).catch(console.error);
+  await persistMutations([{ table: 'cards', action: 'delete', payload: { id: cardId } }]);
+  await localDB.deleteCard(cardId);
 }
 
 // ── Review History ──
@@ -787,15 +865,8 @@ export async function addReviewHistory(cardId: string, rating: string): Promise<
   // Invalidate cache immediately
   invalidateCache('reviewHistory');
 
-  // Persist in background
-  if (isOnline()) {
-    supabase.from('review_history').insert({ card_id: cardId, rating, user_id: userId }).then(({ error }) => {
-      if (error) console.error('Failed to persist review:', error);
-    });
-  } else {
-    offlineQueue.add({ table: 'review_history', action: 'insert', payload: row }).catch(console.error);
-  }
-  localDB.saveReview(row).catch(console.error);
+  await localDB.saveReview(row);
+  await persistMutations([{ table: 'review_history', action: 'insert', payload: row }]);
 }
 
 async function fetchReviewHistoryFromDB(): Promise<{ date: string; count: number }[]> {
@@ -920,6 +991,7 @@ export async function resetDeck(deckId: string): Promise<void> {
     lapse_count: 0,
     due_date: now,
     updated_at: now,
+    progress_updated_at: now,
   };
 
   // Update cache immediately
@@ -927,13 +999,16 @@ export async function resetDeck(deckId: string): Promise<void> {
     cache.cards = cache.cards.map(c => c.deckId === deckId ? {
       ...c, status: 'new' as CardStatus, interval: 0, easeFactor: 2.5,
       stepsIndex: 0, repetition: 0, reviewCount: 0, lapseCount: 0,
-      dueDate: now, updatedAt: now,
+      dueDate: now, updatedAt: now, progressUpdatedAt: now,
     } : c);
   }
 
-  if (isOnline()) {
-    supabase.from('cards').update(resetFields).eq('deck_id', deckId).then(({ error }) => {
-      if (error) console.error('Failed to reset cards:', error);
-    });
-  }
+  const localRows = await localDB.getCardsByDeck(deckId);
+  const updatedRows = localRows.map((row) => ({ ...row, ...resetFields }));
+  await localDB.replaceCardsForDeck(deckId, updatedRows);
+  await persistMutations(updatedRows.map((row) => ({
+    table: 'cards' as const,
+    action: 'update' as const,
+    payload: { id: row.id, ...resetFields },
+  })));
 }

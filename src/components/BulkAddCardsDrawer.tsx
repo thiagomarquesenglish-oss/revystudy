@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { addCard } from '@/lib/storage';
+import { addCardsBulk } from '@/lib/storage';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
@@ -35,12 +35,8 @@ export default function BulkAddCardsDrawer({ open, onOpenChange, deckId, onAdded
 
     setAdding(true);
     try {
-      let count = 0;
-      for (const card of parsed) {
-        await addCard(deckId, card.front, card.back);
-        count++;
-      }
-      toast.success(`${count} cartões adicionados!`);
+      const cards = await addCardsBulk(deckId, parsed);
+      toast.success(`${cards.length} cartões adicionados com segurança!`);
       setText('');
       onOpenChange(false);
       onAdded();

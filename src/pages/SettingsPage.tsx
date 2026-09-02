@@ -509,7 +509,7 @@ export default function SettingsPage() {
           <DrawerContent>
             <DrawerHeader><DrawerTitle>Reiniciar aprendizado</DrawerTitle></DrawerHeader>
             <div className="px-4 pb-6 space-y-4">
-              <p className="text-sm text-muted-foreground">Tem certeza que deseja reiniciar "{resetDeckTarget?.name}"? Todos os cartões voltarão ao estado inicial e o histórico de revisões será apagado. Esta ação não pode ser desfeita.</p>
+              <p className="text-sm text-muted-foreground">Tem certeza que deseja reiniciar "{resetDeckTarget?.name}"? Todos os cartões voltarão ao estado inicial. O histórico geral permanecerá nas estatísticas.</p>
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => setResetDeckTarget(null)}>Cancelar</Button>
                 <Button className="flex-1 bg-orange-600 text-white hover:bg-orange-700" onClick={handleResetDeck}>Reiniciar</Button>
@@ -522,7 +522,7 @@ export default function SettingsPage() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Reiniciar aprendizado</AlertDialogTitle>
-              <AlertDialogDescription>Tem certeza que deseja reiniciar "{resetDeckTarget?.name}"? Todos os cartões voltarão ao estado inicial e o histórico de revisões será apagado. Esta ação não pode ser desfeita.</AlertDialogDescription>
+              <AlertDialogDescription>Tem certeza que deseja reiniciar "{resetDeckTarget?.name}"? Todos os cartões voltarão ao estado inicial. O histórico geral permanecerá nas estatísticas.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>

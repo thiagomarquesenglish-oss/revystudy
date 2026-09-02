@@ -28,6 +28,7 @@ export type Database = {
           id: string
           interval: number
           lapse_count: number
+          progress_updated_at: string
           repetition: number
           review_count: number
           status: string
@@ -48,6 +49,7 @@ export type Database = {
           id?: string
           interval?: number
           lapse_count?: number
+          progress_updated_at?: string
           repetition?: number
           review_count?: number
           status?: string
@@ -68,6 +70,7 @@ export type Database = {
           id?: string
           interval?: number
           lapse_count?: number
+          progress_updated_at?: string
           repetition?: number
           review_count?: number
           status?: string
