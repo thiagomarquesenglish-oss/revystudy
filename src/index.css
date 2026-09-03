@@ -318,3 +318,11 @@ html {
 .native-row + .native-row { border: 0; }
 header > div:last-child.h-px { display: none; }
 #root div.h-px { display: none; }
+
+/* Remove surrounding frames while preserving useful internal separators. */
+#root .native-row + .native-row { border-top: 1px solid hsl(var(--border) / .65) !important; }
+#root :is(.border-b, .border-t) { border-color: hsl(var(--border) / .65); }
+#root .border-b { border-bottom-width: 1px !important; }
+#root .border-t { border-top-width: 1px !important; }
+#root .last\:border-b-0:last-child { border-bottom-width: 0 !important; }
+#root div.h-px { display: block; }
