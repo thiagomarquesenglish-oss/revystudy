@@ -15,7 +15,7 @@ export default function CardThumbnail({ cardId, alt }: { cardId: string; alt: st
     observer.observe(element);
     return () => observer.disconnect();
   }, [cardId]);
-  return <span ref={host} className="block h-24 rounded-xl bg-secondary overflow-hidden">
+  return <span ref={host} className="block mb-3 h-24 rounded-xl bg-secondary overflow-hidden">
     {src ? <img src={src} alt={alt} loading="lazy" className="h-full w-full object-cover" />
       : <span className="h-full flex items-center justify-center text-xs text-muted-foreground">Cartão de inglês</span>}
   </span>;
