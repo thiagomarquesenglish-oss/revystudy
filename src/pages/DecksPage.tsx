@@ -161,11 +161,11 @@ export default function DecksPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background safe-bottom">
-        <PageHeader title="Painel" />
+        <PageHeader title="Biblioteca" />
         <main className="max-w-3xl mx-auto px-3 py-4 space-y-4" style={{ paddingTop: 'calc(var(--app-header-height) + 1rem)' }}>
           <Skeleton className="h-10 w-full rounded-lg" />
           <Skeleton className="h-4 w-20" />
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-4">
             {[1, 2, 3, 4].map(i => (
               <Skeleton key={i} className="h-20 rounded-lg" />
             ))}
@@ -187,6 +187,8 @@ export default function DecksPage() {
       />
       <PageTransition>
       <main className="max-w-3xl mx-auto px-3 py-4 space-y-4" style={{ paddingTop: 'calc(var(--app-header-height) + 1rem)' }}>
+        <button className="native-row bg-card rounded-2xl" onClick={() => navigate('/library/manage')}><span className="flex-1"><span className="block font-semibold">Baralhos e áudios</span><span className="block text-sm text-muted-foreground mt-1">Criar, importar e organizar conteúdo</span></span><span aria-hidden="true">›</span></button>
+        <h2 className="text-lg font-semibold pt-2">Cartões</h2>
         {/* Tabs: Todos / Marcados */}
         <div className="flex gap-2">
           <button
@@ -253,18 +255,18 @@ export default function DecksPage() {
               <button
                 key={card.id}
                 onClick={() => isMobile ? setActionCard(card) : openEdit(card)}
-                className="w-full text-left bg-card hover:bg-secondary/50 border border-border rounded-2xl p-2.5 transition-colors"
+                className="w-full text-left bg-card hover:bg-secondary/50 border border-border rounded-2xl p-3.5 transition-colors"
               >
                 {hasImage(card.front + card.back) && <CardThumbnail cardId={card.id} alt={`Imagem do cartão ${stripHtml(card.front)}`} />}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-base font-medium truncate">{stripHtml(card.front)}</p>
+                  <div className="flex items-center gap-2.5">
+                    <p className="text-sm font-medium truncate">{stripHtml(card.front) || 'Frente'}</p>
                     {hasAudio(card.front) && <Volume2 className="w-4 h-4 text-muted-foreground shrink-0" />}
                     {hasImage(card.front) && <ImageIcon className="w-4 h-4 text-muted-foreground shrink-0" />}
                     {card.flagged && <Flag className="w-3.5 h-3.5 fill-red-500 text-red-500 shrink-0 ml-auto" />}
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-sm text-muted-foreground truncate mt-0.5">{stripHtml(card.back)}</p>
+                  <div className="flex items-center gap-2.5">
+                    <p className="text-sm text-muted-foreground truncate mt-0.5">{stripHtml(card.back) || 'Resposta'}</p>
                     {hasAudio(card.back) && <Volume2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
                     {hasImage(card.back) && <ImageIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
                   </div>

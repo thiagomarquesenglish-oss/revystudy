@@ -41,7 +41,7 @@ export default function Index() {
         : !last ? <section className="rounded-3xl border border-border bg-card p-7 space-y-4">
           <BookOpen className="h-10 w-10 text-primary" /><h1 className="text-2xl font-bold">Seu inglês começa aqui</h1>
           <p className="text-muted-foreground">Reúna frases, imagens e áudios em um baralho para começar a praticar.</p>
-          <Button onClick={() => navigate('/settings')}><Plus />Criar meu primeiro baralho</Button>
+          <Button onClick={() => navigate('/library/manage')}><Plus />Criar meu primeiro baralho</Button>
         </section> : <>
           <section className="py-3 space-y-5">
             <p className="text-sm text-muted-foreground capitalize">{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
