@@ -1,20 +1,14 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getDecks, getCardsByDeck, getNewCards, getLearningCards, getReviewCards, getDeckAudios, invalidateDeckAudios, forceSyncDeckCards, checkDeckUpdates, downloadDeckPackage } from '@/lib/storage';
-import type { DeckAudio } from '@/lib/storage';
+import { getDecks, getCardsByDeck, getNewCards, getLearningCards, getReviewCards, invalidateDeckAudios, forceSyncDeckCards, checkDeckUpdates, downloadDeckPackage } from '@/lib/storage';
 import { Deck, Flashcard } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Play, Plus, Layers, MoreVertical, Repeat, RefreshCw, LayoutGrid, ListPlus, CloudDownload, Sparkles, ChevronRight, Headphones } from 'lucide-react';
+import { Play, Plus, Layers, MoreVertical, Music, RefreshCw, LayoutGrid, ListPlus, CloudDownload, Sparkles, ChevronRight, Headphones } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageHeader from '@/components/PageHeader';
 import Heatmap from '@/components/Heatmap';
-import DeckAudioPlayer from '@/components/DeckAudioPlayer';
-import type { DeckAudioPlayerHandle } from '@/components/DeckAudioPlayer';
-import CreateDeckAudioDrawer from '@/components/CreateDeckAudioDrawer';
 import BulkAddCardsDrawer from '@/components/BulkAddCardsDrawer';
-import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Drawer,
   DrawerContent,
@@ -33,31 +27,24 @@ export default function DeckPage() {
   const [reviewCount, setReviewCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [createAudioOpen, setCreateAudioOpen] = useState(false);
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
-  const [audios, setAudios] = useState<DeckAudio[]>([]);
-  const [autoPlay, setAutoPlay] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const playerRefs = useRef<(DeckAudioPlayerHandle | null)[]>([]);
-  const isMobile = useIsMobile();
 
   const handleForceSync = async () => {
     if (!deckId || syncing) return;
     setSyncing(true);
     try {
       invalidateDeckAudios(deckId);
-      const [deckCards, newC, learningC, reviewC, deckAudios] = await Promise.all([
+      const [deckCards, newC, learningC, reviewC] = await Promise.all([
         forceSyncDeckCards(deckId),
         getNewCards(deckId),
         getLearningCards(deckId),
         getReviewCards(deckId),
-        getDeckAudios(deckId),
       ]);
       setCards(deckCards);
       setNewCount(newC.length);
       setLearningCount(learningC.length);
       setReviewCount(reviewC.length);
-      setAudios(deckAudios);
       toast.success(`${deckCards.length} cards sincronizados!`);
     } catch (err) {
       console.error(err);
@@ -89,21 +76,14 @@ export default function DeckPage() {
     }
   };
 
-  const handleAudioEnded = useCallback((index: number) => {
-    if (autoPlay && index < audios.length - 1) {
-      playerRefs.current[index + 1]?.play();
-    }
-  }, [autoPlay, audios.length]);
-
   const loadData = async () => {
     try {
-      const [allDecks, deckCards, newC, learningC, reviewC, deckAudios] = await Promise.all([
+      const [allDecks, deckCards, newC, learningC, reviewC] = await Promise.all([
         getDecks(),
         getCardsByDeck(deckId!),
         getNewCards(deckId!),
         getLearningCards(deckId!),
         getReviewCards(deckId!),
-        getDeckAudios(deckId!),
       ]);
       const found = allDecks.find(d => d.id === deckId);
       setDeck(found || null);
@@ -111,18 +91,11 @@ export default function DeckPage() {
       setNewCount(newC.length);
       setLearningCount(learningC.length);
       setReviewCount(reviewC.length);
-      setAudios(deckAudios);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadAudios = async () => {
-    invalidateDeckAudios(deckId!);
-    const fresh = await getDeckAudios(deckId!);
-    setAudios(fresh);
   };
 
   useEffect(() => {
@@ -238,29 +211,22 @@ export default function DeckPage() {
           </button>
         )}
 
-        {/* Audio list */}
-        {audios.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-muted-foreground">Reproduções</h3>
-              <div className="flex items-center gap-2">
-                <Repeat className="w-3.5 h-3.5 text-muted-foreground" />
-                <Switch checked={autoPlay} onCheckedChange={setAutoPlay} />
-              </div>
-            </div>
-            <div className="space-y-2">
-              {audios.map((a, i) => (
-                <DeckAudioPlayer
-                  key={a.id}
-                  ref={(el) => { playerRefs.current[i] = el; }}
-                  audio={a}
-                  onDeleted={loadAudios}
-                  onEnded={() => handleAudioEnded(i)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+        <button
+          type="button"
+          onClick={() => navigate(`/deck/${deckId}/audios`)}
+          className="w-full flex items-center gap-3 rounded-2xl border border-primary/25 bg-primary/10 p-4 text-left transition-colors hover:bg-primary/15 active:scale-[0.99]"
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15">
+            <Music className="h-5 w-5 text-primary" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold text-foreground">Reproduções</span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
+              Ouça textos em inglês e organize seus áudios.
+            </span>
+          </span>
+          <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+        </button>
       </main>
 
       {/* Botões fixos no rodapé */}
@@ -333,7 +299,7 @@ export default function DeckPage() {
             <button
               onClick={() => {
                 setMenuOpen(false);
-                setTimeout(() => setCreateAudioOpen(true), 200);
+                navigate(`/deck/${deckId}/audios?create=1`);
               }}
               className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border text-sm hover:bg-card/80 transition-colors"
             >
@@ -343,15 +309,6 @@ export default function DeckPage() {
           </div>
         </DrawerContent>
       </Drawer>
-
-      {/* Create audio drawer */}
-      <CreateDeckAudioDrawer
-        open={createAudioOpen}
-        onOpenChange={setCreateAudioOpen}
-        deckId={deckId!}
-        onCreated={loadAudios}
-      />
-
 
       {/* Bulk add drawer */}
       <BulkAddCardsDrawer
