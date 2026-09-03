@@ -1,4 +1,4 @@
-/* Arial font - system font, no import needed */
+/* Use the native system typeface, including San Francisco on iPhone. */
 
 * {
   -webkit-user-select: none;
@@ -105,7 +105,7 @@ html {
     -webkit-font-smoothing: antialiased;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: inherit;
   }
 }
 
