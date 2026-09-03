@@ -100,6 +100,7 @@ export type Database = {
           audio_id: string | null
           back: string
           card_type: string
+          dictation_answer: string | null
           created_at: string
           deck_id: string
           due_date: string
@@ -121,6 +122,7 @@ export type Database = {
           audio_id?: string | null
           back: string
           card_type?: string
+          dictation_answer?: string | null
           created_at?: string
           deck_id: string
           due_date?: string
@@ -142,6 +144,7 @@ export type Database = {
           audio_id?: string | null
           back?: string
           card_type?: string
+          dictation_answer?: string | null
           created_at?: string
           deck_id?: string
           due_date?: string
