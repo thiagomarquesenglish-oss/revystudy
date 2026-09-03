@@ -9,7 +9,7 @@ export default function DictationAnswerField({ value, onChange }: { value: strin
       aria-describedby="dictation-answer-help" />
     <p id="dictation-answer-help" className="text-xs leading-relaxed text-muted-foreground">
       Escreva a frase em inglês falada no áudio deste cartão. No modo Ouvir e escrever,
-      a imagem e a resposta só aparecem depois de conferir. Deixe vazio para não incluir no ditado.
+      você ouve o áudio, digita e confere a frase em inglês. Deixe vazio para não incluir no ditado.
     </p>
   </div>;
 }

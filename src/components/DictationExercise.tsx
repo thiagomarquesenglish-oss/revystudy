@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { compareDictation } from '@/lib/dictation';
 import type { Flashcard } from '@/lib/types';
-import { sanitizeImportedHtml } from '@/lib/deck-io';
 
 export default function DictationExercise({ card, audioSrc, onNext, onSkip, last }: {
   card: Flashcard; audioSrc: string; onNext: (correct: boolean) => void; onSkip: () => void; last: boolean;
@@ -24,13 +23,6 @@ export default function DictationExercise({ card, audioSrc, onNext, onSkip, last
     if (!typed.trim() || result) return;
     audio.current?.pause();
     setResult(compareDictation(card.dictationAnswer || '', typed));
-  };
-
-  // The original content is only mounted after checking, never hidden in the prompt DOM.
-  const reveal = () => {
-    const doc = new DOMParser().parseFromString(sanitizeImportedHtml(card.front + card.back), 'text/html');
-    doc.querySelectorAll('audio, source, .audio-node, [data-audio]').forEach(node => node.remove());
-    return doc.body.innerHTML;
   };
 
   return <div className="space-y-6">
@@ -74,7 +66,6 @@ export default function DictationExercise({ card, audioSrc, onNext, onSkip, last
         </ul>}
       </div>
       <Button className="w-full" onClick={() => onNext(result.correct)}>{last ? 'Ver resultado' : 'Próximo cartão'}</Button>
-      <div className="rich-text-render break-words space-y-3 [&_img]:max-w-full" dangerouslySetInnerHTML={{ __html: reveal() }} />
     </div>}
     {!result && <Button variant="ghost" className="w-full" onClick={onSkip}>Pular cartão</Button>}
   </div>;
