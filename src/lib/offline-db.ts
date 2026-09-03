@@ -65,6 +65,15 @@ async function getAllFromStore<T>(storeName: string): Promise<T[]> {
   });
 }
 
+async function getFromStore<T>(storeName: string, id: string): Promise<T | undefined> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(storeName, 'readonly').objectStore(storeName).get(id);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
 async function putInStore(storeName: string, item: any): Promise<void> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
@@ -185,6 +194,7 @@ export const localDB = {
 
   // Cards
   getCards: () => getAllFromStore<any>('cards'),
+  getCard: (id: string) => getFromStore<any>('cards', id),
   getCardSummaries,
   saveCard: (card: any) => putInStore('cards', card),
   deleteCard: (id: string) => deleteFromStore('cards', id),

@@ -713,6 +713,13 @@ export async function getLocalCardSummaries(): Promise<Flashcard[]> {
   }
 }
 
+export async function getLocalCardThumbnail(cardId: string): Promise<string | null> {
+  const row = await localDB.getCard(cardId);
+  const html = `${row?.front || ''}${row?.back || ''}`;
+  const match = html.match(/<img\b[^>]*\bsrc=["']([^"']+)["']/i);
+  return match && /^(?:data:image\/|blob:|https?:\/\/)/i.test(match[1]) ? match[1] : null;
+}
+
 export async function getCardsByDeck(deckId: string): Promise<Flashcard[]> {
   const localOnly = await isDeckInstalled(deckId);
 
