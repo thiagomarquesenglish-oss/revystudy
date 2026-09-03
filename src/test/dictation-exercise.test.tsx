@@ -37,3 +37,13 @@ describe('listening exercise', () => {
     expect(onNext).not.toHaveBeenCalled();
   });
 });
+
+it('offers review intervals for a correct answer', () => {
+  vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+  const onNext = vi.fn();
+  render(<DictationExercise card={card} audioSrc="https://example.com/a.mp3" onNext={onNext} onSkip={vi.fn()} last ratings intervals={{ hard: '1 dia', good: '2 dias', easy: '4 dias' }} />);
+  fireEvent.change(screen.getByLabelText('O que você ouviu?'), { target: { value: "I'm hungry" } });
+  fireEvent.click(screen.getByRole('button', { name: 'Conferir' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Fácil 4 dias' }));
+  expect(onNext).toHaveBeenCalledWith(true, 'easy');
+});
