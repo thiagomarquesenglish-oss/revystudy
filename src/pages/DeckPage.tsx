@@ -202,6 +202,15 @@ export default function DeckPage() {
           </>
         )}
 
+        <Button variant="outline" className="w-full justify-between h-auto py-4"
+          onClick={() => navigate(`/dictation/${deckId}`)}>
+          <span className="text-left">
+            <span className="block font-bold">Ouvir e escrever</span>
+            <span className="block text-xs font-normal text-muted-foreground mt-1">Ditado em inglês · prática livre</span>
+          </span>
+          <ChevronRight className="h-5 w-5" />
+        </Button>
+
         {cards.length > 0 && (
           <button
             type="button"

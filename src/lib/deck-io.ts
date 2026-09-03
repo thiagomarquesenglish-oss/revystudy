@@ -12,6 +12,7 @@ import {
 } from './storage';
 
 interface LegacyDeckCard {
+  dictationAnswer?: string | null;
   front: string;
   back: string;
   audioId?: string | null;
@@ -269,6 +270,7 @@ export async function exportDeckAsZip(deck: Deck): Promise<Blob> {
       front: c.front,
       back: c.back,
       audioId: c.audioId,
+      dictationAnswer: c.dictationAnswer || null,
       status: c.status,
       interval: c.interval,
       easeFactor: c.easeFactor,
@@ -376,6 +378,7 @@ export async function importDeckFromZip(file: File): Promise<DeckImportResult> {
         front: sanitizeImportedHtml(front),
         back: sanitizeImportedHtml(back),
         audioId: source.audioId ? audioIdMap.get(source.audioId) || null : null,
+        dictationAnswer: typeof source.dictationAnswer === 'string' ? source.dictationAnswer.trim() || null : null,
         status,
         interval: safeNumber(source.interval, 0),
         easeFactor: safeNumber(source.easeFactor, 2.5, 1.3),

@@ -9,6 +9,7 @@ import TabLayout from "./components/TabLayout";
 import DeckPage from "./pages/DeckPage";
 import StudyPage from "./pages/StudyPage";
 import CustomStudyPage from "./pages/CustomStudyPage";
+import DictationPage from "./pages/DictationPage";
 import AddCardPage from "./pages/AddCardPage";
 import EditCardPage from "./pages/EditCardPage";
 import LineByLinePage from "./pages/LineByLinePage";
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/deck/:deckId" element={<ProtectedRoute><DeckPage /></ProtectedRoute>} />
             <Route path="/study/:deckId" element={<ProtectedRoute><StudyPage /></ProtectedRoute>} />
             <Route path="/custom-study/:deckId" element={<ProtectedRoute><CustomStudyPage /></ProtectedRoute>} />
+            <Route path="/dictation/:deckId" element={<ProtectedRoute><DictationPage /></ProtectedRoute>} />
             <Route path="/deck/:deckId/add" element={<ProtectedRoute><AddCardPage /></ProtectedRoute>} />
             <Route path="/card/:cardId/edit" element={<ProtectedRoute><EditCardPage /></ProtectedRoute>} />
             <Route path="/audio/:audioId/lines" element={<ProtectedRoute><LineByLinePage /></ProtectedRoute>} />
