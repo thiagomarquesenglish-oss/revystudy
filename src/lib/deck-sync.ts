@@ -23,6 +23,34 @@ export const PROGRESS_FIELDS = [
 
 type CardRow = Record<string, unknown> & { id: string };
 
+export const CARD_CONTENT_FIELDS = ['front', 'back', 'audio_id', 'card_type', 'dictation_answer'] as const;
+export const AUDIO_CONTENT_FIELDS = ['name', 'file_path'] as const;
+
+export function changedContent(remote: CardRow, local: CardRow, fields: readonly string[]) {
+  return fields.some(field => (remote[field] ?? null) !== (local[field] ?? null));
+}
+
+export function contentDelta(remote: CardRow[], local: CardRow[], fields: readonly string[]) {
+  const localById = new Map(local.map(row => [row.id, row]));
+  const remoteIds = new Set(remote.map(row => row.id));
+  return {
+    added: remote.filter(row => !localById.has(row.id)).length,
+    edited: remote.filter(row => localById.has(row.id) && changedContent(row, localById.get(row.id)!, fields)).length,
+    removed: local.filter(row => !remoteIds.has(row.id)).length,
+  };
+}
+
+export function cardIdsToFetch(metadata: CardRow[], local: CardRow[]) {
+  const localById = new Map(local.map(row => [row.id, row]));
+  return metadata.filter(row => {
+    const saved = localById.get(row.id);
+    if (!saved) return true;
+    const remoteTime = Date.parse(String(row.updated_at || ''));
+    const localTime = Date.parse(String(saved.updated_at || ''));
+    return !Number.isFinite(remoteTime) || !Number.isFinite(localTime) || remoteTime !== localTime;
+  }).map(row => row.id);
+}
+
 function timestamp(row: CardRow): number {
   const value = row.progress_updated_at || row.updated_at || row.created_at;
   const parsed = typeof value === 'string' ? Date.parse(value) : 0;

@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Deck, Flashcard, CardStatus } from './types';
 import { localDB, offlineQueue } from './offline-db';
 import { persistMutations, syncOfflineQueue } from './sync';
-import { assertCompletePackage, DeckManifestSnapshot, mergeDownloadedCardRows, PROGRESS_FIELDS } from './deck-sync';
+import { assertCompletePackage, cardIdsToFetch, changedContent, contentDelta, CARD_CONTENT_FIELDS, AUDIO_CONTENT_FIELDS, DeckManifestSnapshot, mergeDownloadedCardRows, PROGRESS_FIELDS } from './deck-sync';
 
 export interface DeckAudio {
   id: string;
@@ -22,6 +22,8 @@ export interface DeckUpdate {
   audioCount: number;
   localCardCount: number;
   localAudioCount: number;
+  cardChanges?: { added: number; edited: number; removed: number };
+  audioChanges?: { added: number; edited: number; removed: number };
 }
 
 export interface PackageSyncProgress {
@@ -445,7 +447,7 @@ export async function forceSyncDeckCards(deckId: string): Promise<Flashcard[]> {
   return fetchCardsByDeckFromDB(deckId);
 }
 
-/** Lightweight manifest check: no card bodies or media are downloaded. */
+/** Compare changed manifests against local content; unchanged card bodies and media are not fetched. */
 export async function checkDeckUpdates(): Promise<DeckUpdate[]> {
   if (!isOnline()) throw new Error('Você está offline');
   const result = await withTimeout(
@@ -470,17 +472,21 @@ export async function checkDeckUpdates(): Promise<DeckUpdate[]> {
         state.audioCount !== row.audio_count;
     });
 
-  return Promise.all(changed.map(async (row) => ({
-      deckId: row.id,
-      name: row.name,
-      description: row.description || '',
-      createdAt: row.created_at,
-      contentUpdatedAt: row.content_updated_at,
-      cardCount: row.card_count,
-      audioCount: row.audio_count,
-      localCardCount: (await localDB.getCardsByDeck(row.id)).length,
-      localAudioCount: (await localDB.getDeckAudios(row.id)).length,
-    })));
+  const updates = await Promise.all(changed.map(async (row) => {
+    const snapshot = await fetchVerifiedDeckPackage(row.id);
+    const { cardChanges, audioChanges, manifest } = snapshot;
+    const count = (delta: typeof cardChanges) => delta.added + delta.edited + delta.removed;
+    if (count(cardChanges) + count(audioChanges) === 0) return null;
+    return {
+      deckId: row.id, name: manifest.name, description: manifest.description || '',
+      createdAt: manifest.created_at, contentUpdatedAt: manifest.content_updated_at,
+      cardCount: manifest.card_count, audioCount: manifest.audio_count,
+      localCardCount: snapshot.localRows.length, localAudioCount: snapshot.localAudios.length,
+      cardChanges, audioChanges,
+    };
+  }));
+  return updates.filter((update) => update !== null) as DeckUpdate[];
+
 }
 
 async function fetchDeckManifest(deckId: string): Promise<DeckManifestSnapshot> {
@@ -508,19 +514,29 @@ async function fetchVerifiedDeckPackage(
   for (let packageAttempt = 0; packageAttempt < 3; packageAttempt += 1) {
     try {
       const manifestBefore = await fetchDeckManifest(deckId);
-      const rows: any[] = [];
-      const totalSteps = Math.max(1, Math.ceil(manifestBefore.card_count / PAGE_SIZE)) + 2;
-
-      while (rows.length < manifestBefore.card_count) {
-        onProgress?.({
-          completed: Math.floor(rows.length / PAGE_SIZE),
-          total: totalSteps,
-          label: packageAttempt === 0 ? 'Baixando cartões' : `Conferindo pacote (tentativa ${packageAttempt + 1})`,
-        });
-        const page = await fetchCardsPage(rows.length, rows.length + PAGE_SIZE - 1, deckId);
-        if (page.length === 0) break;
-        rows.push(...page);
+      const localRows = await localDB.getCardsByDeck(deckId);
+      const localAudios = await localDB.getDeckAudios(deckId);
+      const metadata: any[] = [];
+      for (let from = 0; ; from += 1000) {
+        const page = await withTimeout(Promise.resolve(supabase.from('cards')
+          .select('id,updated_at').eq('deck_id', deckId).order('id').range(from, from + 999)), 20_000);
+        if (page.error) throw page.error;
+        metadata.push(...(page.data || []));
+        if ((page.data || []).length < 1000) break;
       }
+      const neededIds = cardIdsToFetch(metadata, localRows);
+      const fetched = new Map<string, any>();
+      const localById = new Map(localRows.map((row: any) => [row.id, row]));
+      const totalSteps = Math.ceil(neededIds.length / PAGE_SIZE) + 2;
+      for (let from = 0; from < neededIds.length; from += PAGE_SIZE) {
+        onProgress?.({ completed: from / PAGE_SIZE, total: totalSteps, label: 'Buscando cartões novos ou alterados' });
+        const page = await withTimeout(Promise.resolve(supabase.from('cards').select('*')
+          .eq('deck_id', deckId).in('id', neededIds.slice(from, from + PAGE_SIZE))), 20_000);
+        if (page.error) throw page.error;
+        for (const row of page.data || []) fetched.set(row.id, row);
+      }
+      const rows = metadata.map(meta => fetched.get(meta.id) || localById.get(meta.id));
+      if (rows.some(row => !row)) throw new Error('Cartões mudaram durante a verificação');
 
       onProgress?.({ completed: totalSteps - 2, total: totalSteps, label: 'Baixando lista de áudios' });
       const audios = await withTimeout(
@@ -539,7 +555,11 @@ async function fetchVerifiedDeckPackage(
       onProgress?.({ completed: totalSteps - 1, total: totalSteps, label: 'Verificando integridade' });
       const manifestAfter = await fetchDeckManifest(deckId);
       assertCompletePackage(manifestBefore, manifestAfter, rows, (audios.data || []) as any[]);
-      return { manifest: manifestAfter, rows, audios: (audios.data || []) as any[], totalSteps };
+      return { manifest: manifestAfter, rows, audios: (audios.data || []) as any[], totalSteps,
+        localRows, localAudios,
+        cardChanges: contentDelta(rows, localRows, CARD_CONTENT_FIELDS),
+        audioChanges: contentDelta((audios.data || []) as any[], localAudios, AUDIO_CONTENT_FIELDS),
+      };
     } catch (error) {
       lastError = error;
       if (packageAttempt < 2) await new Promise((resolve) => window.setTimeout(resolve, 900 * (packageAttempt + 1)));
@@ -551,7 +571,7 @@ async function fetchVerifiedDeckPackage(
     : new Error('Não foi possível baixar o baralho completo. Nada foi substituído no celular.');
 }
 
-/** Downloads one coherent deck package and installs it only after full validation. */
+/** Fetches only changed card bodies and installs the verified content difference. */
 export async function downloadDeckPackage(
   update: DeckUpdate,
   onProgress?: (progress: PackageSyncProgress) => void,
@@ -562,12 +582,17 @@ export async function downloadDeckPackage(
     throw new Error('Este aparelho ainda tem alterações aguardando a nuvem. Aguarde a sincronização antes de baixar.');
   }
 
-  const localRows = await localDB.getCardsByDeck(update.deckId);
-  const { manifest, rows: remoteRows, audios, totalSteps } = await fetchVerifiedDeckPackage(update.deckId, onProgress);
-  const { rows, localProgressRows } = mergeDownloadedCardRows(remoteRows, localRows);
+  const { manifest, rows: remoteRows, audios, totalSteps, localRows, cardChanges } = await fetchVerifiedDeckPackage(update.deckId, onProgress);
+  const localById = new Map(localRows.map((row: any) => [row.id, row]));
+  const contentRows = remoteRows.map((remote: any) => {
+    const local = localById.get(remote.id);
+    return local && !changedContent(remote, local, CARD_CONTENT_FIELDS) ? local : remote;
+  });
+  const { rows, localProgressRows } = mergeDownloadedCardRows(contentRows, localRows);
+  const hasCardChanges = cardChanges.added + cardChanges.edited + cardChanges.removed > 0;
 
   await Promise.all([
-    syncLocalDeckCards(update.deckId, rows),
+    hasCardChanges ? syncLocalDeckCards(update.deckId, rows) : Promise.resolve(),
     localDB.replaceDeckAudios(update.deckId, audios),
     localDB.saveDeck({
       id: update.deckId,
@@ -617,7 +642,7 @@ export async function downloadDeckPackage(
       },
     })));
   }
-  onProgress?.({ completed: totalSteps, total: totalSteps, label: `${manifest.card_count} cartões conferidos e instalados` });
+  onProgress?.({ completed: totalSteps, total: totalSteps, label: 'Novidades instaladas; cartões existentes preservados' });
   return cards;
 }
 
