@@ -1,15 +1,16 @@
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useTabTransitionKey } from '@/components/TabLayout';
 
 export default function PageTransition({ children }: { children: React.ReactNode }) {
+  const reduceMotion = useReducedMotion();
   const transitionKey = useTabTransitionKey();
 
   return (
     <motion.div
       key={transitionKey}
-      initial={{ opacity: 0, y: 6 }}
+      initial={reduceMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
+      transition={{ duration: reduceMotion ? 0 : 0.18, ease: 'easeOut' }}
     >
       {children}
     </motion.div>

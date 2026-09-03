@@ -13,7 +13,6 @@ export default function BottomNav({ active }: BottomNavProps) {
     { key: 'decks' as const, label: 'Biblioteca', icon: Library, path: '/decks' },
     { key: 'stats' as const, label: 'Progresso', icon: TrendingUp, path: '/stats' },
     { key: 'settings' as const, label: 'Ajustes', icon: Settings, path: '/settings' },
-    { key: 'profile' as const, label: 'Perfil', icon: User, path: '/profile' },
   ];
 
   return (
@@ -23,7 +22,7 @@ export default function BottomNav({ active }: BottomNavProps) {
           <button
             key={key}
             onClick={() => navigate(path)}
-            aria-current={active === key ? 'page' : undefined}
+            aria-current={(active === key || (active === 'profile' && key === 'settings')) ? 'page' : undefined}
             className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-1 pt-1 pb-2 px-1 text-[11px] font-medium transition-colors active:opacity-70 ${
               active === key ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
             }`}

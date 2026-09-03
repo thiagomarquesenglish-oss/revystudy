@@ -216,7 +216,7 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
   };
 
   return (
-    <div className="flex flex-col w-full max-w-lg mx-auto overflow-hidden" style={{ minHeight: 'calc(100vh - 120px)' }}>
+    <div className="flex flex-col w-full max-w-lg mx-auto overflow-hidden" style={{ minHeight: 'calc(100dvh - 120px)', paddingBottom: '160px' }}>
       {/* Content */}
       {!flipped && <StudyMedia html={card.front} key={`front-${card.id}`}>
         <CardContent html={card.front} audioSrc={frontAudioSrc} />
@@ -269,7 +269,7 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
       <div className="flex-1" />
 
       {/* Footer */}
-      <div className="fixed bottom-4 left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[480px] z-10" style={{ marginBottom: 'calc(env(safe-area-inset-bottom) * 0.25 + 16px)' }}>
+      <div className="fixed bottom-0 left-0 right-0 px-4 pt-3 bg-background/95 backdrop-blur-xl sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[480px] z-10" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}>
         <div className="flex flex-col" style={{ height: '100px' }}>
           <div className="w-full h-px bg-muted-foreground/15" />
           <div className="flex-1 flex flex-col justify-end">

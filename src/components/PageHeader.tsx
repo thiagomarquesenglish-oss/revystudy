@@ -1,5 +1,6 @@
+import { useNavigate } from 'react-router-dom';
 import { useRef, useLayoutEffect } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 
 interface PageHeaderProps {
   title: string;
@@ -9,6 +10,8 @@ interface PageHeaderProps {
 }
 
 export default function PageHeader({ title, rightContent, bottomContent, onBack }: PageHeaderProps) {
+  const navigate = useNavigate();
+  const goBack = () => { if (window.history.state?.idx > 0) navigate(-1); else onBack?.(); };
   const ref = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {
@@ -29,13 +32,13 @@ export default function PageHeader({ title, rightContent, bottomContent, onBack 
   return (
     <header
       ref={ref}
-      className="fixed top-0 left-0 right-0 z-50 bg-background safe-area-top"
+      className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl safe-area-top"
     >
       <div className="max-w-3xl mx-auto px-3 flex items-center justify-between h-12">
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-1 min-w-0">
           {onBack && (
-            <button onClick={onBack} className="text-muted-foreground hover:text-foreground transition-colors">
-              <ArrowLeft className="w-5 h-5" />
+            <button onClick={goBack} aria-label="Voltar" className="-ml-2 h-11 w-11 flex items-center justify-center text-primary">
+              <ChevronLeft className="w-7 h-7" />
             </button>
           )}
           <h2 className="font-display font-semibold text-lg truncate">{title}</h2>
@@ -46,3 +49,4 @@ export default function PageHeader({ title, rightContent, bottomContent, onBack 
     </header>
   );
 }
+
