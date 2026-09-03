@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import OfflineBanner from "@/components/OfflineBanner";
 import TabLayout from "./components/TabLayout";
+import DeckAudiosPage from "./pages/DeckAudiosPage";
 import DeckPage from "./pages/DeckPage";
 import StudyPage from "./pages/StudyPage";
 import CustomStudyPage from "./pages/CustomStudyPage";
@@ -49,6 +50,7 @@ const App = () => (
             <Route path="/settings" element={null} />
             <Route path="/profile" element={null} />
             <Route path="/deck/:deckId" element={<ProtectedRoute><DeckPage /></ProtectedRoute>} />
+            <Route path="/deck/:deckId/audios" element={<ProtectedRoute><DeckAudiosPage /></ProtectedRoute>} />
             <Route path="/study/:deckId" element={<ProtectedRoute><StudyPage /></ProtectedRoute>} />
             <Route path="/custom-study/:deckId" element={<ProtectedRoute><CustomStudyPage /></ProtectedRoute>} />
             <Route path="/dictation/:deckId" element={<ProtectedRoute><DictationPage /></ProtectedRoute>} />
