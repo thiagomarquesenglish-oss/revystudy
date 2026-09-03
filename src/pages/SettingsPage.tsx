@@ -1,3 +1,4 @@
+import SyncUpdatesButton from '@/components/SyncUpdatesButton';
 import { useAuth } from '@/hooks/useAuth';
 import { LogOut, User } from 'lucide-react';
 import BackupSettings from '@/components/BackupSettings';
@@ -16,6 +17,7 @@ export default function SettingsPage() {
           <div className="min-w-0"><p className="text-sm break-all">{user?.email}</p><p className="text-xs text-muted-foreground mt-1">Conta conectada</p></div>
         </div>
       </section>
+      <section className="bg-card rounded-2xl p-4 flex items-center justify-between gap-4"><div><h2 className="font-semibold">Atualizações de conteúdo</h2><p className="text-sm text-muted-foreground mt-1">Verificar novidades dos seus baralhos</p></div><SyncUpdatesButton onInstalled={() => {}} /></section>
       <BackupSettings />
       <section className="space-y-3">
         <Button variant="ghost" className="text-destructive hover:text-destructive justify-start px-0" onClick={signOut}><LogOut className="h-4 w-4 mr-2" />Sair da conta</Button>

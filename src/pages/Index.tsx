@@ -5,7 +5,7 @@ import { getDecks, getNewCards, getLearningCards, getReviewCards } from '@/lib/s
 import type { Deck } from '@/lib/types';
 import { useTabVisible } from '@/hooks/useTabVisible';
 import StreakBadge from '@/components/StreakBadge';
-import SyncUpdatesButton from '@/components/SyncUpdatesButton';
+
 import BottomNav from '@/components/BottomNav';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,7 @@ export default function Index() {
   const last = decks.find(deck => deck.id === remembered) || decks.find(deck => counts[deck.id] > 0) || decks[0];
   const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
   return <div className="min-h-screen bg-background safe-bottom">
-    <PageHeader title="Hoje" rightContent={<><SyncUpdatesButton onInstalled={loadData} /><StreakBadge /></>} />
+    <PageHeader title="Hoje" rightContent={<StreakBadge />} />
     <main className="max-w-3xl mx-auto px-4 space-y-7 pb-6" style={{ paddingTop: 'calc(var(--app-header-height, 48px) + 1.5rem)' }}>
       {loading ? <p role="status" className="text-muted-foreground">Preparando seu estudo...</p>
         : error ? <div role="alert" className="space-y-3"><p>Não foi possível carregar seus baralhos.</p><Button onClick={loadData}>Tentar novamente</Button></div>

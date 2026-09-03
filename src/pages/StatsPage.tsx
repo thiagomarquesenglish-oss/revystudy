@@ -44,6 +44,7 @@ export default function StatsPage() {
           <DailyChartSection />
         </PinnableSection>
 
+        <details className="space-y-5"><summary className="cursor-pointer py-3 font-semibold">Detalhes por baralho e próximas revisões</summary>
         <div className="flex flex-col sm:flex-row sm:items-start gap-6">
           <PinnableSection id="card-distribution" title="Distribuição de cartões">
             <CardDistributionSection />
@@ -61,6 +62,7 @@ export default function StatsPage() {
         <PinnableSection id="learned-cards" title="Cartões aprendidos">
           <LearnedCardsSection />
         </PinnableSection>
+        </details>
       </main>
       </PageTransition>
 

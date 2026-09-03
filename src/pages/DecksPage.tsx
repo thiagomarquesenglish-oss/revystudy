@@ -108,10 +108,8 @@ export default function DecksPage() {
   useTabVisible('/decks', useCallback(() => { loadData(); }, []));
 
   const filteredCards = useMemo(() => {
-    let result = cards;
-    if (selectedDeck !== 'all') {
-      result = result.filter(c => c.deckId === selectedDeck);
-    }
+    let result = cards.filter(c => c.deckId === searchParams.get('deck'));
+    
     if (onlyFlagged) {
       result = result.filter(c => c.flagged);
     }
@@ -123,9 +121,9 @@ export default function DecksPage() {
       );
     }
     return result.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [cards, selectedDeck, search, onlyFlagged]);
+  }, [cards, selectedDeck, search, onlyFlagged, searchParams]);
 
-  const flaggedCount = useMemo(() => cards.filter(c => c.flagged).length, [cards]);
+  const flaggedCount = useMemo(() => cards.filter(c => c.flagged && c.deckId === searchParams.get('deck')).length, [cards, searchParams]);
 
   const toggleFlag = async (card: Flashcard) => {
     const newFlagged = !card.flagged;
@@ -179,15 +177,24 @@ export default function DecksPage() {
   const deckFromParam = searchParams.get('deck');
   const filteredDeckName = deckFromParam ? decks.find(d => d.id === deckFromParam)?.name : null;
 
+  if (!deckFromParam) return <div className="min-h-screen bg-background safe-bottom">
+    <PageHeader title="Biblioteca" />
+    <main className="max-w-3xl mx-auto px-4 space-y-5 pb-8" style={{ paddingTop: 'calc(var(--app-header-height) + 1.5rem)' }}>
+      <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">Seus baralhos</h1><Button variant="ghost" onClick={() => navigate('/library/manage')}>Organizar</Button></div>
+      <div className="native-list">{decks.map(deck => <button key={deck.id} className="native-row" onClick={() => navigate('/decks?deck=' + deck.id)}><span className="min-w-0 flex-1"><span className="block font-semibold truncate">{deck.name}</span><span className="block text-sm text-muted-foreground mt-1">{cards.filter(card => card.deckId === deck.id).length} cartões · Áudios do baralho</span></span><ChevronDown className="h-5 w-5 -rotate-90 text-muted-foreground" /></button>)}</div>
+      {decks.length === 0 && <div className="space-y-4"><p className="text-muted-foreground">Crie ou importe seu primeiro baralho.</p><Button onClick={() => navigate('/library/manage')}>Adicionar baralho</Button></div>}
+    </main><BottomNav active="decks" />
+  </div>;
+
   return (
     <div className="min-h-screen bg-background safe-bottom">
       <PageHeader
         title={filteredDeckName ? `Cartões — ${filteredDeckName}` : 'Biblioteca'}
-        onBack={deckFromParam ? () => navigate(`/deck/${deckFromParam}`) : undefined}
+        onBack={() => navigate('/decks')}
       />
       <PageTransition>
       <main className="max-w-3xl mx-auto px-3 py-4 space-y-4" style={{ paddingTop: 'calc(var(--app-header-height) + 1rem)' }}>
-        <button className="native-row bg-card rounded-2xl" onClick={() => navigate('/library/manage')}><span className="flex-1"><span className="block font-semibold">Baralhos e áudios</span><span className="block text-sm text-muted-foreground mt-1">Criar, importar e organizar conteúdo</span></span><span aria-hidden="true">›</span></button>
+        <div className="flex gap-3"><Button variant="secondary" className="flex-1" onClick={() => navigate('/deck/' + deckFromParam + '/audios')}>Textos e áudios</Button><Button variant="secondary" className="flex-1" onClick={() => navigate('/deck/' + deckFromParam + '/add')}>Adicionar cartão</Button></div>
         <h2 className="text-lg font-semibold pt-2">Cartões</h2>
         {/* Tabs: Todos / Marcados */}
         <div className="flex gap-2">
@@ -211,33 +218,7 @@ export default function DecksPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Buscar cartões..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-card focus:ring-0 focus:outline-none focus-visible:ring-0" />
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger className="flex items-center gap-2 bg-card text-foreground text-sm rounded-lg px-3 py-2 border-none focus:outline-none focus:ring-1 focus:ring-ring transition-colors hover:bg-card/80">
-              <span className="truncate max-w-[100px]">
-                {selectedDeck === 'all' ? 'Todos' : decks.find(d => d.id === selectedDeck)?.name || 'Todos'}
-              </span>
-              <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[140px] bg-card border border-border/50 backdrop-blur-sm">
-              <DropdownMenuItem
-                onClick={() => setSelectedDeck('all')}
-                className="flex items-center justify-between gap-2 cursor-pointer"
-              >
-                Todos
-                {selectedDeck === 'all' && <Check className="w-4 h-4 text-accent" />}
-              </DropdownMenuItem>
-              {decks.map(d => (
-                <DropdownMenuItem
-                  key={d.id}
-                  onClick={() => setSelectedDeck(d.id)}
-                  className="flex items-center justify-between gap-2 cursor-pointer"
-                >
-                  <span className="truncate">{d.name}</span>
-                  {selectedDeck === d.id && <Check className="w-4 h-4 text-accent" />}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+
         </div>
 
         <p className="text-xs text-muted-foreground">{filteredCards.length} {filteredCards.length === 1 ? 'cartão' : 'cartões'}</p>

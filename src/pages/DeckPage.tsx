@@ -133,7 +133,7 @@ export default function DeckPage() {
   return (
     <div className="min-h-screen bg-background safe-page">
       <PageHeader
-        title={deck.name}
+        title="Baralho"
         onBack={() => navigate('/')}
         rightContent={
           <button
