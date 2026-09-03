@@ -3,13 +3,12 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import DictationExercise from '@/components/DictationExercise';
 import type { Flashcard } from '@/lib/types';
 
-vi.mock('@/lib/deck-io', () => ({ sanitizeImportedHtml: (html: string) => html }));
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 const card = { id: 'one', front: '<img src="image.png" alt="Answer image"><p>Hidden front text</p>',
   back: '<p>Estou com fome</p>', dictationAnswer: "I'm hungry" } as Flashcard;
 
 describe('listening exercise', () => {
-  it('reveals content only after checking and returns a practice result', () => {
+  it('shows English correction without card images or translation and returns a practice result', () => {
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
     const onNext = vi.fn();
     render(<DictationExercise card={card} audioSrc="https://example.com/a.mp3" onNext={onNext} onSkip={vi.fn()} last={false} />);
@@ -20,7 +19,9 @@ describe('listening exercise', () => {
     fireEvent.change(screen.getByLabelText('O que você ouviu?'), { target: { value: "I'm angry" } });
     fireEvent.click(screen.getByRole('button', { name: 'Conferir' }));
     expect(screen.getByText('Veja o que ajustar')).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Answer image' })).toBeInTheDocument();
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(screen.queryByText('Hidden front text')).toBeNull();
+    expect(screen.queryByText('Estou com fome')).toBeNull();
     expect(screen.getByText("I'm hungry")).toBeInTheDocument();
     expect(onNext).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Próximo cartão' }));
