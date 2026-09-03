@@ -1,3 +1,4 @@
+import LibraryManagePage from './pages/LibraryManagePage';
 import NavigationPosition from './components/NavigationPosition';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -45,6 +46,7 @@ const App = () => (
           <OfflineBanner />
           <TabLayout />
           <Routes>
+            <Route path="/library/manage" element={<ProtectedRoute><LibraryManagePage /></ProtectedRoute>} />
             <Route path="/auth" element={<AuthRoute />} />
             <Route path="/" element={null} />
             <Route path="/decks" element={null} />

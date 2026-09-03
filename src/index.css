@@ -309,3 +309,12 @@ html {
 @layer components {
   nav[aria-label="Navegação principal"] button[aria-current="page"] { color: hsl(var(--primary)); }
 }
+
+/* Surfaces are separated by spacing and fill, never outlines. */
+#root :is(div, section, article, main, aside, header, footer, nav, button, ul, li, span, a, table, td, th),
+[data-vaul-drawer], [role="dialog"], [role="menu"], [role="listbox"] {
+  border-width: 0 !important;
+}
+.native-row + .native-row { border: 0; }
+header > div:last-child.h-px { display: none; }
+#root div.h-px { display: none; }
