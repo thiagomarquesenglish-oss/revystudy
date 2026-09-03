@@ -180,9 +180,9 @@ export default function DeckPage() {
         <button
           type="button"
           onClick={() => navigate(`/dictation/${deckId}`)}
-          className="w-full flex items-center gap-3 rounded-2xl border border-primary/25 bg-primary/10 p-4 text-left transition-colors hover:bg-primary/15 active:scale-[0.99]"
+          className="w-full flex items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:bg-secondary active:scale-[0.99]"
         >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary">
             <Headphones className="h-5 w-5 text-primary" />
           </span>
           <span className="min-w-0 flex-1">
@@ -198,9 +198,9 @@ export default function DeckPage() {
           <button
             type="button"
             onClick={() => navigate(`/custom-study/${deckId}`)}
-            className="w-full flex items-center gap-3 rounded-2xl border border-primary/25 bg-primary/10 p-4 text-left transition-colors hover:bg-primary/15 active:scale-[0.99]"
+            className="w-full flex items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:bg-secondary active:scale-[0.99]"
           >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary">
               <Sparkles className="h-5 w-5 text-primary" />
             </span>
             <span className="min-w-0 flex-1">
@@ -216,9 +216,9 @@ export default function DeckPage() {
         <button
           type="button"
           onClick={() => navigate(`/deck/${deckId}/audios`)}
-          className="w-full flex items-center gap-3 rounded-2xl border border-primary/25 bg-primary/10 p-4 text-left transition-colors hover:bg-primary/15 active:scale-[0.99]"
+          className="w-full flex items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:bg-secondary active:scale-[0.99]"
         >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary">
             <Music className="h-5 w-5 text-primary" />
           </span>
           <span className="min-w-0 flex-1">
