@@ -7,6 +7,7 @@ import RichTextEditor from '@/components/RichTextEditor';
 import EditorToolbar from '@/components/EditorToolbar';
 import { toast } from 'sonner';
 import PageHeader from '@/components/PageHeader';
+import DictationAnswerField from '@/components/DictationAnswerField';
 import type { Editor } from '@tiptap/react';
 import {
   Select,
@@ -28,6 +29,7 @@ export default function AddCardPage() {
   const cardType: 'standard' | 'typing' = searchParams.get('type') === 'typing' ? 'typing' : 'standard';
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
+  const [dictationAnswer, setDictationAnswer] = useState('');
   const [addedCount, setAddedCount] = useState(0);
   const [key, setKey] = useState(0);
   const [activeEditor, setActiveEditor] = useState<Editor | null>(null);
@@ -54,10 +56,11 @@ export default function AddCardPage() {
     e.preventDefault();
     if (isEmpty(front) || isEmpty(back)) return;
     try {
-      await addCard(deckId!, front, back, selectedAudioId === 'none' ? null : selectedAudioId, cardType);
+      await addCard(deckId!, front, back, selectedAudioId === 'none' ? null : selectedAudioId, cardType, dictationAnswer);
       setAddedCount(c => c + 1);
       setFront('');
       setBack('');
+      setDictationAnswer('');
       setKey(k => k + 1);
     } catch (err) {
       toast.error('Erro ao adicionar cartão');
@@ -108,6 +111,8 @@ export default function AddCardPage() {
               </p>
             )}
           </div>
+
+          <DictationAnswerField value={dictationAnswer} onChange={setDictationAnswer} />
 
           {audios.length > 0 && (
             <div className="space-y-2">

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import RichTextEditor from '@/components/RichTextEditor';
 import EditorToolbar from '@/components/EditorToolbar';
 import PageHeader from '@/components/PageHeader';
+import DictationAnswerField from '@/components/DictationAnswerField';
 import { toast } from 'sonner';
 import type { Editor } from '@tiptap/react';
 import {
@@ -32,6 +33,7 @@ export default function EditCardPage() {
   const navigate = useNavigate();
   const [front, setFront] = useState<string | null>(null);
   const [back, setBack] = useState<string | null>(null);
+  const [dictationAnswer, setDictationAnswer] = useState('');
   const [showDelete, setShowDelete] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeEditor, setActiveEditor] = useState<Editor | null>(null);
@@ -57,6 +59,7 @@ export default function EditCardPage() {
         setSelectedAudioId(card.audioId || 'none');
         setFront(card.front);
         setBack(card.back);
+        setDictationAnswer(card.dictationAnswer || '');
       } else {
         navigate(-1);
       }
@@ -69,7 +72,7 @@ export default function EditCardPage() {
     if (cardId) {
       setSaving(true);
       try {
-        await updateCard(cardId, { front, back, audioId: selectedAudioId === 'none' ? null : selectedAudioId } as any);
+        await updateCard(cardId, { front, back, dictationAnswer: dictationAnswer.trim() || null, audioId: selectedAudioId === 'none' ? null : selectedAudioId } as any);
         navigate(-1);
       } catch (err) {
         toast.error('Erro ao salvar');
@@ -134,6 +137,8 @@ export default function EditCardPage() {
               />
             )}
           </div>
+
+          <DictationAnswerField value={dictationAnswer} onChange={setDictationAnswer} />
 
           {hasAudios && (
             <div className="space-y-2">
