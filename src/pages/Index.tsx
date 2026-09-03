@@ -43,7 +43,7 @@ export default function Index() {
           <p className="text-muted-foreground">Reúna frases, imagens e áudios em um baralho para começar a praticar.</p>
           <Button onClick={() => navigate('/settings')}><Plus />Criar meu primeiro baralho</Button>
         </section> : <>
-          <section className="rounded-3xl border border-primary/30 bg-primary/10 p-6 sm:p-8 space-y-5">
+          <section className="rounded-3xl border border-border bg-card p-6 sm:p-8 space-y-5">
             <p className="text-sm font-semibold text-primary">Um pouco de inglês, todos os dias</p>
             <h1 className="text-3xl font-bold tracking-tight">Vamos continuar?</h1>
             <p className="text-muted-foreground">{total > 0 ? `${total} ${total === 1 ? 'cartão disponível' : 'cartões disponíveis'} para estudar agora.` : 'Revisões em dia. Você pode continuar com uma prática livre.'}</p>
