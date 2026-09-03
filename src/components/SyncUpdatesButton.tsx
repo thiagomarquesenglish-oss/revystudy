@@ -67,9 +67,7 @@ export default function SyncUpdatesButton({ onInstalled }: SyncUpdatesButtonProp
         setUpdates(found);
         if (found.length > 0) {
           setChecked(true);
-          toast.message('Atualizações disponíveis', {
-            description: 'Há conteúdo novo na nuvem. Toque no ícone de download para baixar.',
-          });
+
         }
       })
       .catch(() => { /* silencioso: usuário pode verificar manualmente */ });
@@ -86,7 +84,7 @@ export default function SyncUpdatesButton({ onInstalled }: SyncUpdatesButtonProp
     try {
       await downloadDeckPackage(update, setProgress);
       setUpdates((current) => current.filter((item) => item.deckId !== update.deckId));
-      toast.success(`${update.name} atualizado neste aparelho`);
+
       onInstalled();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Falha ao baixar atualização');
@@ -103,13 +101,13 @@ export default function SyncUpdatesButton({ onInstalled }: SyncUpdatesButtonProp
       <Button
         type="button"
         variant="ghost"
-        size="icon"
-        className="h-9 w-9 text-muted-foreground relative"
+        size="sm"
+        className="h-11 px-3 text-primary relative shrink-0"
         onClick={openAndCheck}
         aria-label="Verificar atualizações"
         title="Verificar atualizações"
       >
-        <CloudDownload className="h-5 w-5" />
+        <CloudDownload className="h-5 w-5 mr-2" /><span>Verificar</span>
         {updates.length > 0 && (
           <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary" aria-hidden="true" />
         )}
