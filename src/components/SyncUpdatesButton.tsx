@@ -21,6 +21,20 @@ interface SyncUpdatesButtonProps {
   onInstalled: () => void;
 }
 
+function describeChanges(update: DeckUpdate) {
+  const parts: string[] = [];
+  for (const [delta, singular, plural] of [
+    [update.cardChanges, 'cartão', 'cartões'],
+    [update.audioChanges, 'áudio', 'áudios'],
+  ] as const) {
+    if (!delta) continue;
+    if (delta.added) parts.push(`${delta.added} ${delta.added === 1 ? singular + ' novo' : plural + ' novos'}`);
+    if (delta.edited) parts.push(`${delta.edited} ${delta.edited === 1 ? singular + ' alterado' : plural + ' alterados'}`);
+    if (delta.removed) parts.push(`${delta.removed} ${delta.removed === 1 ? singular + ' removido' : plural + ' removidos'}`);
+  }
+  return parts.join(' · ') || 'Novidades disponíveis';
+}
+
 export default function SyncUpdatesButton({ onInstalled }: SyncUpdatesButtonProps) {
   const [open, setOpen] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -72,7 +86,7 @@ export default function SyncUpdatesButton({ onInstalled }: SyncUpdatesButtonProp
     try {
       await downloadDeckPackage(update, setProgress);
       setUpdates((current) => current.filter((item) => item.deckId !== update.deckId));
-      toast.success(`${update.name} atualizado no celular`);
+      toast.success(`${update.name} atualizado neste aparelho`);
       onInstalled();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Falha ao baixar atualização');
@@ -105,7 +119,7 @@ export default function SyncUpdatesButton({ onInstalled }: SyncUpdatesButtonProp
         <DrawerContent>
           <DrawerHeader className="text-left">
             <DrawerTitle>Atualizações</DrawerTitle>
-            <DrawerDescription>Baixe no celular o conteúdo adicionado em outros dispositivos.</DrawerDescription>
+            <DrawerDescription>Veja apenas o que é novo ou mudou em relação a este aparelho.</DrawerDescription>
           </DrawerHeader>
 
           <div className="px-4 pb-6 space-y-3">
@@ -120,7 +134,7 @@ export default function SyncUpdatesButton({ onInstalled }: SyncUpdatesButtonProp
               <div className="flex flex-col items-center gap-2 py-10 text-center">
                 <CheckCircle2 className="h-7 w-7 text-col-review" />
                 <p className="font-medium">Tudo atualizado</p>
-                <p className="text-sm text-muted-foreground">Este aparelho já tem os pacotes mais recentes.</p>
+                <p className="text-sm text-muted-foreground">Nenhuma novidade pendente neste aparelho.</p>
               </div>
             )}
 
@@ -132,15 +146,17 @@ export default function SyncUpdatesButton({ onInstalled }: SyncUpdatesButtonProp
                     <div className="min-w-0">
                       <p className="font-medium truncate">{update.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        Nuvem: {update.cardCount} cartões · {update.audioCount} áudios
+                        {describeChanges(update)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Neste aparelho: {update.localCardCount} cartões · {update.localAudioCount} áudios
+                        {update.cardChanges && update.cardChanges.added + update.cardChanges.edited + update.cardChanges.removed === 0
+                          ? 'Seus cartões já estão atualizados. Esta atualização é só de áudios.'
+                          : 'Os itens que já estão atualizados serão mantidos.'}
                       </p>
                     </div>
                     <Button size="sm" disabled={downloadingId !== null} onClick={() => void download(update)}>
                       <CloudDownload />
-                      Baixar tudo
+                      Baixar novidades
                     </Button>
                   </div>
                   {downloading && progress && (
