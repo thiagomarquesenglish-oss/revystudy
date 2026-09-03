@@ -125,7 +125,13 @@ export default function EditorToolbar({ editor }: EditorToolbarProps) {
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border border-border rounded-xl bg-card">
+      <div className="grid grid-cols-2 gap-2">
+        <button type="button" onClick={handleImageUpload} className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card p-3 text-sm font-medium hover:bg-secondary"><ImagePlus className="w-4 h-4" />Adicionar imagem</button>
+        <button type="button" onClick={handleAudioUpload} className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card p-3 text-sm font-medium hover:bg-secondary"><Volume2 className="w-4 h-4" />Adicionar áudio</button>
+      </div>
+      <details className="rounded-xl border border-border bg-card">
+        <summary className="cursor-pointer px-3 py-2.5 text-sm font-medium text-muted-foreground">Formatação avançada</summary>
+      <div className="flex flex-wrap items-center gap-0.5 px-2 pb-2">
         <ToolbarButton
           active={editor.isActive('bold')}
           onClick={() => editor.chain().focus().toggleBold().run()}
@@ -341,7 +347,7 @@ export default function EditorToolbar({ editor }: EditorToolbarProps) {
         >
           <Minus className="w-4 h-4" />
         </ToolbarButton>
-      </div>
+      </div></details>
 
       <input ref={fileInputRef} type="file" accept="image/*" onChange={onFileChange} className="hidden" />
       <input ref={audioInputRef} type="file" accept="audio/*" onChange={onAudioChange} className="hidden" />

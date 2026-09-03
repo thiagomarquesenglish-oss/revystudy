@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Play, Pause, List } from 'lucide-react';
+import { Play, Pause, ListMusic } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface DeckAudio {
@@ -25,6 +25,7 @@ const DeckAudioPlayer = forwardRef<DeckAudioPlayerHandle, DeckAudioPlayerProps>(
   ({ audio, onDeleted, hideDelete, onEnded }, ref) => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [playing, setPlaying] = useState(false);
+    const [duration, setDuration] = useState(0);
     const navigate = useNavigate();
 
     const { data } = supabase.storage.from('deck-audios').getPublicUrl(audio.file_path);
@@ -72,10 +73,10 @@ const DeckAudioPlayer = forwardRef<DeckAudioPlayerHandle, DeckAudioPlayerProps>(
     };
 
     return (
-      <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
+      <div className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border">
         <button
           onClick={togglePlay}
-          className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shrink-0 active:scale-95 transition-transform"
+          className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shrink-0 active:scale-95 transition-transform"
         >
           {playing
             ? <Pause className="w-4 h-4 text-primary-foreground" />
@@ -83,19 +84,20 @@ const DeckAudioPlayer = forwardRef<DeckAudioPlayerHandle, DeckAudioPlayerProps>(
           }
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{audio.name}</p>
+          <p className="font-semibold truncate">{audio.name}</p>
+          {duration > 0 && <p className="text-xs text-muted-foreground mt-0.5">{Math.floor(duration / 60)}:{String(Math.round(duration % 60)).padStart(2, '0')}</p>}
         </div>
         <button
           onClick={(e) => {
             e.stopPropagation();
             navigate(`/audio/${audio.id}/lines`);
           }}
-          className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
           title="Estudo linha a linha"
         >
-          <List className="w-4 h-4" />
+          <ListMusic className="w-4 h-4" /><span className="hidden sm:inline">Estudar linha a linha</span>
         </button>
-        <audio ref={audioRef} src={audioUrl} preload="metadata" />
+        <audio ref={audioRef} src={audioUrl} preload="metadata" onLoadedMetadata={event => setDuration(event.currentTarget.duration)} />
       </div>
     );
   }

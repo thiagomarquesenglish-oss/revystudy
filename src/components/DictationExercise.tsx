@@ -31,7 +31,7 @@ export default function DictationExercise({ card, audioSrc, onNext, onSkip, last
       <Button type="button" onClick={play} className="h-20 w-20 rounded-full" aria-label="Ouvir áudio desde o início">
         <Play className="h-8 w-8" />
       </Button>
-      <p className="text-sm text-muted-foreground text-center">Ouça e escreva a frase em inglês. Repita o áudio quantas vezes quiser.</p>
+      <p className="text-sm text-muted-foreground text-center">Ouça e escreva a frase em inglês.</p>
       {audioError && <div role="alert" className="space-y-2 text-sm text-center">
         <p>Não foi possível reproduzir o áudio. Tente novamente ou pule este cartão.</p>
         <Button variant="outline" onClick={() => { audio.current?.load(); play(); }}><RotateCcw className="mr-2 h-4 w-4" />Tentar áudio novamente</Button>
@@ -47,7 +47,7 @@ export default function DictationExercise({ card, audioSrc, onNext, onSkip, last
             event.preventDefault(); check();
           }
         }} />
-      <p className="text-xs text-muted-foreground">Maiúsculas, espaços extras e pontuação final não contam como erro.</p>
+      <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">Como a resposta é conferida?</summary><p className="mt-2">Maiúsculas, espaços extras e pontuação final não contam como erro.</p></details>
       {!result && <Button type="submit" className="w-full" disabled={!typed.trim()}>Conferir</Button>}
     </form>
     {result && <div className="space-y-4">

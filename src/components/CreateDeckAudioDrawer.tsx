@@ -67,7 +67,7 @@ export default function CreateDeckAudioDrawer({ open, onOpenChange, deckId, onCr
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent>
         <DrawerHeader>
-          <DrawerTitle className="font-display">Nova Reprodução</DrawerTitle>
+          <DrawerTitle className="font-display">Adicionar áudio</DrawerTitle>
         </DrawerHeader>
         <div className="px-4 pb-6 space-y-4">
           <div className="space-y-2">
@@ -102,7 +102,7 @@ export default function CreateDeckAudioDrawer({ open, onOpenChange, deckId, onCr
             className="w-full"
             disabled={!name.trim() || !file || saving}
           >
-            {saving ? 'Salvando...' : 'Criar'}
+            {saving ? 'Salvando...' : 'Adicionar áudio'}
           </Button>
         </div>
       </DrawerContent>
