@@ -3,10 +3,11 @@ import { Play, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { compareDictation } from '@/lib/dictation';
+import type { DictationRating } from '@/lib/dictation-srs';
 import type { Flashcard } from '@/lib/types';
 
-export default function DictationExercise({ card, audioSrc, onNext, onSkip, last }: {
-  card: Flashcard; audioSrc: string; onNext: (correct: boolean) => void; onSkip: () => void; last: boolean;
+export default function DictationExercise({ card, audioSrc, onNext, onSkip, last, ratings = false, intervals = {} }: {
+  card: Flashcard; audioSrc: string; onNext: (correct: boolean, rating?: DictationRating) => void; onSkip: () => void; last: boolean; ratings?: boolean; intervals?: Record<string, string>;
 }) {
   const audio = useRef<HTMLAudioElement>(null);
   const [typed, setTyped] = useState('');
@@ -65,7 +66,13 @@ export default function DictationExercise({ card, audioSrc, onNext, onSkip, last
           </li>)}
         </ul>}
       </div>
-      <Button className="w-full" onClick={() => onNext(result.correct)}>{last ? 'Ver resultado' : 'Próximo cartão'}</Button>
+      <>{ratings && result.correct ? <div className="grid grid-cols-3 gap-2">
+        {([['hard', 'Difícil'], ['good', 'Bom'], ['easy', 'Fácil']] as const).map(([rating, label]) =>
+          <Button key={rating} variant={rating === 'good' ? 'default' : 'outline'} className="h-auto py-3 flex-col gap-1" onClick={() => onNext(true, rating)}>
+            <span>{label}</span><span className="text-xs font-normal">{intervals[rating]}</span>
+          </Button>)}
+      </div> : <Button className="w-full" onClick={() => onNext(result.correct)}>{ratings && !result.correct ? 'Repetir para fixar' : last ? 'Ver resultado' : 'Próximo cartão'}</Button>}</>
+      {ratings && !result.correct && <p className="text-xs text-muted-foreground text-center">A frase volta nesta sessão, até três tentativas. Se continuar difícil, você revisa em 10 minutos.</p>}
     </div>}
     {!result && <Button variant="ghost" className="w-full" onClick={onSkip}>Pular cartão</Button>}
   </div>;
