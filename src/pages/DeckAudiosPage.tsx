@@ -11,6 +11,15 @@ import CreateDeckAudioDrawer from '@/components/CreateDeckAudioDrawer';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+
+async function loadDeckReproductions(deckId: string): Promise<DeckAudio[]> {
+  if (!navigator.onLine) return getDeckAudios(deckId);
+  const { data, error } = await supabase.from('deck_audios').select('*')
+    .eq('deck_id', deckId).order('created_at', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
 
 export default function DeckAudiosPage() {
   const { deckId } = useParams<{ deckId: string }>();
@@ -30,7 +39,7 @@ export default function DeckAudiosPage() {
     setError(false);
     setDeck(null);
     setAudios([]);
-    Promise.all([getDecks(), getDeckAudios(deckId!)]).then(([decks, items]) => {
+    Promise.all([getDecks(), loadDeckReproductions(deckId!)]).then(([decks, items]) => {
       if (!active) return;
       setDeck(decks.find(item => item.id === deckId) || null);
       setAudios(items);
@@ -46,7 +55,7 @@ export default function DeckAudiosPage() {
     if (!deckId) return;
     try {
       invalidateDeckAudios(deckId);
-      setAudios(await getDeckAudios(deckId));
+      setAudios(await loadDeckReproductions(deckId));
     } catch {
       toast.error('Não foi possível atualizar as reproduções. Reabra esta página para tentar novamente.');
     }
