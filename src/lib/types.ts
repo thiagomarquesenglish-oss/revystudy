@@ -20,6 +20,7 @@ export interface Flashcard {
   progressUpdatedAt: string;
   flagged: boolean;
   cardType: CardType;
+  dictationAnswer?: string | null;
 }
 
 export interface Deck {

@@ -227,6 +227,7 @@ function rowToCard(row: any): Flashcard {
   return {
     id: row.id, front: row.front, back: row.back, deckId: row.deck_id,
     audioId: row.audio_id || null,
+    dictationAnswer: row.dictation_answer || null,
     status: row.status as CardStatus, interval: row.interval, easeFactor: row.ease_factor,
     stepsIndex: row.steps_index, repetition: row.repetition, reviewCount: row.review_count,
     lapseCount: row.lapse_count, dueDate: row.due_date, createdAt: row.created_at, updatedAt: row.updated_at,
@@ -244,6 +245,7 @@ function cardToRow(c: Flashcard, userId: string): any {
   return {
     id: c.id, front: c.front, back: c.back, deck_id: c.deckId, status: c.status,
     audio_id: c.audioId || null,
+    dictation_answer: c.dictationAnswer?.trim() || null,
     interval: c.interval, ease_factor: c.easeFactor, steps_index: c.stepsIndex,
     repetition: c.repetition, review_count: c.reviewCount, lapse_count: c.lapseCount,
     due_date: c.dueDate, created_at: c.createdAt, updated_at: c.updatedAt, user_id: userId,
@@ -756,7 +758,7 @@ export async function getStudyQueue(deckId: string): Promise<Flashcard[]> {
   return [...learning, ...review, ...newCards];
 }
 
-export async function addCard(deckId: string, front: string, back: string, audioId?: string | null, cardType: 'standard' | 'typing' = 'standard'): Promise<Flashcard> {
+export async function addCard(deckId: string, front: string, back: string, audioId?: string | null, cardType: 'standard' | 'typing' = 'standard', dictationAnswer?: string): Promise<Flashcard> {
   const userId = await getCachedUserId();
   const now = new Date().toISOString();
   const card: Flashcard = {
@@ -764,6 +766,7 @@ export async function addCard(deckId: string, front: string, back: string, audio
     interval: 0, easeFactor: 2.5, stepsIndex: 0, repetition: 0,
     reviewCount: 0, lapseCount: 0, dueDate: now, createdAt: now, updatedAt: now,
     progressUpdatedAt: now, flagged: false, cardType,
+    dictationAnswer: dictationAnswer?.trim() || null,
   };
 
   // Update cache immediately
@@ -804,6 +807,7 @@ export async function addCardsBulk(
 }
 
 export interface ImportedCardData {
+  dictationAnswer?: string | null;
   front: string;
   back: string;
   audioId?: string | null;
@@ -837,6 +841,7 @@ export async function addCardsWithProgressBulk(
       back: item.back,
       deckId,
       audioId: item.audioId || null,
+      dictationAnswer: item.dictationAnswer?.trim() || null,
       status: item.status || 'new',
       interval: item.interval ?? 0,
       easeFactor: item.easeFactor ?? 2.5,
@@ -866,6 +871,7 @@ export async function updateCard(id: string, updates: Partial<Flashcard>): Promi
   const dbUpdates: Record<string, any> = {};
   if (updates.front !== undefined) dbUpdates.front = updates.front;
   if (updates.back !== undefined) dbUpdates.back = updates.back;
+  if (updates.dictationAnswer !== undefined) dbUpdates.dictation_answer = updates.dictationAnswer?.trim() || null;
   if (updates.status !== undefined) dbUpdates.status = updates.status;
   if (updates.interval !== undefined) dbUpdates.interval = updates.interval;
   if (updates.easeFactor !== undefined) dbUpdates.ease_factor = updates.easeFactor;
