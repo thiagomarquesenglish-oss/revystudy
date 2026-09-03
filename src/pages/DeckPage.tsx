@@ -146,6 +146,7 @@ export default function DeckPage() {
         }
       />
       <main className="max-w-3xl mx-auto px-3 space-y-6 pb-24" style={{ paddingTop: 'calc(var(--app-header-height, 48px) + 1rem)' }}>
+        <h1 className="native-title break-words">{deck.name}</h1>
         {cards.length === 0 ? (
           <div className="text-center py-12 space-y-4">
             <Layers className="w-14 h-14 mx-auto text-muted-foreground/50" />
@@ -159,28 +160,30 @@ export default function DeckPage() {
           </div>
         ) : (
           <>
-            <div className="flex justify-center gap-6">
+            <div className="flex justify-around py-6 border-b border-border/60">
               <div className="flex flex-col items-center">
-                <span className="text-base font-bold text-col-new">{newCount}</span>
+                <span className="text-3xl font-semibold tabular-nums text-col-new">{newCount}</span>
                 <span className="text-sm text-foreground">Novo</span>
               </div>
               <div className="flex flex-col items-center">
-                <span className="text-base font-bold text-col-learning">{learningCount}</span>
+                <span className="text-3xl font-semibold tabular-nums text-col-learning">{learningCount}</span>
                 <span className="text-sm text-foreground">Aprendendo</span>
               </div>
               <div className="flex flex-col items-center">
-                <span className="text-base font-bold text-col-review">{reviewCount}</span>
+                <span className="text-3xl font-semibold tabular-nums text-col-review">{reviewCount}</span>
                 <span className="text-sm text-foreground">Revisar</span>
               </div>
             </div>
-            <Heatmap />
+            
           </>
         )}
 
+        <h2 className="text-sm font-medium text-muted-foreground">Praticar</h2>
+        <div className="native-list">
         <button
           type="button"
           onClick={() => navigate(`/dictation/${deckId}`)}
-          className="w-full flex items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:bg-secondary active:scale-[0.99]"
+          className="native-row"
         >
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary">
             <Headphones className="h-5 w-5 text-primary" />
@@ -188,7 +191,7 @@ export default function DeckPage() {
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-bold text-foreground">Ouvir e escrever</span>
             <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
-              Ditado em inglês · prática livre
+              Ditado com revisão espaçada
             </span>
           </span>
           <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
@@ -198,7 +201,7 @@ export default function DeckPage() {
           <button
             type="button"
             onClick={() => navigate(`/custom-study/${deckId}`)}
-            className="w-full flex items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:bg-secondary active:scale-[0.99]"
+            className="native-row"
           >
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary">
               <Sparkles className="h-5 w-5 text-primary" />
@@ -206,7 +209,7 @@ export default function DeckPage() {
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-bold text-foreground">Prática livre</span>
               <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
-                Prática livre com áudio, imagem e texto, sem limite.
+                Cartões sem agendamento
               </span>
             </span>
             <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
@@ -216,7 +219,7 @@ export default function DeckPage() {
         <button
           type="button"
           onClick={() => navigate(`/deck/${deckId}/audios`)}
-          className="w-full flex items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:bg-secondary active:scale-[0.99]"
+          className="native-row"
         >
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary">
             <Music className="h-5 w-5 text-primary" />
@@ -224,11 +227,12 @@ export default function DeckPage() {
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-bold text-foreground">Textos e áudios</span>
             <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
-              Escute suas gravações e estude linha a linha.
+              Sua biblioteca de gravações
             </span>
           </span>
           <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
         </button>
+        </div>
       </main>
 
       {/* Botões fixos no rodapé */}
@@ -245,7 +249,7 @@ export default function DeckPage() {
           )}
           <Button className="flex-1 gap-2 bg-card hover:bg-card/80 text-foreground" onClick={() => navigate(`/deck/${deckId}/add`)}>
             <Plus className="w-4 h-4" />
-            Adicionar Flashcard
+            Adicionar cartão
           </Button>
         </div>
       </div>
@@ -265,7 +269,7 @@ export default function DeckPage() {
               className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border text-sm hover:bg-card/80 transition-colors"
             >
               <LayoutGrid className="w-4 h-4 text-muted-foreground" />
-              Painel
+              Biblioteca
             </button>
             <button
               onClick={() => {
@@ -305,7 +309,7 @@ export default function DeckPage() {
               className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border text-sm hover:bg-card/80 transition-colors"
             >
               <Plus className="w-4 h-4 text-muted-foreground" />
-              Criar reprodução
+              Adicionar áudio
             </button>
           </div>
         </DrawerContent>

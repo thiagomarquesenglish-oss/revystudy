@@ -283,7 +283,7 @@ export default function StudyPage() {
               {currentCard.flagged && <Flag className="w-4 h-4 fill-red-500 text-red-500" />}
               <button
                 onClick={() => setShowOptionsDrawer(true)}
-                className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-secondary"
+                aria-label="Opções do cartão" className="text-muted-foreground h-11 w-11 flex items-center justify-center rounded-xl hover:bg-secondary"
               >
                 <MoreVertical className="w-5 h-5" />
               </button>
@@ -310,7 +310,7 @@ export default function StudyPage() {
               </>
             ) : (
               <>
-                <h2 className="text-2xl font-bold mb-2">Parabéns! Você terminou este baralho por enquanto.</h2>
+                <h2 className="text-2xl font-bold mb-2">Revisão concluída</h2>
                 <p className="text-muted-foreground mb-6">Você revisou {stats.totalReviewed} cartões</p>
                 <div className="grid grid-cols-4 gap-3 max-w-sm mx-auto mb-8">
                   <div className="bg-secondary rounded-xl p-3 text-center">

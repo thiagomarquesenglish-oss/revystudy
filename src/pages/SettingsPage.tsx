@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTabVisible } from '@/hooks/useTabVisible';
 import { getDecks, getCardsByDeck, addDeck, deleteDeck, saveDecks, resetDeck } from '@/lib/storage';
@@ -51,6 +52,7 @@ interface DeckAudio {
 }
 
 export default function SettingsPage() {
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [loading, setLoading] = useState(true);
@@ -223,7 +225,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background safe-bottom">
-        <PageHeader title="Configurações" />
+        <PageHeader title="Ajustes" />
         <main className="max-w-3xl mx-auto px-3 py-4 space-y-4" style={{ paddingTop: 'calc(var(--app-header-height) + 1rem)' }}>
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 rounded-lg" />)}
         </main>
@@ -234,9 +236,10 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-background safe-bottom">
-      <PageHeader title="Configurações" />
+      <PageHeader title="Ajustes" />
       <PageTransition>
         <main className="max-w-3xl mx-auto px-3 py-4 space-y-6 pb-36" style={{ paddingTop: 'calc(var(--app-header-height) + 1rem)' }}>
+          <button className="native-row native-list" onClick={() => navigate('/profile')}><span className="flex-1"><span className="block font-semibold">Minha conta</span><span className="text-sm text-muted-foreground">Perfil e preferências pessoais</span></span><span aria-hidden="true">›</span></button>
           <BackupSettings />
 
           {/* Deck list */}
