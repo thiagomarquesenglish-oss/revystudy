@@ -1,12 +1,9 @@
-import { useState, useCallback } from 'react';
 import BottomNav from '@/components/BottomNav';
 import PageHeader from '@/components/PageHeader';
 import PageTransition from '@/components/PageTransition';
-import ProfileDrawer from '@/components/ProfileDrawer';
 
 import Heatmap from '@/components/Heatmap';
-import PinButton from '@/components/PinButton';
-import { StatSectionId, isStatPinned, togglePinnedStat } from '@/lib/pinned-stats';
+import { StatSectionId } from '@/lib/pinned-stats';
 import {
   OverviewSection,
   DailyChartSection,
@@ -17,18 +14,10 @@ import {
 } from '@/components/StatsSections';
 
 function PinnableSection({ id, title, children }: { id: StatSectionId; title: string; children: React.ReactNode }) {
-  const [pinned, setPinned] = useState(() => isStatPinned(id));
-
-  const handleToggle = useCallback(() => {
-    togglePinnedStat(id);
-    setPinned(p => !p);
-  }, [id]);
-
   return (
     <section className="space-y-2">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" data-section={id}>
         <h3 className="font-semibold text-sm text-foreground uppercase tracking-wider">{title}</h3>
-        <PinButton pinned={pinned} onToggle={handleToggle} />
       </div>
       {children}
     </section>
