@@ -8,6 +8,7 @@ import RichTextEditor from '@/components/RichTextEditor';
 import EditorToolbar from '@/components/EditorToolbar';
 import PageHeader from '@/components/PageHeader';
 import DictationAnswerField from '@/components/DictationAnswerField';
+import CardPreview from '@/components/CardPreview';
 import { toast } from 'sonner';
 import type { Editor } from '@tiptap/react';
 import {
@@ -110,6 +111,7 @@ export default function EditCardPage() {
         }
       />
       <main className="max-w-3xl mx-auto px-3 space-y-4" style={{ paddingTop: 'calc(var(--app-header-height, 48px) + 1rem)' }}>
+        <p className="text-sm text-muted-foreground">Atualize o texto ou use os botões abaixo para adicionar mídia.</p>
         <EditorToolbar editor={activeEditor} />
 
         <div className="space-y-4" style={{ visibility: ready ? 'visible' : 'hidden' }}>
@@ -139,6 +141,7 @@ export default function EditCardPage() {
           </div>
 
           <DictationAnswerField value={dictationAnswer} onChange={setDictationAnswer} />
+          <CardPreview front={front || ''} back={back || ''} />
 
           {hasAudios && (
             <div className="space-y-2">

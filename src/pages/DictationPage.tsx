@@ -52,7 +52,7 @@ export default function DictationPage() {
   return <div className="min-h-screen bg-background safe-page">
     <PageHeader title="Ouvir e escrever" onBack={() => navigate(`/deck/${deckId}`)} />
     <main className="max-w-xl mx-auto px-4 pb-10 space-y-6" style={{ paddingTop: 'calc(var(--app-header-height, 48px) + 1rem)' }}>
-      <p className="text-xs text-muted-foreground">Prática livre · não altera suas revisões agendadas.</p>
+      <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">Sobre esta prática</summary><p className="mt-2">Esta atividade é livre e não altera suas revisões agendadas.</p></details>
       {loading ? <p role="status">Preparando ditado...</p> : error ? <div role="alert" className="space-y-4">
         <p>Não foi possível carregar os cartões.</p>
         <Button onClick={() => setRetry(value => value + 1)}>Tentar novamente</Button>

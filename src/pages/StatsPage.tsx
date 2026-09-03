@@ -38,7 +38,7 @@ function PinnableSection({ id, title, children }: { id: StatSectionId; title: st
 export default function StatsPage() {
   return (
     <div className="min-h-screen bg-background safe-bottom">
-      <PageHeader title="Estatísticas" />
+      <PageHeader title="Seu progresso" />
       <PageTransition>
       <main className="max-w-3xl mx-auto px-3 py-4 space-y-6" style={{ paddingTop: 'calc(var(--app-header-height) + 1rem)' }}>
 

@@ -63,7 +63,7 @@ export default function DeckAudiosPage() {
 
   return (
     <div className="min-h-screen bg-background safe-page">
-      <PageHeader title="Reproduções" onBack={() => navigate(`/deck/${deckId}`)} />
+      <PageHeader title="Textos e áudios" onBack={() => navigate(`/deck/${deckId}`)} />
       <main className="max-w-3xl mx-auto px-3 space-y-6 pb-8" style={{ paddingTop: 'calc(var(--app-header-height, 48px) + 1rem)' }}>
         {loading ? <p className="text-sm text-muted-foreground">Carregando reproduções...</p> : error ? (
           <p role="alert" className="text-sm text-muted-foreground">Não foi possível carregar as reproduções. Volte ao baralho e tente novamente.</p>
@@ -73,14 +73,14 @@ export default function DeckAudiosPage() {
               <h1 className="text-xl font-bold break-words">{deck.name}</h1>
               <p className="text-sm text-muted-foreground">Ouça os textos e áudios deste baralho.</p>
             </div>
-            <Button className="w-full gap-2" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4" /> Criar reprodução
+            <Button variant="outline" className="w-full gap-2" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" /> Adicionar áudio
             </Button>
             {audios.length === 0 ? (
               <div className="rounded-2xl border border-border bg-card p-8 text-center space-y-3">
                 <Music className="h-10 w-10 mx-auto text-muted-foreground" />
                 <h2 className="font-bold">Nenhuma reprodução ainda</h2>
-                <p className="text-sm text-muted-foreground">Toque em “Criar reprodução”, escolha um nome e adicione seu arquivo de áudio.</p>
+                <p className="text-sm text-muted-foreground">Toque em “Adicionar áudio”, escolha um nome e envie seu arquivo.</p>
               </div>
             ) : (
               <div className="space-y-3">

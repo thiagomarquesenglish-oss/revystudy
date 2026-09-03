@@ -100,6 +100,7 @@ export default function DeckPage() {
 
   useEffect(() => {
     loadData();
+    if (deckId) try { localStorage.setItem('revystudy:last-deck', deckId); } catch { /* optional preference */ }
   }, [deckId]);
 
   const studyCount = newCount + learningCount + reviewCount;
@@ -137,6 +138,7 @@ export default function DeckPage() {
         rightContent={
           <button
             onClick={() => setMenuOpen(true)}
+            aria-label="Abrir opções do baralho"
             className="text-muted-foreground hover:text-foreground transition-colors p-1"
           >
             <MoreVertical className="w-5 h-5" />
@@ -152,8 +154,8 @@ export default function DeckPage() {
           </div>
         ) : studyCount === 0 ? (
           <div className="text-center py-12 space-y-4">
-            <h2 className="text-xl font-bold">Parabéns! Você terminou este baralho por enquanto.</h2>
-            <p className="text-muted-foreground text-sm">Volte mais tarde quando houver novas revisões.</p>
+            <h2 className="text-xl font-bold">Revisões de hoje concluídas</h2>
+            <p className="text-muted-foreground text-sm">Quer continuar praticando? Escolha uma atividade abaixo.</p>
           </div>
         ) : (
           <>
@@ -202,7 +204,7 @@ export default function DeckPage() {
               <Sparkles className="h-5 w-5 text-primary" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-bold text-foreground">Estudo personalizado</span>
+              <span className="block text-sm font-bold text-foreground">Prática livre</span>
               <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
                 Prática livre com áudio, imagem e texto, sem limite.
               </span>
@@ -220,9 +222,9 @@ export default function DeckPage() {
             <Music className="h-5 w-5 text-primary" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-sm font-bold text-foreground">Reproduções</span>
+            <span className="block text-sm font-bold text-foreground">Textos e áudios</span>
             <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
-              Ouça textos em inglês e organize seus áudios.
+              Escute suas gravações e estude linha a linha.
             </span>
           </span>
           <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
@@ -235,8 +237,7 @@ export default function DeckPage() {
           {studyCount > 0 && (
             <Button
               onClick={() => navigate(`/study/${deckId}`)}
-              className="flex-1 gap-2 text-white hover:text-white font-bold"
-              style={{ backgroundColor: '#2652cf' }}
+              className="flex-1 gap-2 font-bold"
             >
               <Play className="w-4 h-4" />
               Estudar agora

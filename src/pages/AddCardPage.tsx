@@ -8,6 +8,7 @@ import EditorToolbar from '@/components/EditorToolbar';
 import { toast } from 'sonner';
 import PageHeader from '@/components/PageHeader';
 import DictationAnswerField from '@/components/DictationAnswerField';
+import CardPreview from '@/components/CardPreview';
 import type { Editor } from '@tiptap/react';
 import {
   Select,
@@ -80,11 +81,12 @@ export default function AddCardPage() {
     <div className="min-h-screen bg-background" style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
       <PageHeader title={cardType === 'typing' ? 'Novo Cartão (Digitar)' : 'Novo Cartão'} onBack={() => navigate(`/deck/${deckId}`)} />
       <main className="max-w-3xl mx-auto px-3 space-y-4" style={{ paddingTop: 'calc(var(--app-header-height, 48px) + 1rem)' }}>
+        <div className="space-y-2"><h1 className="text-xl font-bold">Monte seu cartão</h1><p className="text-sm text-muted-foreground">Adicione texto, imagem ou áudio. Toque primeiro no lado que deseja editar.</p></div>
         <EditorToolbar editor={activeEditor} />
 
         <form id="add-card-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>{cardType === 'typing' ? 'Frente (pergunta)' : 'Frente'}</Label>
+            <Label>{cardType === 'typing' ? 'Pergunta em português' : 'Frente do cartão'}</Label>
             <RichTextEditor
               key={`front-${key}`}
               content=""
@@ -96,7 +98,7 @@ export default function AddCardPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label>{cardType === 'typing' ? 'Verso (resposta a digitar)' : 'Verso'}</Label>
+            <Label>{cardType === 'typing' ? 'Resposta em inglês' : 'Resposta do cartão'}</Label>
             <RichTextEditor
               key={`back-${key}`}
               content=""
@@ -113,6 +115,7 @@ export default function AddCardPage() {
           </div>
 
           <DictationAnswerField value={dictationAnswer} onChange={setDictationAnswer} />
+          <CardPreview front={front} back={back} />
 
           {audios.length > 0 && (
             <div className="space-y-2">

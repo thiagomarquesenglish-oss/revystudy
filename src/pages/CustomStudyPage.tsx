@@ -264,7 +264,7 @@ export default function CustomStudyPage() {
   if (!started) {
     return (
       <div className="min-h-screen bg-background safe-page">
-        <PageHeader title="Estudo personalizado" onBack={() => navigate(`/deck/${deckId}`)} />
+      <PageHeader title="Prática livre" onBack={() => navigate(`/deck/${deckId}`)} />
         <main className="max-w-3xl mx-auto px-3 space-y-6 pb-28" style={{ paddingTop: 'calc(var(--app-header-height, 48px) + 1rem)' }}>
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -301,7 +301,6 @@ export default function CustomStudyPage() {
           <div className="max-w-3xl mx-auto px-3 py-3">
             <Button
               className="w-full gap-2 text-white hover:text-white font-bold"
-              style={{ backgroundColor: '#2652cf' }}
               disabled={cards.length === 0}
               onClick={() => {
                 setOrder(shuffle(cards));

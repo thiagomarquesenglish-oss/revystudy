@@ -33,6 +33,7 @@ import {
 import BottomNav from '@/components/BottomNav';
 import PageHeader from '@/components/PageHeader';
 import PageTransition from '@/components/PageTransition';
+import CardThumbnail from '@/components/CardThumbnail';
 
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -181,7 +182,7 @@ export default function DecksPage() {
   return (
     <div className="min-h-screen bg-background safe-bottom">
       <PageHeader
-        title={filteredDeckName ? `Cartões — ${filteredDeckName}` : 'Painel'}
+        title={filteredDeckName ? `Cartões — ${filteredDeckName}` : 'Biblioteca'}
         onBack={deckFromParam ? () => navigate(`/deck/${deckFromParam}`) : undefined}
       />
       <PageTransition>
@@ -252,8 +253,9 @@ export default function DecksPage() {
               <button
                 key={card.id}
                 onClick={() => isMobile ? setActionCard(card) : openEdit(card)}
-                className="w-full text-left bg-card hover:bg-secondary/50 border border-border rounded-lg px-3 py-2.5 transition-colors"
+                className="w-full text-left bg-card hover:bg-secondary/50 border border-border rounded-2xl p-2.5 transition-colors"
               >
+                {hasImage(card.front + card.back) && <CardThumbnail cardId={card.id} alt={`Imagem do cartão ${stripHtml(card.front)}`} />}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <p className="text-base font-medium truncate">{stripHtml(card.front)}</p>
