@@ -25,6 +25,7 @@ const DeckAudioPlayer = forwardRef<DeckAudioPlayerHandle, DeckAudioPlayerProps>(
   ({ audio, onDeleted, hideDelete, onEnded }, ref) => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [playing, setPlaying] = useState(false);
+    const [audioError, setAudioError] = useState(false);
     const [duration, setDuration] = useState(0);
     const navigate = useNavigate();
 
@@ -35,8 +36,7 @@ const DeckAudioPlayer = forwardRef<DeckAudioPlayerHandle, DeckAudioPlayerProps>(
       play: () => {
         const el = audioRef.current;
         if (el) {
-          el.play();
-          setPlaying(true);
+          setAudioError(false); void el.play().then(()=>setPlaying(true)).catch(()=>{setPlaying(false);setAudioError(true);});
         }
       },
       stop: () => {
@@ -67,14 +67,15 @@ const DeckAudioPlayer = forwardRef<DeckAudioPlayerHandle, DeckAudioPlayerProps>(
       if (playing) {
         el.pause();
       } else {
-        el.play();
+        setAudioError(false); void el.play().then(()=>setPlaying(true)).catch(()=>{setPlaying(false);setAudioError(true);});
       }
-      setPlaying(!playing);
+      if (playing) setPlaying(false);
     };
 
     return (
       <div className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border">
         <button
+          aria-label={playing ? 'Pausar áudio' : 'Reproduzir áudio'}
           onClick={togglePlay}
           className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shrink-0 active:scale-95 transition-transform"
         >
@@ -85,6 +86,7 @@ const DeckAudioPlayer = forwardRef<DeckAudioPlayerHandle, DeckAudioPlayerProps>(
         </button>
         <div className="flex-1 min-w-0">
           <p className="font-semibold truncate">{audio.name}</p>
+          {audioError && <p role="status" className="text-xs text-muted-foreground">Áudio indisponível. Toque para tentar novamente.</p>}
           {duration > 0 && <p className="text-xs text-muted-foreground mt-0.5">{Math.floor(duration / 60)}:{String(Math.round(duration % 60)).padStart(2, '0')}</p>}
         </div>
         <button
@@ -97,7 +99,7 @@ const DeckAudioPlayer = forwardRef<DeckAudioPlayerHandle, DeckAudioPlayerProps>(
         >
           <ListMusic className="w-4 h-4" /><span className="hidden sm:inline">Estudar linha a linha</span>
         </button>
-        <audio ref={audioRef} src={audioUrl} preload="metadata" onLoadedMetadata={event => setDuration(event.currentTarget.duration)} />
+        <audio ref={audioRef} src={audioUrl} preload="metadata" onError={() => {setPlaying(false);setAudioError(true);}} onLoadedMetadata={event => setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0)} />
       </div>
     );
   }

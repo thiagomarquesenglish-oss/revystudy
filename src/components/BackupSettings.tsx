@@ -191,19 +191,19 @@ export default function BackupSettings() {
 
   return (
     <section className="space-y-2">
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Backup e segurança</h3>
+      <h3 className="text-sm font-semibold text-muted-foreground px-1">Backup e recuperação</h3>
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="p-4 flex items-start gap-3 border-b border-border">
           <div className="rounded-lg bg-primary/10 p-2"><ShieldCheck className="w-5 h-5 text-primary" /></div>
           <div className="min-w-0 flex-1">
             <p className="font-medium text-sm">Backup completo do RevyStudy</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Inclui cartões, imagens, áudios, progresso, dias estudados e estatísticas.
+              Inclui cartões, imagens, áudios, progresso dos cartões, histórico do ditado e estatísticas.
             </p>
           </div>
         </div>
 
-        <div className="p-4 flex items-center justify-between gap-4 border-b border-border">
+        {serverReady === true && <div className="p-4 flex items-center justify-between gap-4 border-b border-border">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-sm font-medium"><CalendarClock className="w-4 h-4" /> Todo domingo</div>
             <p className="text-xs text-muted-foreground mt-1 truncate">Enviar link para {user?.email || settings?.email}</p>
@@ -214,13 +214,11 @@ export default function BackupSettings() {
             onCheckedChange={toggleAutomatic}
             aria-label="Ativar backup automático semanal"
           />
-        </div>
+        </div>}
 
         <div className="px-4 py-3 text-xs text-muted-foreground border-b border-border space-y-1">
-          {serverReady === false && (
-            <p className="text-orange-500">Envio automático aguardando conexão segura do serviço de e-mail.</p>
-          )}
-          <p>Último backup automático: <span className="text-foreground">{formatDate(settings?.last_backup_at)}</span></p>
+
+          {serverReady === true && <p>Último backup automático: <span className="text-foreground">{formatDate(settings?.last_backup_at)}</span></p>}
           <p>Último backup neste aparelho: <span className="text-foreground">{formatDate(localBackupAt)}</span></p>
           {lastRun && (
             <p>
@@ -231,20 +229,20 @@ export default function BackupSettings() {
           )}
         </div>
 
-        <div className="p-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
           <Button variant="outline" className="gap-2" onClick={handleLocalBackup} disabled={busy !== null}>
             <Download className="w-4 h-4" /> {busy === 'export' ? 'Preparando...' : 'Salvar agora'}
           </Button>
-          <Button variant="outline" className="gap-2" onClick={handleEmailBackup} disabled={busy !== null || serverReady !== true}>
+          {serverReady === true && <Button variant="outline" className="gap-2" onClick={handleEmailBackup} disabled={busy !== null || serverReady !== true}>
             <Mail className="w-4 h-4" /> {busy === 'email' ? 'Enviando...' : 'Enviar por e-mail'}
-          </Button>
+          </Button>}
           <Button variant="outline" className="gap-2" onClick={() => inputRef.current?.click()} disabled={busy !== null}>
             <Upload className="w-4 h-4" /> Restaurar
           </Button>
         </div>
-        <div className="px-4 pb-3 flex items-center gap-2 text-[11px] text-muted-foreground">
+        {serverReady === true && <div className="px-4 pb-3 flex items-center gap-2 text-[11px] text-muted-foreground">
           <CloudUpload className="w-3.5 h-3.5" /> São mantidos apenas os 4 backups automáticos mais recentes.
-        </div>
+        </div>}
       </div>
 
       <input ref={inputRef} type="file" accept=".zip,.revystudy" className="hidden" onChange={chooseBackup} />
