@@ -80,7 +80,7 @@ export async function registerServiceWorker() {
     window.setInterval(check, 60 * 60 * 1000);
     window.setInterval(() => {
       // Never interrupt a study, editor, upload, backup, or an open dialog.
-      const safePage = ['/', '/decks', '/stats'].includes(location.pathname);
+      const safePage = ['/', '/stats'].includes(location.pathname);
       const editing = document.querySelector('[role="dialog"], [data-state="open"][role="alertdialog"]') || document.activeElement?.matches('input, textarea, [contenteditable="true"]');
       if (updateReady && safePage && !document.hidden && !editing && Date.now() - lastInteraction > 10000) {
         updateReady = false; location.reload();
