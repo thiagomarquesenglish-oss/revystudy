@@ -116,9 +116,9 @@ async function generateBackup(admin, userId, suppliedSettings) {
 
   let uploadedPath = null;
   try {
-    const [decks, sourceCards, reviewHistory, sourceAudios] = await Promise.all([
+    const [decks, sourceCards, reviewHistory, sourceAudios, dictationReviews] = await Promise.all([
       fetchAll(admin, 'decks', userId), fetchAll(admin, 'cards', userId),
-      fetchAll(admin, 'review_history', userId), fetchAll(admin, 'deck_audios', userId),
+      fetchAll(admin, 'review_history', userId), fetchAll(admin, 'deck_audios', userId), fetchAll(admin, 'dictation_reviews', userId),
     ]);
     const zip = new JSZip();
     const cards = sourceCards.map((card) => ({ ...card }));
@@ -160,7 +160,7 @@ async function generateBackup(admin, userId, suppliedSettings) {
     const counts = { decks: decks.length, cards: cards.length, reviews: reviewHistory.length, audios: deckAudios.length };
     zip.file('revystudy-backup.json', JSON.stringify({
       format: 'revystudy-full-backup', version: 1, generatedAt, sourceUserId: userId,
-      counts, decks, cards, reviewHistory, deckAudios, embeddedMedia,
+      counts, decks, cards, reviewHistory, deckAudios, embeddedMedia, dictationReviews,
       preferences: settings.preferences || { pinnedStats: [], lastStudySession: null },
     }, null, 2));
 
