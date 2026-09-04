@@ -218,9 +218,11 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
   return (
     <div className="flex flex-col w-full max-w-lg mx-auto overflow-hidden" style={{ minHeight: 'calc(100dvh - 120px)', paddingBottom: '160px' }}>
       {/* Content */}
-      {!flipped && <StudyMedia html={card.front} key={`front-${card.id}`}>
+      <StudyMedia html={card.front} key={`front-${card.id}`}>
         <CardContent html={card.front} audioSrc={frontAudioSrc} />
-      </StudyMedia>}
+      </StudyMedia>
+
+      {flipped && <hr className="w-full border-0 h-px bg-muted-foreground/20 mt-8" />}
 
       {isTyping && !flipped && (
         <div className="w-full px-2 mt-8">
@@ -258,9 +260,8 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
 
       {flipped && (
         <>
-          <StudyMedia html={card.front + card.back} key={`back-${card.id}`}>
-            <CardContent html={card.front + card.back} audioSrc={backAudioSrc || frontAudioSrc} autoPlay={Boolean(backAudioSrc)} />
-            {frontAudioSrc && backAudioSrc && frontAudioSrc !== backAudioSrc && <AudioPlayButton src={frontAudioSrc} centered autoPlay={false} />}
+          <StudyMedia html={card.back} key={`back-${card.id}`}>
+            <CardContent html={card.back} audioSrc={backAudioSrc} autoPlay={Boolean(backAudioSrc)} />
           </StudyMedia>
         </>
       )}
