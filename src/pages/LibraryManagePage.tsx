@@ -51,7 +51,7 @@ interface DeckAudio {
   created_at: string;
 }
 
-export default function LibraryManagePage() {
+export default function LibraryManagePage({ embedded = false, targetDeckId, onChanged }: { embedded?: boolean; targetDeckId?: string; onChanged?: () => void }) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [decks, setDecks] = useState<Deck[]>([]);
@@ -104,7 +104,7 @@ export default function LibraryManagePage() {
     setDeckDesc('');
     setShowCreateDeck(false);
     loadData();
-    toast.success('Baralho criado!');
+    onChanged?.(); toast.success('Baralho criado!');
   };
 
   const handleEditDeck = async () => {
@@ -113,7 +113,7 @@ export default function LibraryManagePage() {
     setShowEditDialog(false);
     setEditDeck(null);
     loadData();
-    toast.success('Baralho atualizado!');
+    onChanged?.(); toast.success('Baralho atualizado!');
   };
 
   const handleDeleteDeck = async () => {
@@ -121,7 +121,7 @@ export default function LibraryManagePage() {
     await deleteDeck(deleteDeckId);
     setDeleteDeckId(null);
     loadData();
-    toast.success('Baralho excluído!');
+    onChanged?.(); if (targetDeckId) navigate('/decks'); toast.success('Baralho excluído!');
   };
 
   const handleExport = async (deck: Deck) => {
@@ -222,6 +222,7 @@ export default function LibraryManagePage() {
     return acc;
   }, {});
 
+  if (loading && embedded) return null;
   if (loading) {
     return (
       <div className="min-h-screen bg-background safe-bottom">
@@ -235,8 +236,9 @@ export default function LibraryManagePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background safe-bottom">
-      <PageHeader title="Baralhos e áudios" onBack={() => navigate('/decks')} />
+    <div className={embedded ? "" : "min-h-screen bg-background safe-bottom"}>
+      {embedded && (targetDeckId ? <Button variant="ghost" size="sm" onClick={() => setActionDeck(decks.find(d => d.id === targetDeckId) || null)}>Opções</Button> : <div className="flex gap-2"><Button size="sm" onClick={() => setShowCreateDeck(true)}><Plus className="h-4 w-4 mr-1" />Criar</Button><Button size="sm" variant="secondary" onClick={() => importInputRef.current?.click()} disabled={importing}>Importar</Button></div>)}
+      {!embedded && <><PageHeader title="Baralhos e áudios" onBack={() => navigate('/decks')} />
       <PageTransition>
         <main className="max-w-3xl mx-auto px-3 py-4 space-y-6 pb-36" style={{ paddingTop: 'calc(var(--app-header-height) + 1rem)' }}>
 
@@ -293,7 +295,7 @@ export default function LibraryManagePage() {
             </div>
           )}
         </main>
-      </PageTransition>
+      </PageTransition></>}
 
       {/* Hidden file input for import */}
       <input
@@ -305,7 +307,7 @@ export default function LibraryManagePage() {
       />
 
       {/* Fixed footer buttons */}
-      <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-0 right-0 z-10 px-3 pb-3 pt-2 border-t border-border bg-[#0a0a0a]">
+      {!embedded && <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-0 right-0 z-10 px-3 pb-3 pt-2 border-t border-border bg-[#0a0a0a]">
         <div className="max-w-3xl mx-auto flex gap-2">
           <Button onClick={() => setShowCreateDeck(true)} className="gap-2 flex-1">
             <Plus className="w-4 h-4" /> Novo baralho
@@ -321,6 +323,7 @@ export default function LibraryManagePage() {
         </div>
       </div>
 
+      }
       {/* Mobile actions drawer for decks */}
       <Drawer open={!!actionDeck} onOpenChange={(open) => !open && setActionDeck(null)}>
         <DrawerContent>
@@ -553,7 +556,7 @@ export default function LibraryManagePage() {
         </AlertDialog>
       )}
 
-      <BottomNav active="decks" />
+      {!embedded && <BottomNav active="decks" />}
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import { deriveDictationHistory } from '@/lib/dictation-events';
+import { recordDictationReview, syncDictation, migrateLegacyDictation, getDictationEvents } from '@/lib/dictation-sync';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getCardsByDeck, getDeckAudios } from '@/lib/storage';
@@ -38,7 +40,9 @@ export default function DictationPage() {
       if (!deckId) throw new Error('Baralho não encontrado');
       const { data: { session: auth } } = await supabase.auth.getSession();
       if (!auth?.user) throw new Error('Entre na sua conta');
-      const stored = readDictationHistory(auth.user.id, deckId);
+      migrateLegacyDictation(auth.user.id);
+      await syncDictation().catch(() => {});
+      const stored = deriveDictationHistory(getDictationEvents(auth.user.id), deckId);
       const cards = await getCardsByDeck(deckId);
       const candidates = cards.filter(card => card.dictationAnswer?.trim());
       const needsLinkedAudio = candidates.some(card => card.audioId && !dictationAudioSource(card.front + card.back));
@@ -62,10 +66,7 @@ export default function DictationPage() {
     const item = items[index];
     if (correct !== undefined && !extra) {
       try {
-        // Read again so another open practice does not erase unrelated answers.
-        const latest = readDictationHistory(userId, deckId!);
-        const updated = { ...latest, [item.card.id]: scheduleDictation(progressFor(item.card, latest), item.card.dictationAnswer!, correct ? rating ?? 'good' : 'again') };
-        saveDictationHistory(userId, deckId!, updated);
+        const updated = recordDictationReview(userId, deckId!, item.card.id, item.card.dictationAnswer!, correct ? rating ?? 'good' : 'again');
         setHistory(updated); setSaveError(false);
       } catch { setSaveError(true); advancing.current = false; return; }
     }
@@ -93,7 +94,7 @@ export default function DictationPage() {
   return <div className="min-h-screen bg-background safe-page">
     <PageHeader title="Ouvir e escrever" onBack={() => navigate(`/deck/${deckId}`)} />
     <main className="max-w-xl mx-auto px-4 pb-10 space-y-6" style={{ paddingTop: 'calc(var(--app-header-height, 48px) + 1rem)' }}>
-      <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">Como funcionam as revisões?</summary><p className="mt-2">Os erros voltam nesta sessão, até três tentativas, e ficam para revisar em 10 minutos. Os acertos recebem intervalos maiores conforme sua avaliação. O ditado tem progresso próprio, salvo neste navegador e separado dos cartões. A prática extra não muda os agendamentos.</p></details>
+      <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">Como funcionam as revisões?</summary><p className="mt-2">Os erros voltam nesta sessão, até três tentativas, e ficam para revisar em 10 minutos. Os acertos recebem intervalos maiores conforme sua avaliação. O ditado tem progresso próprio, salvo neste aparelho e sincronizado com sua conta, separado dos cartões. A prática extra não muda os agendamentos.</p></details>
       {loading ? <p role="status">Preparando ditado...</p> : error ? <div role="alert" className="space-y-4">
         <p>Não foi possível carregar os cartões ou o histórico de ditado.</p><Button onClick={() => setRetry(value => value + 1)}>Tentar novamente</Button>
       </div> : all.length === 0 ? <div className="rounded-xl border border-border bg-card p-6 space-y-4">

@@ -1,3 +1,4 @@
+import LibraryManagePage from './LibraryManagePage';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTabVisible } from '@/hooks/useTabVisible';
@@ -180,8 +181,8 @@ export default function DecksPage() {
   if (!deckFromParam) return <div className="min-h-screen bg-background safe-bottom">
     <PageHeader title="Biblioteca" />
     <main className="max-w-3xl mx-auto px-4 space-y-5 pb-8" style={{ paddingTop: 'calc(var(--app-header-height) + 1.5rem)' }}>
-      <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">Seus baralhos</h1><Button variant="ghost" onClick={() => navigate('/library/manage')}>Organizar</Button></div>
-      <div className="native-list">{decks.map(deck => <button key={deck.id} className="native-row" onClick={() => navigate('/decks?deck=' + deck.id)}><span className="min-w-0 flex-1"><span className="block font-semibold truncate">{deck.name}</span><span className="block text-sm text-muted-foreground mt-1">{cards.filter(card => card.deckId === deck.id).length} cartões · Áudios do baralho</span></span><ChevronDown className="h-5 w-5 -rotate-90 text-muted-foreground" /></button>)}</div>
+      <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">Baralhos</h1><LibraryManagePage embedded onChanged={loadData} /></div>
+      <div className="native-list">{decks.map(deck => <button key={deck.id} className="native-row" onClick={() => navigate('/decks?deck=' + deck.id)}><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl font-semibold" style={{ backgroundColor: ['#283b38','#3d3247','#403628'][Array.from(deck.id).reduce((a,c)=>a+c.charCodeAt(0),0)%3] }}>{deck.name.slice(0,1).toUpperCase()}</span><span className="min-w-0 flex-1"><span className="block font-semibold truncate">{deck.name}</span><span className="block text-sm text-muted-foreground mt-1">{cards.filter(card => card.deckId === deck.id).length} cartões · Áudios do baralho</span></span><ChevronDown className="h-5 w-5 -rotate-90 text-muted-foreground" /></button>)}</div>
       {decks.length === 0 && <div className="space-y-4"><p className="text-muted-foreground">Crie ou importe seu primeiro baralho.</p><Button onClick={() => navigate('/library/manage')}>Adicionar baralho</Button></div>}
     </main><BottomNav active="decks" />
   </div>;
@@ -189,7 +190,8 @@ export default function DecksPage() {
   return (
     <div className="min-h-screen bg-background safe-bottom">
       <PageHeader
-        title={filteredDeckName ? `Cartões — ${filteredDeckName}` : 'Biblioteca'}
+        title={filteredDeckName || 'Cartões'}
+        rightContent={<LibraryManagePage embedded targetDeckId={deckFromParam || undefined} onChanged={loadData} />}
         onBack={() => navigate('/decks')}
       />
       <PageTransition>
@@ -197,16 +199,16 @@ export default function DecksPage() {
         <div className="flex gap-3"><Button variant="secondary" className="flex-1" onClick={() => navigate('/deck/' + deckFromParam + '/audios')}>Textos e áudios</Button><Button variant="secondary" className="flex-1" onClick={() => navigate('/deck/' + deckFromParam + '/add')}>Adicionar cartão</Button></div>
         <h2 className="text-lg font-semibold pt-2">Cartões</h2>
         {/* Tabs: Todos / Marcados */}
-        <div className="flex gap-2">
+        <div className="flex gap-1 bg-card p-1 rounded-xl">
           <button
             onClick={() => setOnlyFlagged(false)}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${!onlyFlagged ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:bg-card/80'}`}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${!onlyFlagged ? 'bg-secondary text-foreground shadow-sm' : 'bg-transparent text-muted-foreground hover:bg-card/80'}`}
           >
             Todos
           </button>
           <button
             onClick={() => setOnlyFlagged(true)}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors ${onlyFlagged ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:bg-card/80'}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors ${onlyFlagged ? 'bg-secondary text-foreground shadow-sm' : 'bg-transparent text-muted-foreground hover:bg-card/80'}`}
           >
             <Flag className={`w-4 h-4 ${onlyFlagged ? '' : 'fill-red-500 text-red-500'}`} />
             Marcados {flaggedCount > 0 && <span className="text-xs opacity-70">({flaggedCount})</span>}

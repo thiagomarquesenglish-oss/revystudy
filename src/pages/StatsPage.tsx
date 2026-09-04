@@ -1,3 +1,4 @@
+import LearningSummary from '@/components/LearningSummary';
 import BottomNav from '@/components/BottomNav';
 import PageHeader from '@/components/PageHeader';
 import PageTransition from '@/components/PageTransition';
@@ -17,7 +18,7 @@ function PinnableSection({ id, title, children }: { id: StatSectionId; title: st
   return (
     <section className="space-y-2">
       <div className="flex items-center gap-2" data-section={id}>
-        <h3 className="font-semibold text-sm text-foreground uppercase tracking-wider">{title}</h3>
+        <h3 className="font-semibold text-sm text-foreground">{title}</h3>
       </div>
       {children}
     </section>
@@ -31,20 +32,14 @@ export default function StatsPage() {
       <PageTransition>
       <main className="max-w-3xl mx-auto px-3 py-4 space-y-6" style={{ paddingTop: 'calc(var(--app-header-height) + 1rem)' }}>
 
-        <PinnableSection id="overview" title="Visão geral">
-          <OverviewSection />
-        </PinnableSection>
-
-        <section className="space-y-2">
-          <h3 className="font-semibold text-sm text-foreground uppercase tracking-wider">Atividade</h3>
-          <Heatmap />
-        </section>
-
-        <PinnableSection id="daily-chart" title="Últimos 30 dias">
+        <LearningSummary />
+        <PinnableSection id="daily-chart" title="Revisões de cartões · últimos 30 dias">
           <DailyChartSection />
         </PinnableSection>
 
-        <details className="space-y-5"><summary className="cursor-pointer py-3 font-semibold">Detalhes por baralho e próximas revisões</summary>
+        <details className="space-y-5"><summary className="cursor-pointer py-3 font-semibold">Mais detalhes dos cartões</summary>
+        <PinnableSection id="overview" title="Visão geral dos cartões"><OverviewSection /></PinnableSection>
+        <section className="space-y-2"><h3 className="font-semibold text-sm">Dias de estudo com cartões</h3><Heatmap /></section>
         <div className="flex flex-col sm:flex-row sm:items-start gap-6">
           <PinnableSection id="card-distribution" title="Distribuição de cartões">
             <CardDistributionSection />

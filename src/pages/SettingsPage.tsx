@@ -11,14 +11,14 @@ export default function SettingsPage() {
     <PageHeader title="Configurações" />
     <main className="max-w-3xl mx-auto px-4 pb-8 space-y-8" style={{ paddingTop: 'calc(var(--app-header-height) + 1.5rem)' }}>
       <section className="space-y-3">
-        <h1 className="text-lg font-semibold">Sua conta</h1>
+        <h1 className="text-sm font-semibold text-muted-foreground">Conta</h1>
         <div className="flex items-center gap-4 bg-card rounded-2xl p-5">
           <User className="h-6 w-6 shrink-0 text-muted-foreground" />
           <div className="min-w-0"><p className="text-sm break-all">{user?.email}</p><p className="text-xs text-muted-foreground mt-1">Conta conectada</p></div>
         </div>
       </section>
-      <section className="bg-card rounded-2xl p-4 flex items-center justify-between gap-4"><div><h2 className="font-semibold">Atualizações de conteúdo</h2><p className="text-sm text-muted-foreground mt-1">Verificar novidades dos seus baralhos</p></div><SyncUpdatesButton onInstalled={() => {}} /></section>
-      <BackupSettings />
+      <details className="bg-card rounded-2xl p-5"><summary className="font-semibold cursor-pointer">Atualizações</summary><div className="pt-4 flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Novidades dos seus baralhos</p><SyncUpdatesButton onInstalled={() => {}} /></div></details>
+      <details className="bg-card rounded-2xl p-5"><summary className="font-semibold cursor-pointer">Backup e restaurar dados</summary><div className="pt-5"><BackupSettings /></div></details>
       <section className="space-y-3">
         <Button variant="ghost" className="text-destructive hover:text-destructive justify-start px-0" onClick={signOut}><LogOut className="h-4 w-4 mr-2" />Sair da conta</Button>
       </section>
