@@ -14,6 +14,13 @@ export type Database = {
   }
   public: {
     Tables: {
+      dictation_reviews: {
+        Row: { id: string; user_id: string; card_id: string; deck_id: string; answer: string; rating: string; reviewed_at: string; legacy: Json | null };
+        Insert: { id: string; user_id: string; card_id: string; deck_id: string; answer: string; rating: string; reviewed_at: string; legacy?: Json | null };
+        Update: { id?: string };
+        Relationships: [];
+      }
+
       backup_runs: {
         Row: {
           completed_at: string | null
