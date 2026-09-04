@@ -1,3 +1,4 @@
+import { syncDictation } from '@/lib/dictation-sync';
 import { useState, useEffect, useCallback } from 'react';
 import { getPendingMutationCount, syncOfflineQueue, SYNC_STATE_EVENT } from '@/lib/sync';
 
@@ -14,6 +15,7 @@ export function useOnlineStatus() {
     setIsSyncing(true);
     try {
       await syncOfflineQueue();
+      await syncDictation();
     } catch (e) {
       console.error('Sync failed:', e);
     } finally {
