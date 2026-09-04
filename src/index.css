@@ -326,3 +326,8 @@ header > div:last-child.h-px { display: none; }
 #root .border-t { border-top-width: 1px !important; }
 #root .last\:border-b-0:last-child { border-bottom-width: 0 !important; }
 #root div.h-px { display: block; }
+@media (max-width: 640px) {
+  #root main { padding-left: 16px; padding-right: 16px; }
+  #root button.h-9, #root button.h-10 { min-height: 44px; }
+  #root details > summary { min-height: 44px; align-content: center; }
+}
