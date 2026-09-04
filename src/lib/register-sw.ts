@@ -67,7 +67,25 @@ export async function registerServiceWorker() {
   await relieveStoragePressure();
 
   try {
-    await navigator.serviceWorker.register(SW_URL, { scope: "/" });
+    const hadController = !!navigator.serviceWorker.controller;
+    let updateReady = false;
+    let lastInteraction = Date.now();
+    for (const event of ['pointerdown', 'keydown', 'touchstart']) window.addEventListener(event, () => { lastInteraction = Date.now(); }, { passive: true });
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) updateReady = true; });
+    const registration = await navigator.serviceWorker.register(SW_URL, { scope: '/', updateViaCache: 'none' });
+    const check = () => { if (navigator.onLine) void registration.update().catch(() => {}); };
+    check();
+    window.addEventListener('online', check);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+    window.setInterval(check, 60 * 60 * 1000);
+    window.setInterval(() => {
+      // Never interrupt a study, editor, upload, backup, or an open dialog.
+      const safePage = ['/', '/decks', '/stats'].includes(location.pathname);
+      const editing = document.querySelector('[role="dialog"], [data-state="open"][role="alertdialog"]') || document.activeElement?.matches('input, textarea, [contenteditable="true"]');
+      if (updateReady && safePage && !document.hidden && !editing && Date.now() - lastInteraction > 10000) {
+        updateReady = false; location.reload();
+      }
+    }, 2000);
   } catch (err) {
     console.error("[PWA] SW registration failed", err);
   }

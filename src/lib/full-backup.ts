@@ -1,3 +1,5 @@
+import { getDictationEvents, pendingDictationCount, restoreDictationEvents, syncDictation } from './dictation-sync';
+import { validDictationReview, type DictationReview } from './dictation-events';
 import JSZip from 'jszip';
 import { supabase } from '@/integrations/supabase/client';
 import { localDB, offlineQueue } from './offline-db';
@@ -35,6 +37,7 @@ export interface FullBackupManifest {
   reviewHistory: Record<string, unknown>[];
   deckAudios: BackupAudioRow[];
   embeddedMedia: EmbeddedMediaEntry[];
+  dictationReviews?: DictationReview[];
   preferences: {
     pinnedStats: string[];
     lastStudySession: unknown;
@@ -118,6 +121,8 @@ export async function createFullBackup(): Promise<Blob> {
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Sua sessão expirou. Entre novamente.');
+  await syncDictation();
+  if (pendingDictationCount(user.id)) throw new Error('Existem revisões de escrita aguardando sincronização. Tente novamente.');
 
   const [decks, cardsInput, reviewHistory, audioInput] = await Promise.all([
     fetchAllRows('decks'),
@@ -180,6 +185,7 @@ export async function createFullBackup(): Promise<Blob> {
     reviewHistory,
     deckAudios,
     embeddedMedia,
+    dictationReviews: getDictationEvents(user.id),
     preferences: {
       pinnedStats: getPinnedStats(),
       lastStudySession: safeLocalStorageJson('memora-last-session'),
@@ -209,6 +215,7 @@ export async function inspectFullBackup(file: File): Promise<FullBackupManifest>
       manifest.counts.audios !== manifest.deckAudios.length) {
     throw new Error('A conferência do backup falhou. Nenhum dado foi alterado.');
   }
+  if (manifest.dictationReviews !== undefined && (!Array.isArray(manifest.dictationReviews) || manifest.dictationReviews.some(e => !validDictationReview(e) || !manifest.cards.some(c => c.id === e.card_id && c.deck_id === e.deck_id) || !manifest.decks.some(d => d.id === e.deck_id) || !['again','hard','good','easy','legacy'].includes(e.rating) || !Number.isFinite(Date.parse(e.reviewed_at)) || typeof e.answer !== 'string'))) throw new Error('Histórico de escrita inválido no backup.');
   return manifest;
 }
 
@@ -258,6 +265,8 @@ export async function restoreFullBackup(file: File, mode: RestoreMode) {
   const manifest = await inspectFullBackup(file);
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Sua sessão expirou. Entre novamente.');
+  await syncDictation();
+  if (pendingDictationCount(user.id)) throw new Error('Existem revisões de escrita aguardando sincronização. Tente novamente.');
 
   const mediaReplacements = await uploadRestoredMedia(zip, manifest, user.id);
   const restoredCards = manifest.cards.map((source) => {
@@ -306,6 +315,9 @@ export async function restoreFullBackup(file: File, mode: RestoreMode) {
   await upsertInChunks('deck_audios', restoredAudios);
   await upsertInChunks('cards', restoredCards);
   await upsertInChunks('review_history', reviews);
+  restoreDictationEvents(user.id, manifest.dictationReviews || [], mode === 'replace');
+  await syncDictation();
+  if (pendingDictationCount(user.id)) throw new Error('O histórico de escrita permanece salvo neste aparelho, aguardando envio.');
 
   if (mode === 'replace' && oldAudioPaths.length) {
     await supabase.storage.from('deck-audios').remove(oldAudioPaths);
