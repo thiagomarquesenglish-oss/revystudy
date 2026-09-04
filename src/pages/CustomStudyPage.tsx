@@ -331,11 +331,14 @@ export default function CustomStudyPage() {
     );
   }
 
-  const modeLabel = mode === 'audio' ? 'Só áudio' : mode === 'image' ? 'Só imagem' : 'Só texto';
-  const ModeIcon = mode === 'audio' ? Volume2 : mode === 'image' ? ImageIcon : Type;
-
   const promptImages = front.imagesHtml || back.imagesHtml;
   const promptText = hasText(front.textHtml) ? front.textHtml : back.textHtml;
+  const answerText = mode === 'text'
+    ? (hasText(front.textHtml) ? back.textHtml : front.textHtml)
+    : front.textHtml + back.textHtml;
+  const answerImages = mode === 'image'
+    ? (front.imagesHtml ? back.imagesHtml : front.imagesHtml)
+    : front.imagesHtml + back.imagesHtml;
 
   return (
     <div className="min-h-screen bg-background safe-page overflow-hidden">
@@ -346,13 +349,8 @@ export default function CustomStudyPage() {
       />
       <main className="max-w-3xl mx-auto px-3 pb-40" style={{ paddingTop: 'calc(var(--app-header-height, 48px) + 1rem)' }}>
         <div className="flex flex-col items-center w-full max-w-lg mx-auto">
-          <div className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground bg-card border border-border rounded-full px-3 py-1">
-            <ModeIcon className="w-3 h-3" />
-            {modeLabel}
-          </div>
-
           {/* Prompt */}
-          {!revealed && (deckAudioPending ? <div role="status" aria-label="Preparando cartão" className="min-h-64 w-full bg-muted/20 rounded-xl" /> :
+          {deckAudioPending ? <div role="status" aria-label="Preparando cartão" className="min-h-64 w-full bg-muted/20 rounded-xl" /> :
           <StudyMedia html={mode === 'image' ? promptImages : ''} key={`prompt-${current.id}-${mode}`}>
           <div className="w-full pt-10 flex flex-col items-center gap-4">
             {mode === 'audio' && audioSrc && <AudioButton src={audioSrc} big key={`a-${current.id}`} />}
@@ -369,23 +367,23 @@ export default function CustomStudyPage() {
               />
             )}
           </div>
-          </StudyMedia>)}
+          </StudyMedia>}
 
           {/* Reveal */}
           {revealed && (
-            <StudyMedia html={front.imagesHtml + back.imagesHtml} key={`reveal-${current.id}`}>
+            <StudyMedia html={answerImages} key={`reveal-${current.id}`}>
             <div className="w-full mt-8 space-y-4">
-              <div className="w-full h-px bg-muted-foreground/20" />
+              <hr className="w-full border-0 h-px bg-muted-foreground/20" />
               <div className="flex flex-col items-center gap-3">
                 <div
                   className="rich-text-render text-2xl text-white text-center leading-relaxed break-words max-w-full"
-                  dangerouslySetInnerHTML={{ __html: front.textHtml + back.textHtml }}
+                  dangerouslySetInnerHTML={{ __html: answerText }}
                 />
                 <div
                   className="rich-text-render text-2xl text-white text-center leading-relaxed break-words max-w-full"
-                  dangerouslySetInnerHTML={{ __html: front.imagesHtml + back.imagesHtml }}
+                  dangerouslySetInnerHTML={{ __html: answerImages }}
                 />
-                {audioSrc && <AudioButton src={audioSrc} key={`r-${current.id}`} />}
+                {mode !== 'audio' && audioSrc && <AudioButton src={audioSrc} key={`r-${current.id}`} />}
               </div>
             </div>
             </StudyMedia>
