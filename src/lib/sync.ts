@@ -8,7 +8,7 @@ export const SYNC_STATE_EVENT = 'revystudy:sync-state';
 
 let syncPromise: Promise<void> | null = null;
 
-function announceSyncState() {
+export function announceSyncState() {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(SYNC_STATE_EVENT));
 }
 

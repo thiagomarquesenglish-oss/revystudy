@@ -1,4 +1,5 @@
 import LibraryManagePage from './LibraryManagePage';
+import { toast } from 'sonner';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTabVisible } from '@/hooks/useTabVisible';
@@ -139,9 +140,12 @@ export default function DecksPage() {
 
   const handleDelete = async () => {
     if (deleteTarget) {
+      try {
       await deleteCard(deleteTarget);
+      setCards(previous => previous.filter(card => card.id !== deleteTarget));
       setDeleteTarget(null);
-      loadData();
+      toast.success('Cartão excluído');
+      } catch { toast.error('Não foi possível excluir o cartão. Tente novamente.'); }
     }
   };
 
@@ -235,10 +239,10 @@ export default function DecksPage() {
         ) : (
           <div className="grid grid-cols-2 gap-2">
             {filteredCards.map((card, index) => (
+              <div key={card.id} className="relative group">
               <button
-                key={card.id}
                 onClick={() => isMobile ? setActionCard(card) : openEdit(card)}
-                className="w-full text-left bg-card hover:bg-secondary/50 border border-border rounded-2xl p-3.5 transition-colors"
+                className="w-full h-full text-left bg-card hover:bg-secondary/50 border border-border rounded-2xl p-3.5 pr-12 transition-colors"
               >
                 {hasImage(card.front + card.back) && <CardThumbnail cardId={card.id} alt={`Imagem do cartão ${stripHtml(card.front)}`} />}
                 <div className="flex-1 min-w-0">
@@ -255,6 +259,12 @@ export default function DecksPage() {
                   </div>
                 </div>
               </button>
+              <button type="button" aria-label={`Excluir cartão: ${stripHtml(card.front) || 'sem texto'}`} title="Excluir cartão"
+                onClick={() => openDelete(card)}
+                className="absolute right-1 top-1 p-3 rounded-xl bg-card text-destructive hover:bg-destructive/10 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 transition-opacity">
+                <Trash2 className="w-5 h-5" />
+              </button>
+              </div>
             ))}
           </div>
         )}

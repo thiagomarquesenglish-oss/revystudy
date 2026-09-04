@@ -1,7 +1,14 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Deck, Flashcard, CardStatus } from './types';
 import { localDB, offlineQueue } from './offline-db';
-import { persistMutations, syncOfflineQueue } from './sync';
+import { persistMutations, syncOfflineQueue, announceSyncState } from './sync';
+const deletedThisSession = new Set<string>();
+
+async function withoutDeletedCards(rows: any[]): Promise<any[]> {
+  const pending = await offlineQueue.getAll();
+  const deleted = new Set([...deletedThisSession, ...pending.filter(m => m.table === 'cards' && m.action === 'delete').map(m => m.payload.id)]);
+  return rows.filter(row => !deleted.has(row.id));
+}
 import { assertCompletePackage, cardIdsToFetch, changedContent, contentDelta, CARD_CONTENT_FIELDS, AUDIO_CONTENT_FIELDS, DeckManifestSnapshot, mergeDownloadedCardRows, PROGRESS_FIELDS } from './deck-sync';
 
 export interface DeckAudio {
@@ -388,7 +395,7 @@ async function fetchCardsFromDB(): Promise<Flashcard[]> {
       return cards;
     }
 
-    const data = await withTimeout(fetchAllCards(), 30_000);
+    const data = await withoutDeletedCards(await withTimeout(fetchAllCards(), 30_000));
     const cards = sortCards(data.map(rowToCard));
     cache.cards = cards;
     touch('cards');
@@ -421,9 +428,10 @@ async function fetchCardsByDeckFromDB(deckId: string): Promise<Flashcard[]> {
       from += PAGE_SIZE;
     }
 
-    const cards = sortCards(allRows.map(rowToCard));
+    const visibleRows = await withoutDeletedCards(allRows);
+    const cards = sortCards(visibleRows.map(rowToCard));
     mergeDeckCardsIntoCache(deckId, cards);
-    syncLocalDeckCards(deckId, allRows).catch(console.error);
+    syncLocalDeckCards(deckId, visibleRows).catch(console.error);
     return cards;
   })();
 
@@ -705,7 +713,7 @@ export async function getCards(): Promise<Flashcard[]> {
 /** Local lightweight copies for the card panel; embedded media bytes are omitted. */
 export async function getLocalCardSummaries(): Promise<Flashcard[]> {
   try {
-    const rows = await localDB.getCardSummaries();
+    const rows = await withoutDeletedCards(await localDB.getCardSummaries());
     return rows.map(rowToCard);
   } catch (error) {
     console.error('Failed to read local card summaries:', error);
@@ -801,15 +809,14 @@ export async function addCard(deckId: string, front: string, back: string, audio
     dictationAnswer: dictationAnswer?.trim() || null,
   };
 
-  // Update cache immediately
+  // Persist locally and through the durable cloud outbox.
+  const row = cardToRow(card, userId);
+  await localDB.commitCardMutation({ table: 'cards', action: 'insert', payload: row });
   if (cache.cards) cache.cards.push(card);
   touch('cards');
   touchDeckCards(deckId);
-
-  // Persist locally and through the durable cloud outbox.
-  const row = cardToRow(card, userId);
-  await localDB.saveCard(row);
-  await persistMutations([{ table: 'cards', action: 'insert', payload: row }]);
+  announceSyncState();
+  if (isOnline()) void syncOfflineQueue().catch(console.error);
 
   return card;
 }
@@ -950,6 +957,8 @@ export async function updateCard(id: string, updates: Partial<Flashcard>): Promi
 }
 
 export async function deleteCard(cardId: string): Promise<void> {
+  await localDB.commitCardMutation({ table: 'cards', action: 'delete', payload: { id: cardId } });
+  deletedThisSession.add(cardId);
   // Update cache immediately
   const deletedCard = cache.cards?.find(c => c.id === cardId) || null;
   if (cache.cards) cache.cards = cache.cards.filter(c => c.id !== cardId);
@@ -957,8 +966,8 @@ export async function deleteCard(cardId: string): Promise<void> {
   // Cascade: invalidate review history cache since DB cascade deletes related reviews
   invalidateCache('reviewHistory');
 
-  await persistMutations([{ table: 'cards', action: 'delete', payload: { id: cardId } }]);
-  await localDB.deleteCard(cardId);
+  announceSyncState();
+  if (isOnline()) void syncOfflineQueue().catch(console.error);
 }
 
 // ── Review History ──

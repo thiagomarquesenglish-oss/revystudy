@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { addCard, getDeckAudios } from '@/lib/storage';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,8 @@ export default function AddCardPage() {
   const [back, setBack] = useState('');
   const [dictationAnswer, setDictationAnswer] = useState('');
   const [addedCount, setAddedCount] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const submitLock = useRef(false);
   const [key, setKey] = useState(0);
   const [activeEditor, setActiveEditor] = useState<Editor | null>(null);
   const [frontEditor, setFrontEditor] = useState<Editor | null>(null);
@@ -55,7 +57,9 @@ export default function AddCardPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isEmpty(front) || isEmpty(back)) return;
+    if (submitLock.current || isEmpty(front) || isEmpty(back)) return;
+    submitLock.current = true;
+    setSaving(true);
     try {
       await addCard(deckId!, front, back, selectedAudioId === 'none' ? null : selectedAudioId, cardType, dictationAnswer);
       setAddedCount(c => c + 1);
@@ -63,8 +67,12 @@ export default function AddCardPage() {
       setBack('');
       setDictationAnswer('');
       setKey(k => k + 1);
+      toast.success('Cartão adicionado!', { description: 'Você já pode criar o próximo cartão.' });
     } catch (err) {
       toast.error('Erro ao adicionar cartão');
+    } finally {
+      submitLock.current = false;
+      setSaving(false);
     }
   };
 
@@ -143,8 +151,8 @@ export default function AddCardPage() {
       </main>
       <div className="fixed bottom-0 left-0 right-0 z-10 bg-background border-t border-border" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="max-w-3xl mx-auto px-3 py-3">
-          <Button type="submit" form="add-card-form" className="w-full" disabled={isEmpty(front) || isEmpty(back)}>
-            Adicionar Cartão
+          <Button type="submit" form="add-card-form" className="w-full" disabled={saving || isEmpty(front) || isEmpty(back)}>
+            {saving ? 'Adicionando…' : 'Adicionar Cartão'}
           </Button>
         </div>
       </div>

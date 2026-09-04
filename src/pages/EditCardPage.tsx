@@ -85,8 +85,11 @@ export default function EditCardPage() {
 
   const handleDelete = async () => {
     if (cardId) {
+      try {
       await deleteCard(cardId);
+      toast.success('Cartão excluído');
       navigate(-1);
+      } catch { toast.error('Não foi possível excluir o cartão. Tente novamente.'); }
     }
   };
 

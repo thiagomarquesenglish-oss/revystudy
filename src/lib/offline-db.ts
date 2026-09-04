@@ -183,6 +183,19 @@ async function replaceAllByDeck(storeName: string, deckId: string, items: any[])
 // ── Local cache (mirrors Supabase data locally) ──
 
 export const localDB = {
+  // Commit the visible change and its retry record together, without waiting for network.
+  async commitCardMutation(mutation: NewQueuedMutation): Promise<void> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(['cards', 'queue'], 'readwrite');
+      if (mutation.action === 'delete') tx.objectStore('cards').delete(mutation.payload.id);
+      else tx.objectStore('cards').put(mutation.payload);
+      tx.objectStore('queue').put({ ...mutation, id: crypto.randomUUID(), timestamp: Date.now() });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error('Não foi possível salvar no aparelho'));
+    });
+  },
   // Decks
   getDecks: () => getAllFromStore<any>('decks'),
   saveDeck: (deck: any) => putInStore('decks', deck),
