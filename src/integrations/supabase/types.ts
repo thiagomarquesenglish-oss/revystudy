@@ -257,23 +257,29 @@ export type Database = {
       review_history: {
         Row: {
           card_id: string
+          exercise_mode: string | null
           id: string
           rating: string
           reviewed_at: string
+          skill: string | null
           user_id: string
         }
         Insert: {
           card_id: string
+          exercise_mode?: string | null
           id?: string
           rating: string
           reviewed_at?: string
+          skill?: string | null
           user_id: string
         }
         Update: {
           card_id?: string
+          exercise_mode?: string | null
           id?: string
           rating?: string
           reviewed_at?: string
+          skill?: string | null
           user_id?: string
         }
         Relationships: [

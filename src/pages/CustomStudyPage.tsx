@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getDecks, getCardsByDeck, getDeckAudios } from '@/lib/storage';
+import { addReviewHistory, getCardReviewRows, getDecks, getCardsByDeck, getDeckAudios } from '@/lib/storage';
 import { prepareHtml, prepareAudio } from '@/lib/study-media';
 import StudyMedia from '@/components/StudyMedia';
 import { Deck, Flashcard } from '@/lib/types';
@@ -10,11 +10,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { Play, Pause, Sparkles, Volume2, Image as ImageIcon, Type, Shuffle } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { readSituation, translationSupportLevel } from '@/lib/situation';
+import { readSituation } from '@/lib/situation';
 import { compareDictation } from '@/lib/dictation';
 import { Textarea } from '@/components/ui/textarea';
-
-type Mode = 'audio' | 'image' | 'text';
+import { availableSituationModes, chooseAdaptiveMode, exerciseInfo, parseAdaptiveEvent, type AdaptiveEvent, type ExerciseMode } from '@/lib/adaptive-study';
 
 interface Piece {
   audioSrc: string | null;
@@ -134,14 +133,15 @@ export default function CustomStudyPage() {
 
   const [order, setOrder] = useState<Flashcard[]>([]);
   const [index, setIndex] = useState(0);
-  const [mode, setMode] = useState<Mode>('text');
+  const [mode, setMode] = useState<ExerciseMode>('text-comprehension');
   const [revealed, setRevealed] = useState(false);
   const [seen, setSeen] = useState(0);
   const [showTranslation, setShowTranslation] = useState(false);
   const [typed, setTyped] = useState('');
   const [dictationResult, setDictationResult] = useState<ReturnType<typeof compareDictation> | null>(null);
   const [resolvedDeckAudio, setResolvedDeckAudio] = useState<ResolvedDeckAudio>({ cardId: null, url: null });
-  const lastModeRef = useRef<Mode | null>(null);
+  const lastModeRef = useRef<ExerciseMode | null>(null);
+  const [adaptiveEvents,setAdaptiveEvents]=useState<Record<string,AdaptiveEvent[]>>({});
 
   useEffect(() => {
     (async () => {
@@ -156,6 +156,11 @@ export default function CustomStudyPage() {
   const current = order[index] || null;
   const currentId = current?.id ?? null;
   const currentAudioId = current?.audioId ?? null;
+
+  useEffect(()=>{
+    if(!currentId||adaptiveEvents[currentId])return;
+    void getCardReviewRows(currentId).then(rows=>setAdaptiveEvents(old=>({...old,[currentId]:rows.map(parseAdaptiveEvent).filter((event):event is AdaptiveEvent=>!!event)})));
+  },[currentId,adaptiveEvents]);
 
   useEffect(() => {
     order.slice(index, index + 3).forEach(card => {
@@ -201,36 +206,30 @@ export default function CustomStudyPage() {
   const deckAudioPending = Boolean(currentAudioId && resolvedDeckAudio.cardId !== currentId);
   const audioSrc = front?.audioSrc || back?.audioSrc || deckAudioUrl;
 
-  const enabledModes = useMemo(() => {
-    const m: Mode[] = [];
-    if (useAudio) m.push('audio');
-    if (useImage) m.push('image');
-    if (useText) m.push('text');
-    return m.length ? m : (['text'] as Mode[]);
-  }, [useAudio, useImage, useText]);
-
   /** Modes actually available for the current card */
   const availableModes = useMemo(() => {
-    if (!front || !back) return [] as Mode[];
-    const list: Mode[] = [];
-    if (enabledModes.includes('audio') && audioSrc) list.push('audio');
-    if (enabledModes.includes('image') && (front.imagesHtml || back.imagesHtml)) list.push('image');
-    if (enabledModes.includes('text') && (hasText(front.textHtml) || hasText(back.textHtml))) list.push('text');
+    if (!front || !back) return [] as ExerciseMode[];
+    if(situation){
+      return availableSituationModes({hasImage:!!(front.imagesHtml||back.imagesHtml),hasAudio:!!audioSrc,hasEnglish:!!situation.english,hasPortuguese:!!situation.portuguese}).filter(candidate=>candidate.startsWith('audio')||candidate==='image-audio'?useAudio:candidate==='image-production'?useImage:useText);
+    }
+    const list:ExerciseMode[]=[];
+    if(useAudio&&audioSrc)list.push('audio-comprehension');
+    if(useImage&&(front.imagesHtml||back.imagesHtml))list.push('image-production');
+    if(useText&&(hasText(front.textHtml)||hasText(back.textHtml)))list.push('text-comprehension');
     return list;
-  }, [front, back, audioSrc, enabledModes]);
+  },[front,back,audioSrc,situation,useAudio,useImage,useText]);
 
   // Pick a random available mode whenever the card changes. When possible,
   // avoid repeating the same format twice in a row so the practice feels mixed.
   useLayoutEffect(() => {
     if (!started || !currentId || deckAudioPending || availableModes.length === 0) return;
-    // Balanced rotation guarantees all enabled skills appear instead of relying on chance.
-    const nextMode = availableModes[seen % availableModes.length];
+    const nextMode = chooseAdaptiveMode(availableModes,adaptiveEvents[currentId]||[],lastModeRef.current);
     lastModeRef.current = nextMode;
     setMode(nextMode);
     setRevealed(false);
     setShowTranslation(false);
     setTyped(''); setDictationResult(null);
-  }, [started, currentId, index, seen, deckAudioPending, availableModes]);
+  }, [started, currentId, index, seen, deckAudioPending, availableModes,adaptiveEvents]);
 
   const next = useCallback(() => {
     setRevealed(false);
@@ -251,6 +250,15 @@ export default function CustomStudyPage() {
       return n;
     });
   }, [current?.id, order.length]);
+
+  const recordResult=useCallback((successful:boolean)=>{
+    if(!current)return;
+    const rating=successful?'good':'again';
+    const event:AdaptiveEvent={rating,skill:exerciseInfo[mode].skill,mode,reviewedAt:new Date().toISOString()};
+    setAdaptiveEvents(old=>({...old,[current.id]:[...(old[current.id]||[]),event]}));
+    void addReviewHistory(current.id,rating,{skill:event.skill,exerciseMode:mode});
+    next();
+  },[current,mode,next]);
 
   if (loading) {
     return (
@@ -280,17 +288,17 @@ export default function CustomStudyPage() {
               <h2 className="text-lg font-bold">Prática livre e misturada</h2>
             </div>
             <p className="text-sm text-muted-foreground">
-              Sem limite e sem afetar suas revisões. Cada situação alterna automaticamente entre
-              compreensão, produção e ditado.
+              Sem limite e sem alterar a agenda. O aplicativo prioriza automaticamente a habilidade
+              que mais precisa de treino em cada situação.
             </p>
           </div>
 
           <div className="space-y-2">
             <h3 className="text-sm font-medium text-muted-foreground">Exercícios na mistura</h3>
             {([
-              { key: 'audio', label: 'Ditado: áudio → escrever', icon: Volume2, value: useAudio, set: setUseAudio },
-              { key: 'image', label: 'Produção: imagem → falar', icon: ImageIcon, value: useImage, set: setUseImage },
-              { key: 'text', label: 'Compreensão: inglês → entender', icon: Type, value: useText, set: setUseText },
+              { key: 'audio', label: 'Listening, associação e ditado', icon: Volume2, value: useAudio, set: setUseAudio },
+              { key: 'image', label: 'Produção a partir da imagem', icon: ImageIcon, value: useImage, set: setUseImage },
+              { key: 'text', label: 'Compreensão e produção por texto', icon: Type, value: useText, set: setUseText },
             ] as const).map(({ key, label, icon: Icon, value, set }) => (
               <div key={key} className="flex items-center justify-between p-3 rounded-xl bg-card border border-border">
                 <div className="flex items-center gap-3 text-sm">
@@ -302,7 +310,7 @@ export default function CustomStudyPage() {
             ))}
           </div>
 
-          <p className="text-xs text-muted-foreground">{cards.length} cartões disponíveis neste baralho.</p>
+          <p className="text-xs text-muted-foreground">{cards.length} situações disponíveis. Cada uma mantém uma única agenda de revisão.</p>
         </main>
 
         <div className="fixed bottom-0 left-0 right-0 z-10 bg-background border-t border-border" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
@@ -339,32 +347,32 @@ export default function CustomStudyPage() {
     );
   }
 
-  const promptImages = situation?.mediaHtml || front.imagesHtml || back.imagesHtml;
+  const promptImages = front.imagesHtml || back.imagesHtml;
   const promptText = situation ? situation.english : (hasText(front.textHtml) ? front.textHtml : back.textHtml);
-  const support = situation ? translationSupportLevel(current.reviewCount) : 'visible';
   const situationAnswer = situation ? `<p lang="en"><strong>${situation.english}</strong></p>${situation.context ? `<p class="text-base text-muted-foreground" lang="en">${situation.context}</p>` : ''}` : '';
-  const answerText = situation ? situationAnswer : mode === 'text'
+  const answerText = situation ? situationAnswer : mode === 'text-comprehension'
     ? (hasText(front.textHtml) ? back.textHtml : front.textHtml)
     : front.textHtml + back.textHtml;
-  const answerImages = mode === 'image'
+  const answerImages = !situation && mode === 'image-production'
     ? (front.imagesHtml ? back.imagesHtml : front.imagesHtml)
-    : front.imagesHtml + back.imagesHtml;
+    : situation ? '' : front.imagesHtml + back.imagesHtml;
+  const isDictation=mode==='audio-dictation';
 
   return (
     <div className="min-h-screen bg-background safe-page overflow-hidden">
       <PageHeader
         title={deck.name}
         onBack={() => setStarted(false)}
-        rightContent={<span className="text-xs text-muted-foreground">{seen} praticados</span>}
+        rightContent={<span className="text-xs text-muted-foreground">{exerciseInfo[mode].label}</span>}
       />
       <main className="max-w-3xl mx-auto px-3 pb-40" style={{ paddingTop: 'calc(var(--app-header-height, 48px) + 1rem)' }}>
         <div className="flex flex-col items-center w-full max-w-lg mx-auto">
           {/* Prompt */}
           {deckAudioPending ? <div role="status" aria-label="Preparando cartão" className="min-h-64 w-full bg-muted/20 rounded-xl" /> :
-          <StudyMedia html={mode === 'image' ? promptImages : ''} key={`prompt-${current.id}-${mode}`}>
+          <StudyMedia html={['image-production','image-audio'].includes(mode) ? promptImages : ''} key={`prompt-${current.id}-${mode}`}>
           <div className="w-full pt-10 flex flex-col items-center gap-4">
-            {mode === 'audio' && audioSrc && <><AudioButton src={audioSrc} big key={`a-${current.id}`} />{situation && <div className="w-full space-y-3 mt-4"><label htmlFor="mixed-dictation" className="text-sm font-medium">O que você ouviu?</label><Textarea id="mixed-dictation" value={typed} onChange={e=>setTyped(e.target.value)} placeholder="Escreva em inglês..." disabled={!!dictationResult} lang="en" spellCheck={false}/>{!dictationResult&&<Button className="w-full" disabled={!typed.trim()} onClick={()=>setDictationResult(compareDictation(situation.english,typed))}>Conferir</Button>}{dictationResult&&<p role="status" className={dictationResult.correct?'text-green-500':'text-amber-500'}>{dictationResult.correct?'Correto!':'Compare com a resposta abaixo.'}</p>}</div>}</>}
-            {mode === 'image' && promptImages && (
+            {['audio-comprehension','audio-dictation'].includes(mode) && audioSrc && <><AudioButton src={audioSrc} big key={`a-${current.id}`} />{isDictation&&situation&&<div className="w-full space-y-3 mt-4"><label htmlFor="mixed-dictation" className="text-sm font-medium">O que você ouviu?</label><Textarea id="mixed-dictation" value={typed} onChange={e=>setTyped(e.target.value)} placeholder="Escreva em inglês..." disabled={!!dictationResult} lang="en" spellCheck={false}/>{!dictationResult&&<Button className="w-full" disabled={!typed.trim()} onClick={()=>setDictationResult(compareDictation(situation.english,typed))}>Conferir</Button>}{dictationResult&&<p role="status" className={dictationResult.correct?'text-green-500':'text-amber-500'}>{dictationResult.correct?'Correto!':'Compare com a resposta abaixo.'}</p>}</div>}</>}
+            {mode === 'image-production' && promptImages && (
               <div className="flex flex-col items-center gap-4">
               {situation?.context && <p className="text-base text-muted-foreground text-center" lang="en">{situation.context}</p>}
               <div
@@ -373,17 +381,19 @@ export default function CustomStudyPage() {
               />
               </div>
             )}
-            {mode === 'text' && (
+            {mode==='image-audio'&&<div className="flex flex-col items-center gap-5"><div className="rich-text-render max-w-full flex justify-center" dangerouslySetInnerHTML={{__html:promptImages}}/>{audioSrc&&<AudioButton src={audioSrc} big/>}</div>}
+            {mode === 'text-comprehension' && (
               <div
                 className="rich-text-render text-2xl text-white text-center leading-relaxed break-words max-w-full"
                 dangerouslySetInnerHTML={{ __html: promptText }}
               />
             )}
+            {mode==='translation-production'&&situation&&<div className="text-2xl text-white text-center leading-relaxed" lang="pt">{situation.portuguese}</div>}
           </div>
           </StudyMedia>}
 
           {/* Reveal */}
-          {(revealed || (mode === 'audio' && !!dictationResult)) && (
+          {(revealed || (isDictation && !!dictationResult)) && (
             <StudyMedia html={answerImages} key={`reveal-${current.id}`}>
             <div className="w-full mt-8 space-y-4">
               <hr className="w-full border-0 h-px bg-muted-foreground/20" />
@@ -392,13 +402,13 @@ export default function CustomStudyPage() {
                   className="rich-text-render text-2xl text-white text-center leading-relaxed break-words max-w-full"
                   dangerouslySetInnerHTML={{ __html: answerText }}
                 />
-                {situation?.portuguese && (support === 'visible' || showTranslation) && <p className="text-base text-muted-foreground text-center" lang="pt">{situation.portuguese}</p>}
-                {situation?.portuguese && support !== 'visible' && !showTranslation && <Button type="button" variant="ghost" size="sm" onClick={() => setShowTranslation(true)}>{support === 'hint' ? 'Preciso de uma pista' : 'Ver tradução'}</Button>}
+                {situation?.portuguese && mode!=='translation-production' && showTranslation && <p className="text-base text-muted-foreground text-center" lang="pt">{situation.portuguese}</p>}
+                {situation?.portuguese && mode!=='translation-production' && !showTranslation && <Button type="button" variant="ghost" size="sm" onClick={() => setShowTranslation(true)}>Mostrar significado</Button>}
                 <div
                   className="rich-text-render text-2xl text-white text-center leading-relaxed break-words max-w-full"
                   dangerouslySetInnerHTML={{ __html: answerImages }}
                 />
-                {mode !== 'audio' && audioSrc && <AudioButton src={audioSrc} key={`r-${current.id}`} />}
+                {!['audio-comprehension','audio-dictation','image-audio'].includes(mode) && audioSrc && <AudioButton src={audioSrc} key={`r-${current.id}`} />}
               </div>
             </div>
             </StudyMedia>
@@ -408,23 +418,15 @@ export default function CustomStudyPage() {
 
       <div className="fixed bottom-0 left-0 right-0 z-10 bg-background border-t border-border" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="max-w-lg mx-auto px-3 py-3 flex gap-2">
-          {!revealed && !(mode === 'audio' && dictationResult) ? (
+          {!revealed && !(isDictation && dictationResult) ? (
             <Button
               className="flex-1 bg-card hover:bg-card/80 text-foreground rounded-full py-6"
-              onClick={() => mode === 'audio' && situation ? undefined : setRevealed(true)}
-              disabled={mode === 'audio' && !!situation}
+              onClick={() => isDictation && situation ? undefined : setRevealed(true)}
+              disabled={isDictation && !!situation}
             >
-              {mode === 'audio' && situation ? 'Digite a frase acima' : 'Mostrar cartão'}
+              {isDictation && situation ? 'Digite a frase acima' : 'Mostrar resposta'}
             </Button>
-          ) : (
-            <Button
-              className="flex-1 text-white hover:text-white font-bold rounded-full py-6"
-              style={{ backgroundColor: '#2652cf' }}
-              onClick={next}
-            >
-              Próximo
-            </Button>
-          )}
+          ) : isDictation ? <Button className="flex-1 text-white font-bold rounded-full py-6" onClick={()=>recordResult(!!dictationResult?.correct)}>Continuar</Button> : <><Button variant="destructive" className="flex-1 rounded-full py-6" onClick={()=>recordResult(false)}>Não consegui</Button><Button className="flex-1 text-white font-bold rounded-full py-6" onClick={()=>recordResult(true)}>Consegui</Button></>}
         </div>
       </div>
     </div>

@@ -972,16 +972,27 @@ export async function deleteCard(cardId: string): Promise<void> {
 
 // ── Review History ──
 
-export async function addReviewHistory(cardId: string, rating: string): Promise<void> {
+export async function addReviewHistory(cardId: string, rating: string, adaptive?: {skill:string;exerciseMode:string}): Promise<void> {
   const userId = await getCachedUserId();
 
-  const row = { id: crypto.randomUUID(), card_id: cardId, rating, user_id: userId, reviewed_at: new Date().toISOString() };
+  const row = { id: crypto.randomUUID(), card_id: cardId, rating, user_id: userId, reviewed_at: new Date().toISOString(),skill:adaptive?.skill||null,exercise_mode:adaptive?.exerciseMode||null };
 
   // Invalidate cache immediately
   invalidateCache('reviewHistory');
 
   await localDB.saveReview(row);
   await persistMutations([{ table: 'review_history', action: 'insert', payload: row }]);
+}
+
+export interface CardReviewRow { id:string;card_id:string;rating:string;user_id:string;reviewed_at:string;skill:string|null;exercise_mode:string|null }
+
+export async function getCardReviewRows(cardId: string): Promise<CardReviewRow[]> {
+  const local = (await localDB.getReviewHistory() as CardReviewRow[]).filter(row => row.card_id === cardId);
+  if (!isOnline()) return local;
+  const { data, error } = await supabase.from('review_history').select('*').eq('card_id', cardId).order('reviewed_at', { ascending: true });
+  if (error) return local;
+  await Promise.all((data || []).map(row => localDB.saveReview(row)));
+  return data || local;
 }
 
 async function fetchReviewHistoryFromDB(): Promise<{ date: string; count: number }[]> {

@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
+import { exerciseInfo, type ExerciseMode } from '@/lib/adaptive-study';
 import {
   Drawer,
   DrawerContent,
@@ -196,7 +197,7 @@ export default function StudyPage() {
     };
   }, []);
 
-  const handleRate = useCallback((rating: Rating) => {
+  const handleRate = useCallback((rating: Rating, mode?: ExerciseMode) => {
     if (!currentCard) return;
 
     const updates = processReview(currentCard, rating);
@@ -238,7 +239,7 @@ export default function StudyPage() {
 
     // Persist to DB in background
     updateCard(currentCard.id, updates).catch(() => toast.error('Não foi possível salvar o progresso deste cartão.'));
-    addReviewHistory(currentCard.id, rating).catch(() => toast.error('Não foi possível salvar esta revisão no histórico.'));
+    addReviewHistory(currentCard.id, rating, mode ? {skill:exerciseInfo[mode].skill,exerciseMode:mode} : undefined).catch(() => toast.error('Não foi possível salvar esta revisão no histórico.'));
   }, [currentCard, queue, stats, deck, advanceToNext]);
 
   // Compute remaining counts from the active queue
