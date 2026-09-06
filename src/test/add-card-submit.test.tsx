@@ -13,7 +13,7 @@ import AddCardPage from '@/pages/AddCardPage';
 it('submits only once while saving and confirms and clears after success', async () => {
   let finish!: () => void;
   mocks.add.mockImplementation(() => new Promise<void>(resolve => { finish = resolve; }));
-  render(<MemoryRouter initialEntries={['/deck/test/add']}><Routes><Route path="/deck/:deckId/add" element={<AddCardPage />} /></Routes></MemoryRouter>);
+  render(<MemoryRouter initialEntries={['/deck/test/add?classic=1']}><Routes><Route path="/deck/:deckId/add" element={<AddCardPage />} /></Routes></MemoryRouter>);
   const inputs = screen.getAllByRole('textbox');
   fireEvent.change(inputs[0], { target: { value: 'hello' } });
   fireEvent.change(inputs[1], { target: { value: 'olá' } });

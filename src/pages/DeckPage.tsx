@@ -207,9 +207,9 @@ export default function DeckPage() {
               <Sparkles className="h-5 w-5 text-primary" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-bold text-foreground">Prática livre</span>
+            <span className="block text-sm font-bold text-foreground">Compreensão e produção</span>
               <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
-                Cartões sem agendamento
+                Imagem, contexto e áudio em exercícios automáticos
               </span>
             </span>
             <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
@@ -249,7 +249,7 @@ export default function DeckPage() {
           )}
           <Button className="flex-1 gap-2 bg-card hover:bg-card/80 text-foreground" onClick={() => navigate(`/deck/${deckId}/add`)}>
             <Plus className="w-4 h-4" />
-            Adicionar cartão
+              Criar situação
           </Button>
         </div>
       </div>

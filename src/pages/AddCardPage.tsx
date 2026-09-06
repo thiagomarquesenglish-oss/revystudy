@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import PageHeader from '@/components/PageHeader';
 import DictationAnswerField from '@/components/DictationAnswerField';
 import CardPreview from '@/components/CardPreview';
+import SituationAddForm from '@/components/SituationAddForm';
 import type { Editor } from '@tiptap/react';
 import {
   Select,
@@ -28,6 +29,7 @@ export default function AddCardPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const cardType: 'standard' | 'typing' = searchParams.get('type') === 'typing' ? 'typing' : 'standard';
+  const classic = searchParams.get('classic') === '1' || searchParams.get('type') === 'typing';
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
   const [dictationAnswer, setDictationAnswer] = useState('');
@@ -87,8 +89,9 @@ export default function AddCardPage() {
 
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
-      <PageHeader title={cardType === 'typing' ? 'Novo Cartão (Digitar)' : 'Novo Cartão'} onBack={() => navigate(`/deck/${deckId}`)} />
+      <PageHeader title={classic ? 'Editor clássico' : 'Nova situação'} onBack={() => navigate(`/deck/${deckId}`)} />
       <main className="max-w-3xl mx-auto px-3 space-y-4" style={{ paddingTop: 'calc(var(--app-header-height, 48px) + 1rem)' }}>
+        {!classic ? <><div className="space-y-2"><h1 className="text-xl font-bold">Cadastre uma vez. Pratique de três formas.</h1><p className="text-sm text-muted-foreground">A situação vira compreensão, produção e ditado automaticamente.</p></div><SituationAddForm deckId={deckId!}/><Button variant="ghost" className="w-full" onClick={()=>navigate(`/deck/${deckId}/add?classic=1`)}>Usar editor clássico</Button></> : <>
         <div className="space-y-2"><h1 className="text-xl font-bold">Monte seu cartão</h1><p className="text-sm text-muted-foreground">Adicione texto, imagem ou áudio. Toque primeiro no lado que deseja editar.</p></div>
         <EditorToolbar editor={activeEditor} />
 
@@ -148,7 +151,9 @@ export default function AddCardPage() {
             </p>
           )}
         </form>
+      </>}
       </main>
+      {classic &&
       <div className="fixed bottom-0 left-0 right-0 z-10 bg-background border-t border-border" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="max-w-3xl mx-auto px-3 py-3">
           <Button type="submit" form="add-card-form" className="w-full" disabled={saving || isEmpty(front) || isEmpty(back)}>
@@ -156,6 +161,7 @@ export default function AddCardPage() {
           </Button>
         </div>
       </div>
+      }
     </div>
   );
 }

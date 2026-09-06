@@ -227,7 +227,7 @@ export default function DecksPage() {
 
         </div>
 
-        <p className="text-xs text-muted-foreground">{filteredCards.length} {filteredCards.length === 1 ? 'cartão' : 'cartões'}</p>
+        <p className="text-xs text-muted-foreground">{filteredCards.length} {filteredCards.length === 1 ? 'situação' : 'situações'}</p>
 
         {filteredCards.length === 0 ? (
           <div className="text-center py-12">

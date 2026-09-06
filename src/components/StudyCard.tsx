@@ -4,6 +4,7 @@ import { getNextReviewLabel } from '@/lib/srs';
 import { supabase } from '@/integrations/supabase/client';
 import { getDeckAudios } from '@/lib/storage';
 import StudyMedia from './StudyMedia';
+import { readSituation, translationSupportLevel } from '@/lib/situation';
 import { Play, Pause, Check, X } from 'lucide-react';
 
 /** Normalize text for typing comparison: lowercase, strip accents, remove punctuation, collapse spaces */
@@ -199,6 +200,20 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
   }));
   const isTyping = card.cardType === 'typing';
   const expectedText = useMemo(() => htmlToPlainText(card.back), [card.back]);
+  const supportedBack = useMemo(() => {
+    const situation = readSituation(card.front, card.back);
+    const level = translationSupportLevel(card.reviewCount);
+    if (!situation?.portuguese || level === 'visible') return card.back;
+    const div = document.createElement('div'); div.innerHTML = card.back;
+    const translation = div.querySelector('[data-translation-pt]');
+    if (translation) {
+      const details = document.createElement('details'); details.className = 'mt-4 text-base text-muted-foreground';
+      const summary = document.createElement('summary'); summary.className = 'cursor-pointer text-sm';
+      summary.textContent = level === 'hint' ? 'Preciso de uma pista' : 'Ver tradução';
+      details.append(summary, translation); div.append(details);
+    }
+    return div.innerHTML;
+  }, [card.front, card.back, card.reviewCount]);
 
   const handleCheck = () => {
     if (!typed.trim()) return;
@@ -260,8 +275,8 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
 
       {flipped && (
         <>
-          <StudyMedia html={card.back} key={`back-${card.id}`}>
-            <CardContent html={card.back} audioSrc={backAudioSrc} autoPlay={Boolean(backAudioSrc)} />
+          <StudyMedia html={supportedBack} key={`back-${card.id}`}>
+            <CardContent html={supportedBack} audioSrc={backAudioSrc} autoPlay={Boolean(backAudioSrc)} />
           </StudyMedia>
         </>
       )}
