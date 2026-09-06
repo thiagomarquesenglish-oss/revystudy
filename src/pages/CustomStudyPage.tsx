@@ -210,7 +210,7 @@ export default function CustomStudyPage() {
   const availableModes = useMemo(() => {
     if (!front || !back) return [] as ExerciseMode[];
     if(situation){
-      return availableSituationModes({hasImage:!!(front.imagesHtml||back.imagesHtml),hasAudio:!!audioSrc,hasEnglish:!!situation.english,hasPortuguese:!!situation.portuguese}).filter(candidate=>candidate.startsWith('audio')||candidate==='image-audio'?useAudio:candidate==='image-production'?useImage:useText);
+      return availableSituationModes({hasImage:!!(front.imagesHtml||back.imagesHtml),hasAudio:!!audioSrc,hasEnglish:!!situation.english,hasPortuguese:!!situation.portuguese}).filter(candidate=>candidate.startsWith('audio')||candidate==='image-audio'?useAudio:candidate.includes('image')?useImage:useText);
     }
     const list:ExerciseMode[]=[];
     if(useAudio&&audioSrc)list.push('audio-comprehension');
@@ -369,7 +369,7 @@ export default function CustomStudyPage() {
         <div className="flex flex-col items-center w-full max-w-lg mx-auto">
           {/* Prompt */}
           {deckAudioPending ? <div role="status" aria-label="Preparando cartão" className="min-h-64 w-full bg-muted/20 rounded-xl" /> :
-          <StudyMedia html={['image-production','image-audio'].includes(mode) ? promptImages : ''} key={`prompt-${current.id}-${mode}`}>
+          <StudyMedia html={['image-production','image-audio','image-translation-production'].includes(mode) ? promptImages : ''} key={`prompt-${current.id}-${mode}`}>
           <div className="w-full pt-10 flex flex-col items-center gap-4">
             {['audio-comprehension','audio-dictation'].includes(mode) && audioSrc && <><AudioButton src={audioSrc} big key={`a-${current.id}`} />{isDictation&&situation&&<div className="w-full space-y-3 mt-4"><label htmlFor="mixed-dictation" className="text-sm font-medium">O que você ouviu?</label><Textarea id="mixed-dictation" value={typed} onChange={e=>setTyped(e.target.value)} placeholder="Escreva em inglês..." disabled={!!dictationResult} lang="en" spellCheck={false}/>{!dictationResult&&<Button className="w-full" disabled={!typed.trim()} onClick={()=>setDictationResult(compareDictation(situation.english,typed))}>Conferir</Button>}{dictationResult&&<p role="status" className={dictationResult.correct?'text-green-500':'text-amber-500'}>{dictationResult.correct?'Correto!':'Compare com a resposta abaixo.'}</p>}</div>}</>}
             {mode === 'image-production' && promptImages && (
@@ -381,6 +381,7 @@ export default function CustomStudyPage() {
               </div>
             )}
             {mode==='image-audio'&&<div className="flex flex-col items-center gap-5"><div className="rich-text-render max-w-full flex justify-center" dangerouslySetInnerHTML={{__html:promptImages}}/>{audioSrc&&<AudioButton src={audioSrc} big/>}</div>}
+            {mode==='image-translation-production'&&situation&&<div className="flex flex-col items-center gap-5"><div className="rich-text-render max-w-full flex justify-center" dangerouslySetInnerHTML={{__html:promptImages}}/><div className="text-xl text-white text-center" lang="pt">{situation.portuguese}</div></div>}
             {mode === 'text-comprehension' && (
               <div
                 className="rich-text-render text-2xl text-white text-center leading-relaxed break-words max-w-full"
@@ -401,8 +402,8 @@ export default function CustomStudyPage() {
                   className="rich-text-render text-2xl text-white text-center leading-relaxed break-words max-w-full"
                   dangerouslySetInnerHTML={{ __html: answerText }}
                 />
-                {situation?.portuguese && mode!=='translation-production' && showTranslation && <p className="text-base text-muted-foreground text-center" lang="pt">{situation.portuguese}</p>}
-                {situation?.portuguese && mode!=='translation-production' && !showTranslation && <Button type="button" variant="ghost" size="sm" onClick={() => setShowTranslation(true)}>Mostrar significado</Button>}
+                {situation?.portuguese && !['translation-production','image-translation-production'].includes(mode) && showTranslation && <p className="text-base text-muted-foreground text-center" lang="pt">{situation.portuguese}</p>}
+                {situation?.portuguese && !['translation-production','image-translation-production'].includes(mode) && !showTranslation && <Button type="button" variant="ghost" size="sm" onClick={() => setShowTranslation(true)}>Mostrar significado</Button>}
                 <div
                   className="rich-text-render text-2xl text-white text-center leading-relaxed break-words max-w-full"
                   dangerouslySetInnerHTML={{ __html: answerImages }}
