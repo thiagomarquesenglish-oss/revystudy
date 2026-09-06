@@ -9,6 +9,8 @@ import EditorToolbar from '@/components/EditorToolbar';
 import PageHeader from '@/components/PageHeader';
 import DictationAnswerField from '@/components/DictationAnswerField';
 import CardPreview from '@/components/CardPreview';
+import SituationEditForm from '@/components/SituationEditForm';
+import { readSituation } from '@/lib/situation';
 import { toast } from 'sonner';
 import type { Editor } from '@tiptap/react';
 import {
@@ -43,6 +45,7 @@ export default function EditCardPage() {
   const [audios, setAudios] = useState<{ id: string; name: string }[]>([]);
   const [selectedAudioId, setSelectedAudioId] = useState<string>('none');
   const [hasAudios, setHasAudios] = useState(false);
+  const [deckId, setDeckId] = useState('');
   const ready = front !== null;
 
   useEffect(() => {
@@ -58,6 +61,7 @@ export default function EditCardPage() {
         setAudios(mapped);
         setHasAudios(mapped.length > 0);
         setSelectedAudioId(card.audioId || 'none');
+        setDeckId(card.deckId);
         setFront(card.front);
         setBack(card.back);
         setDictationAnswer(card.dictationAnswer || '');
@@ -102,10 +106,12 @@ export default function EditCardPage() {
     setBackEditor(editor);
   }, []);
 
+  const situation = ready ? readSituation(front || '', back || '') : null;
+
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
       <PageHeader
-        title="Editar Cartão"
+        title={situation ? 'Editar situação' : 'Editar Cartão'}
         onBack={() => navigate(-1)}
         rightContent={
           <button onClick={() => setShowDelete(true)} className="text-muted-foreground hover:text-destructive transition-colors">
@@ -114,9 +120,9 @@ export default function EditCardPage() {
         }
       />
       <main className="max-w-3xl mx-auto px-3 space-y-4" style={{ paddingTop: 'calc(var(--app-header-height, 48px) + 1rem)' }}>
+        {situation ? <SituationEditForm cardId={cardId!} deckId={deckId} audioId={selectedAudioId==='none'?null:selectedAudioId} initial={situation} onSaved={()=>navigate(-1)}/> : <>
         <p className="text-sm text-muted-foreground">Atualize o texto ou use os botões abaixo para adicionar mídia.</p>
         <EditorToolbar editor={activeEditor} />
-
         <div className="space-y-4" style={{ visibility: ready ? 'visible' : 'hidden' }}>
           <div className="space-y-2">
             <Label>Frente</Label>
@@ -163,15 +169,16 @@ export default function EditCardPage() {
             </div>
           )}
         </div>
+        </>}
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 z-10 bg-background border-t border-border" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      {!situation && <div className="fixed bottom-0 left-0 right-0 z-10 bg-background border-t border-border" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="max-w-3xl mx-auto px-3 py-3">
           <Button onClick={handleSave} className="w-full" disabled={saving}>
             {saving ? 'Salvando...' : 'Salvar'}
           </Button>
         </div>
-      </div>
+      </div>}
 
       <AlertDialog open={showDelete} onOpenChange={setShowDelete}>
         <AlertDialogContent>
