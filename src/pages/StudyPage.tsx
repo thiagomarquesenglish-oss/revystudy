@@ -6,78 +6,19 @@ import { Rating, StudyStats, Flashcard, Deck } from '@/lib/types';
 import StudyCard from '@/components/StudyCard';
 import { prepareHtml } from '@/lib/study-media';
 import { toast } from 'sonner';
-import { Brain, MoreVertical, Pencil, Trash2, Clock, Flag } from 'lucide-react';
+import { Brain, MoreVertical, Pencil, Trash2, Flag } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { exerciseInfo, type ExerciseMode } from '@/lib/adaptive-study';
+import { pickQueueIndex, retryGap } from '@/lib/session-queue';
 import {
   Drawer,
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
 } from '@/components/ui/drawer';
-
-// Learn ahead limit in ms (20 minutes, same as Anki default)
-const LEARN_AHEAD_LIMIT_MS = 20 * 60 * 1000;
-
-/**
- * Pick the best next card from the queue, Anki-style:
- * 1. Due learning/relearning cards (dueDate <= now)
- * 2. Due review/new cards (dueDate <= now)
- * 3. Learn-ahead: learning/relearning cards within the learn-ahead window
- * Returns the index, or -1 if nothing is available.
- */
-function pickNextCard(queue: Flashcard[]): number {
-  const now = Date.now();
-
-  // Priority 1: overdue learning/relearning
-  let bestLearnIdx = -1;
-  let bestLearnDue = Infinity;
-  for (let i = 0; i < queue.length; i++) {
-    const c = queue[i];
-    const due = new Date(c.dueDate).getTime();
-    if ((c.status === 'learning' || c.status === 'relearning') && due <= now && due < bestLearnDue) {
-      bestLearnIdx = i;
-      bestLearnDue = due;
-    }
-  }
-  if (bestLearnIdx >= 0) return bestLearnIdx;
-
-  // Priority 2: due review/new cards
-  for (let i = 0; i < queue.length; i++) {
-    const c = queue[i];
-    if (new Date(c.dueDate).getTime() <= now) return i;
-  }
-
-  // Priority 3: learn-ahead — pick the earliest learning/relearning card within the window
-  let bestAheadIdx = -1;
-  let bestAheadDue = Infinity;
-  for (let i = 0; i < queue.length; i++) {
-    const c = queue[i];
-    const due = new Date(c.dueDate).getTime();
-    if ((c.status === 'learning' || c.status === 'relearning') && due <= now + LEARN_AHEAD_LIMIT_MS && due < bestAheadDue) {
-      bestAheadIdx = i;
-      bestAheadDue = due;
-    }
-  }
-  return bestAheadIdx;
-}
-
-/**
- * Get the earliest due time among remaining learning/relearning cards.
- */
-function getNextLearnDueTime(queue: Flashcard[]): number | null {
-  let earliest: number | null = null;
-  for (const c of queue) {
-    if (c.status === 'learning' || c.status === 'relearning') {
-      const t = new Date(c.dueDate).getTime();
-      if (earliest === null || t < earliest) earliest = t;
-    }
-  }
-  return earliest;
-}
 
 export default function StudyPage() {
   const { deckId } = useParams<{ deckId: string }>();
@@ -89,17 +30,16 @@ export default function StudyPage() {
   const [stats, setStats] = useState<StudyStats>({ totalReviewed: 0, again: 0, hard: 0, good: 0, easy: 0 });
   const [finished, setFinished] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [waiting, setWaiting] = useState(false);
-  const [countdown, setCountdown] = useState(0);
   const startTimeRef = useRef(Date.now());
-  const waitTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const queuePositionRef = useRef(0);
+  const retryAtRef = useRef(new Map<string,number>());
   const [showOptionsDrawer, setShowOptionsDrawer] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [cardsStudied, setCardsStudied] = useState(0);
 
   useEffect(() => {
     const upcoming = queue.filter(card => card.id !== currentCard?.id);
-    const first = pickNextCard(upcoming);
+    const first = pickQueueIndex(upcoming,queuePositionRef.current,retryAtRef.current);
     const candidates = [currentCard, first >= 0 ? upcoming[first] : null, ...upcoming.slice(0, 2)];
     candidates.forEach(card => {
       if (card) { void prepareHtml(card.front); void prepareHtml(card.back); }
@@ -108,53 +48,18 @@ export default function StudyPage() {
 
   // Pick the next card from the queue and set it as current
   const advanceToNext = useCallback((q: Flashcard[]) => {
-    if (waitTimerRef.current) {
-      clearInterval(waitTimerRef.current);
-      waitTimerRef.current = null;
-    }
-
     if (q.length === 0) {
       setCurrentCard(null);
-      setWaiting(false);
       setFinished(true);
       return;
     }
 
-    const idx = pickNextCard(q);
+    const idx = pickQueueIndex(q,queuePositionRef.current,retryAtRef.current);
     if (idx >= 0) {
       setCurrentCard(q[idx]);
-      setWaiting(false);
     } else {
-      // Nothing available now — check if there are future learning cards beyond learn-ahead window
-      const nextDue = getNextLearnDueTime(q);
-      if (nextDue !== null) {
-        // Start waiting with countdown
-        setCurrentCard(null);
-        setWaiting(true);
-        setCountdown(Math.max(0, Math.ceil((nextDue - Date.now()) / 1000)));
-
-        waitTimerRef.current = setInterval(() => {
-          const remaining = Math.max(0, Math.ceil((nextDue - Date.now()) / 1000));
-          setCountdown(remaining);
-          if (remaining <= 0) {
-            if (waitTimerRef.current) clearInterval(waitTimerRef.current);
-            waitTimerRef.current = null;
-            // Re-pick — the card should now be available
-            setWaiting(false);
-            const newIdx = pickNextCard(q);
-            if (newIdx >= 0) {
-              setCurrentCard(q[newIdx]);
-            } else {
-              setFinished(true);
-            }
-          }
-        }, 500);
-      } else {
-        // No learning cards left at all — session done
-        setCurrentCard(null);
-        setWaiting(false);
-        setFinished(true);
-      }
+      setCurrentCard(null);
+      setFinished(true);
     }
   }, []);
 
@@ -178,7 +83,7 @@ export default function StudyPage() {
         setFinished(true);
       } else {
         // Pick first card
-        const idx = pickNextCard(studyQueue);
+        const idx = pickQueueIndex(studyQueue,0,retryAtRef.current);
         if (idx >= 0) {
           setCurrentCard(studyQueue[idx]);
         } else {
@@ -189,13 +94,6 @@ export default function StudyPage() {
     }
     load();
   }, [deckId]);
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (waitTimerRef.current) clearInterval(waitTimerRef.current);
-    };
-  }, []);
 
   const handleRate = useCallback((rating: Rating, mode?: ExerciseMode) => {
     if (!currentCard) return;
@@ -212,12 +110,15 @@ export default function StudyPage() {
     setStats(newStats);
     setCardsStudied(prev => prev + 1);
 
-    // Build new queue: remove the current card, then re-add if still learning/relearning
+    queuePositionRef.current += 1;
+    // Repetitions inside this session use position, never elapsed minutes.
     let newQueue = queue.filter(c => c.id !== currentCard.id);
-
-    if (updatedCard.status === 'learning' || updatedCard.status === 'relearning') {
-      // Re-add to queue with updated data — it will rotate back
+    const gap=retryGap(rating);
+    if (gap !== null) {
+      retryAtRef.current.set(currentCard.id,queuePositionRef.current+gap);
       newQueue.push(updatedCard);
+    } else {
+      retryAtRef.current.delete(currentCard.id);
     }
 
     setQueue(newQueue);
@@ -268,18 +169,12 @@ export default function StudyPage() {
     return <div className="min-h-screen flex items-center justify-center"><p className="text-muted-foreground">Baralho não encontrado.</p></div>;
   }
 
-  const formatCountdown = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `${s}s`;
-  };
-
   return (
     <div className="min-h-screen bg-background safe-page overflow-hidden">
       <PageHeader
         title={deck.name}
         rightContent={
-          !finished && !waiting && currentCard ? (
+          !finished && currentCard ? (
             <div className="flex items-center gap-1">
               {currentCard.flagged && <Flag className="w-4 h-4 fill-red-500 text-red-500" />}
               <button
@@ -334,20 +229,6 @@ export default function StudyPage() {
               </>
             )}
             <Button onClick={() => navigate('/')}>Voltar ao Início</Button>
-          </div>
-        ) : waiting ? (
-          <div className="text-center py-12">
-            <Clock className="w-16 h-16 mx-auto text-muted-foreground mb-4 animate-pulse" />
-            <h2 className="text-2xl font-bold mb-2">Aguardando próximo cartão...</h2>
-            <p className="text-muted-foreground mb-4">
-              O próximo cartão estará disponível em
-            </p>
-            <p className="text-4xl font-bold font-mono text-primary mb-6">
-              {formatCountdown(countdown)}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {stats.totalReviewed} cartões revisados até agora
-            </p>
           </div>
         ) : currentCard ? (
           <StudyCard
