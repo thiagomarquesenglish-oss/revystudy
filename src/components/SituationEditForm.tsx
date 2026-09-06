@@ -25,11 +25,11 @@ function extension(file: File) {
 
 export default function SituationEditForm({ cardId, deckId, audioId, initial, onSaved }: { cardId: string; deckId: string; audioId: string|null; initial: SituationContent; onSaved: () => void }) {
   const existing = mediaDetails(initial.mediaHtml);
-  const [english,setEnglish]=useState(initial.english),[context,setContext]=useState(initial.context),[portuguese,setPortuguese]=useState(initial.portuguese);
+  const [english,setEnglish]=useState(initial.english),[portuguese,setPortuguese]=useState(initial.portuguese);
   const [image,setImage]=useState<File|null>(null),[audio,setAudio]=useState<File|null>(null);
   const [imageUrl,setImageUrl]=useState(existing.image),[audioUrl,setAudioUrl]=useState(existing.audio),[audioName,setAudioName]=useState(existing.audioName);
   const [saving,setSaving]=useState(false);
-  const ready=!!english.trim()&&!!context.trim()&&!!portuguese.trim()&&!!imageUrl&&(!!audioUrl||!!audioId);
+  const ready=!!english.trim()&&!!portuguese.trim()&&!!imageUrl&&(!!audioUrl||!!audioId);
   const pickImage=(file:File)=>{if(image&&imageUrl)URL.revokeObjectURL(imageUrl);setImage(file);setImageUrl(URL.createObjectURL(file));};
   const pickAudio=(file:File)=>{if(audio&&audioUrl)URL.revokeObjectURL(audioUrl);setAudio(file);setAudioUrl(URL.createObjectURL(file));setAudioName(file.name);};
   const save=async()=>{
@@ -44,7 +44,7 @@ export default function SituationEditForm({ cardId, deckId, audioId, initial, on
       const finalImage=image?await upload(image):imageUrl;
       const finalAudio=audio?await upload(audio):audioUrl;
       const media=`<img src="${escapeHtml(finalImage)}" alt="Situação visual">${finalAudio?`<div data-audio="true" data-src="${escapeHtml(finalAudio)}" data-filename="${escapeHtml(audioName)}" class="audio-node"><audio src="${escapeHtml(finalAudio)}" class="audio-node-element"></audio></div>`:''}`;
-      const html=buildSituationHtml({english:english.trim(),context:context.trim(),portuguese:portuguese.trim(),mediaHtml:media});
+      const html=buildSituationHtml({english:english.trim(),context:'',portuguese:portuguese.trim(),mediaHtml:media});
       await updateCard(cardId,{front:html.front,back:html.back,dictationAnswer:english.trim()});
       toast.success('Situação atualizada!');
       onSaved();
@@ -55,8 +55,8 @@ export default function SituationEditForm({ cardId, deckId, audioId, initial, on
   };
   return <>
     <section className="rounded-2xl border border-border bg-card p-4 space-y-4"><div className="flex gap-2"><Upload className="h-5 w-5 text-primary"/><div><h2 className="font-bold">1. Imagem e áudio</h2><p className="text-xs text-muted-foreground">Você pode manter os arquivos atuais ou substituí-los.</p></div></div><div className="grid gap-4 sm:grid-cols-2"><MediaDropBox kind="image" file={image} preview={imageUrl} onFile={pickImage} onClear={()=>{if(image&&imageUrl)URL.revokeObjectURL(imageUrl);setImage(null);setImageUrl('');}}/><MediaDropBox kind="audio" file={audio} preview={audioUrl} fileName={audioName} onFile={pickAudio} onClear={()=>{if(audio&&audioUrl)URL.revokeObjectURL(audioUrl);setAudio(null);setAudioUrl('');}}/></div></section>
-    <section className="rounded-2xl border border-border bg-card p-4 space-y-4"><div className="flex gap-2"><MessageSquareText className="h-5 w-5 text-primary"/><h2 className="font-bold">2. Frases</h2></div><div><Label htmlFor="english">Frase em inglês</Label><Input id="english" lang="en" value={english} onChange={e=>setEnglish(e.target.value)}/><p className="mt-1 text-xs text-muted-foreground">Esta mesma frase será usada para corrigir o ditado.</p></div><div><Label htmlFor="context">Contexto em inglês</Label><Input id="context" lang="en" value={context} onChange={e=>setContext(e.target.value)}/></div><div><Label htmlFor="portuguese">Frase em português</Label><Input id="portuguese" value={portuguese} onChange={e=>setPortuguese(e.target.value)}/><p className="mt-1 text-xs text-muted-foreground">Serve como apoio inicial e diminui conforme seu progresso.</p></div></section>
+    <section className="rounded-2xl border border-border bg-card p-4 space-y-4"><div className="flex gap-2"><MessageSquareText className="h-5 w-5 text-primary"/><h2 className="font-bold">2. Frases</h2></div><div><Label htmlFor="english">Frase em inglês</Label><Input id="english" lang="en" value={english} onChange={e=>setEnglish(e.target.value)}/><p className="mt-1 text-xs text-muted-foreground">Esta mesma frase será usada para corrigir o ditado.</p></div><div><Label htmlFor="portuguese">Frase em português</Label><Input id="portuguese" value={portuguese} onChange={e=>setPortuguese(e.target.value)}/><p className="mt-1 text-xs text-muted-foreground">Serve como apoio quando você precisar consultar o significado.</p></div></section>
     <Button type="button" onClick={save} className="w-full h-12" disabled={!ready||saving}>{saving?'Salvando…':'Salvar situação'}</Button>
-    {!ready&&<p className="text-xs text-center text-muted-foreground">Complete a imagem, o áudio e os três campos de texto.</p>}
+    {!ready&&<p className="text-xs text-center text-muted-foreground">Complete a imagem, o áudio e as duas frases.</p>}
   </>;
 }

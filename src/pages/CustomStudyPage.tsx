@@ -349,7 +349,7 @@ export default function CustomStudyPage() {
 
   const promptImages = front.imagesHtml || back.imagesHtml;
   const promptText = situation ? situation.english : (hasText(front.textHtml) ? front.textHtml : back.textHtml);
-  const situationAnswer = situation ? `<p lang="en"><strong>${situation.english}</strong></p>${situation.context ? `<p class="text-base text-muted-foreground" lang="en">${situation.context}</p>` : ''}` : '';
+  const situationAnswer = situation ? `<p lang="en"><strong>${situation.english}</strong></p>` : '';
   const answerText = situation ? situationAnswer : mode === 'text-comprehension'
     ? (hasText(front.textHtml) ? back.textHtml : front.textHtml)
     : front.textHtml + back.textHtml;
@@ -374,7 +374,6 @@ export default function CustomStudyPage() {
             {['audio-comprehension','audio-dictation'].includes(mode) && audioSrc && <><AudioButton src={audioSrc} big key={`a-${current.id}`} />{isDictation&&situation&&<div className="w-full space-y-3 mt-4"><label htmlFor="mixed-dictation" className="text-sm font-medium">O que você ouviu?</label><Textarea id="mixed-dictation" value={typed} onChange={e=>setTyped(e.target.value)} placeholder="Escreva em inglês..." disabled={!!dictationResult} lang="en" spellCheck={false}/>{!dictationResult&&<Button className="w-full" disabled={!typed.trim()} onClick={()=>setDictationResult(compareDictation(situation.english,typed))}>Conferir</Button>}{dictationResult&&<p role="status" className={dictationResult.correct?'text-green-500':'text-amber-500'}>{dictationResult.correct?'Correto!':'Compare com a resposta abaixo.'}</p>}</div>}</>}
             {mode === 'image-production' && promptImages && (
               <div className="flex flex-col items-center gap-4">
-              {situation?.context && <p className="text-base text-muted-foreground text-center" lang="en">{situation.context}</p>}
               <div
                 className="rich-text-render max-w-full flex justify-center"
                 dangerouslySetInnerHTML={{ __html: promptImages }}
