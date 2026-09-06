@@ -392,13 +392,13 @@ export default function CustomStudyPage() {
                   className="rich-text-render text-2xl text-white text-center leading-relaxed break-words max-w-full"
                   dangerouslySetInnerHTML={{ __html: answerText }}
                 />
+                {situation?.portuguese && (support === 'visible' || showTranslation) && <p className="text-base text-muted-foreground text-center" lang="pt">{situation.portuguese}</p>}
+                {situation?.portuguese && support !== 'visible' && !showTranslation && <Button type="button" variant="ghost" size="sm" onClick={() => setShowTranslation(true)}>{support === 'hint' ? 'Preciso de uma pista' : 'Ver tradução'}</Button>}
                 <div
                   className="rich-text-render text-2xl text-white text-center leading-relaxed break-words max-w-full"
                   dangerouslySetInnerHTML={{ __html: answerImages }}
                 />
                 {mode !== 'audio' && audioSrc && <AudioButton src={audioSrc} key={`r-${current.id}`} />}
-                {situation?.portuguese && (support === 'visible' || showTranslation) && <p className="text-base text-muted-foreground text-center" lang="pt">{situation.portuguese}</p>}
-                {situation?.portuguese && support !== 'visible' && !showTranslation && <Button type="button" variant="ghost" size="sm" onClick={() => setShowTranslation(true)}>{support === 'hint' ? 'Preciso de uma pista' : 'Ver tradução'}</Button>}
               </div>
             </div>
             </StudyMedia>
