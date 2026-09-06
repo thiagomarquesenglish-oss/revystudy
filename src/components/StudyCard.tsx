@@ -8,6 +8,7 @@ import { readSituation, translationSupportLevel } from '@/lib/situation';
 import { Play, Pause, Check, X } from 'lucide-react';
 import { availableSituationModes, chooseAdaptiveMode, exerciseInfo, parseAdaptiveEvent, type ExerciseMode } from '@/lib/adaptive-study';
 import { compareDictation } from '@/lib/dictation';
+import SkillBadge from './SkillBadge';
 
 /** Normalize text for typing comparison: lowercase, strip accents, remove punctuation, collapse spaces */
 function normalizeForCompare(s: string): string {
@@ -208,7 +209,7 @@ function SituationStudyCard({card,situation,audioSrc,onRate,remainingNew,remaini
   const reveal=flipped||!!dictation;
   const ratings=ratingConfig.map(item=>({...item,sublabel:getNextReviewLabel(item.rating,card)}));
   return <div className="flex flex-col w-full max-w-lg mx-auto overflow-hidden" style={{minHeight:'calc(100dvh - 120px)',paddingBottom:'160px'}}>
-    <div className="pt-5 text-xs text-muted-foreground text-center">{exerciseInfo[mode].label}</div>
+    <div className="pt-5 flex justify-center"><SkillBadge skill={exerciseInfo[mode].skill}/></div>
     <div className="w-full pt-8 flex flex-col items-center gap-4">
       {mode==='image-production'&&<div className="rich-text-render max-w-full" dangerouslySetInnerHTML={{__html:media}}/>}
       {mode==='image-audio'&&<><div className="rich-text-render max-w-full" dangerouslySetInnerHTML={{__html:media}}/>{audioSrc&&<AudioPlayButton src={audioSrc} centered/>}</>}

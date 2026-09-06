@@ -14,6 +14,7 @@ import { readSituation } from '@/lib/situation';
 import { compareDictation } from '@/lib/dictation';
 import { Textarea } from '@/components/ui/textarea';
 import { availableSituationModes, chooseAdaptiveMode, exerciseInfo, parseAdaptiveEvent, type AdaptiveEvent, type ExerciseMode } from '@/lib/adaptive-study';
+import SkillBadge from '@/components/SkillBadge';
 
 interface Piece {
   audioSrc: string | null;
@@ -363,7 +364,7 @@ export default function CustomStudyPage() {
       <PageHeader
         title={deck.name}
         onBack={() => setStarted(false)}
-        rightContent={<span className="text-xs text-muted-foreground">{exerciseInfo[mode].label}</span>}
+        rightContent={<SkillBadge skill={exerciseInfo[mode].skill} />}
       />
       <main className="max-w-3xl mx-auto px-3 pb-40" style={{ paddingTop: 'calc(var(--app-header-height, 48px) + 1rem)' }}>
         <div className="flex flex-col items-center w-full max-w-lg mx-auto">
