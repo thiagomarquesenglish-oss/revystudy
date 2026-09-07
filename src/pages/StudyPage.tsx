@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getStudyQueue, updateCard, getDecks, getCardsByDeck, addReviewHistory, deleteCard } from '@/lib/storage';
-import { processReview } from '@/lib/srs';
+import { updateCard, deleteCard, saveLearningReview } from '@/lib/storage';
+import { loadLearningData } from '@/lib/learning-data';
+import { mixedCurriculumQueue, type LearningEvent } from '@/lib/learning-progress';
 import { Rating, StudyStats, Flashcard, Deck } from '@/lib/types';
 import StudyCard from '@/components/StudyCard';
 import { prepareHtml } from '@/lib/study-media';
@@ -11,7 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
-import { coreSituationModes, exerciseInfo, type ExerciseMode } from '@/lib/adaptive-study';
+import { availableSituationModes, chooseAdaptiveMode, exerciseInfo, type ExerciseMode } from '@/lib/adaptive-study';
 import { pickQueueIndex, retryGap } from '@/lib/session-queue';
 import { readSituation } from '@/lib/situation';
 import {
@@ -23,10 +24,16 @@ import {
 
 type SessionCard=Flashcard&{sessionKey:string;sessionMode?:ExerciseMode};
 
-function expandStudyQueue(cards:Flashcard[]):SessionCard[]{
-  return cards.flatMap(card=>readSituation(card.front,card.back)
-    ? coreSituationModes.map(mode=>({...card,sessionKey:`${card.id}:${mode}`,sessionMode:mode}))
-    : [{...card,sessionKey:card.id}]);
+export function buildSessionQueue(cards:Flashcard[],history:LearningEvent[]):SessionCard[]{
+  return cards.map(card=>{
+    const situation=readSituation(card.front,card.back);
+    if(!situation)return {...card,sessionKey:card.id};
+    const root=document.createElement('div');root.innerHTML=situation.mediaHtml;
+    const available=availableSituationModes({hasImage:!!root.querySelector('img[src]'),hasAudio:!!card.audioId||!!root.querySelector('audio[src],[data-audio][data-src]'),hasEnglish:!!situation.english,hasPortuguese:!!situation.portuguese});
+    const events=history.filter(e=>e.cardId===card.id).sort((a,b)=>a.at.localeCompare(b.at)).map(e=>({rating:e.rating,mode:e.mode,skill:exerciseInfo[e.mode].skill,reviewedAt:e.at}));
+    const mode=chooseAdaptiveMode(available,events,events.at(-1)?.mode);
+    return {...card,sessionKey:card.id,sessionMode:mode};
+  });
 }
 
 export default function StudyPage() {
@@ -42,8 +49,9 @@ export default function StudyPage() {
   const startTimeRef = useRef(Date.now());
   const queuePositionRef = useRef(0);
   const retryAtRef = useRef(new Map<string,number>());
-  const conceptRatingsRef=useRef(new Map<string,Map<ExerciseMode,Rating>>());
-  const scheduledConceptsRef=useRef(new Set<string>());
+  const savingRef=useRef(false);
+  const [loadError,setLoadError]=useState('');
+  const backPath=deckId?`/deck/${deckId}`:'/stats';
   const [showOptionsDrawer, setShowOptionsDrawer] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [cardsStudied, setCardsStudied] = useState(0);
@@ -76,18 +84,17 @@ export default function StudyPage() {
 
   useEffect(() => {
     async function load() {
-      const [allDecks, studyQueue, deckCards] = await Promise.all([
-        getDecks(),
-        getStudyQueue(deckId!),
-        getCardsByDeck(deckId!),
-      ]);
-      const expandedQueue=expandStudyQueue(studyQueue);
-      // Shuffle the exercises, not the underlying situations.
-      for (let i = expandedQueue.length - 1; i > 0; i--) {
+      try {
+      const data=await loadLearningData();
+      const deckCards=deckId?data.cards.filter(c=>c.deckId===deckId):data.cards;
+      const studyQueue=deckId?deckCards.filter(c=>c.status==='new'||Date.parse(c.dueDate)<=Date.now()):mixedCurriculumQueue(data.cards,data.events);
+      const expandedQueue=buildSessionQueue(studyQueue,data.events);
+      // Curriculum sessions already interleave current, recent and old content.
+      for (let i = deckId?expandedQueue.length - 1:0; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [expandedQueue[i], expandedQueue[j]] = [expandedQueue[j], expandedQueue[i]];
       }
-      setDeck(allDecks.find(d => d.id === deckId) || null);
+      setDeck(deckId?data.decks.find(d => d.id === deckId)||null:{id:'curriculum',name:'Meu currículo de inglês',description:'',createdAt:'',contentUpdatedAt:'',cardCount:deckCards.length,audioCount:0});
       setQueue(expandedQueue);
       setTotalCards(deckCards.length);
 
@@ -103,26 +110,17 @@ export default function StudyPage() {
         }
       }
       setLoading(false);
+      } catch(error){setLoadError(error instanceof Error?error.message:'Não foi possível carregar a sessão.');setLoading(false);}
     }
     load();
   }, [deckId]);
 
-  const handleRate = useCallback((rating: Rating, mode?: ExerciseMode) => {
-    if (!currentCard) return;
-
-    let scheduleRating:Rating|null=null;
-    if(currentCard.sessionMode){
-      const modeRatings=conceptRatingsRef.current.get(currentCard.id)||new Map<ExerciseMode,Rating>();
-      modeRatings.set(currentCard.sessionMode,rating);
-      conceptRatingsRef.current.set(currentCard.id,modeRatings);
-      if(modeRatings.size===coreSituationModes.length&&!scheduledConceptsRef.current.has(currentCard.id)){
-        const rank:Record<Rating,number>={again:0,hard:1,good:2,easy:3};
-        scheduleRating=[...modeRatings.values()].sort((a,b)=>rank[a]-rank[b])[0];
-        scheduledConceptsRef.current.add(currentCard.id);
-      }
-    }else scheduleRating=rating;
-    const updates=scheduleRating?processReview(currentCard,scheduleRating):{};
-    const updatedCard = { ...currentCard, ...updates } as SessionCard;
+  const handleRate = useCallback(async (rating: Rating, mode?: ExerciseMode) => {
+    if (!currentCard||savingRef.current) return;
+    savingRef.current=true;
+    let updatedCard:SessionCard;
+    try{updatedCard={...currentCard,...await saveLearningReview(currentCard,rating,mode)};}
+    catch{toast.error('Não foi possível salvar. Tente avaliar novamente.');savingRef.current=false;return;}
 
     // Update stats
     const newStats = {
@@ -135,7 +133,7 @@ export default function StudyPage() {
 
     queuePositionRef.current += 1;
     // Repetitions inside this session use position, never elapsed minutes.
-    let newQueue = queue.filter(c => c.sessionKey !== currentCard.sessionKey);
+    const newQueue = queue.filter(c => c.sessionKey !== currentCard.sessionKey);
     const gap=retryGap(rating);
     if (gap !== null) {
       retryAtRef.current.set(currentCard.sessionKey,queuePositionRef.current+gap);
@@ -149,21 +147,19 @@ export default function StudyPage() {
     // Check if session is done
     if (newQueue.length === 0) {
       const elapsedMs = Date.now() - startTimeRef.current;
-      localStorage.setItem('memora-last-session', JSON.stringify({
+      try { localStorage.setItem('memora-last-session', JSON.stringify({
         totalReviewed: newStats.totalReviewed,
         elapsedMs,
         date: new Date().toISOString(),
         deckName: deck?.name || '',
-      }));
+      })); } catch { /* Optional session summary must not block a saved review. */ }
       setFinished(true);
       setCurrentCard(null);
     } else {
       advanceToNext(newQueue);
     }
 
-    // Persist to DB in background
-    if(scheduleRating)updateCard(currentCard.id, updates).catch(() => toast.error('Não foi possível salvar o progresso deste cartão.'));
-    addReviewHistory(currentCard.id, rating, mode ? {skill:exerciseInfo[mode].skill,exerciseMode:mode} : undefined).catch(() => toast.error('Não foi possível salvar esta revisão no histórico.'));
+    savingRef.current=false;
   }, [currentCard, queue, stats, deck, advanceToNext]);
 
   // Compute remaining counts from the active queue
@@ -176,7 +172,7 @@ export default function StudyPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background safe-page overflow-hidden">
-        <PageHeader title="" onBack={() => navigate(`/deck/${deckId}`)} />
+        <PageHeader title="" onBack={() => navigate(backPath)} />
         <main className="max-w-3xl mx-auto px-3 space-y-6" style={{ paddingTop: 'calc(var(--app-header-height, 48px) + 1rem)' }}>
           <Skeleton className="h-1.5 w-full rounded-full" />
           <div className="flex flex-col items-center pt-8 gap-4">
@@ -188,6 +184,7 @@ export default function StudyPage() {
     );
   }
 
+  if(loadError)return <div className="p-6 space-y-4"><p role="alert">{loadError}</p><Button onClick={()=>navigate(backPath)}>Voltar</Button></div>;
   if (!deck) {
     return <div className="min-h-screen flex items-center justify-center"><p className="text-muted-foreground">Baralho não encontrado.</p></div>;
   }
@@ -209,7 +206,7 @@ export default function StudyPage() {
             </div>
           ) : undefined
         }
-        onBack={() => navigate(`/deck/${deckId}`)}
+        onBack={() => navigate(backPath)}
         bottomContent={
           !finished && queue.length > 0 ? (
             <Progress value={progressValue} className="h-1 bg-secondary rounded-none" />

@@ -183,6 +183,30 @@ async function replaceAllByDeck(storeName: string, deckId: string, items: any[])
 // ── Local cache (mirrors Supabase data locally) ──
 
 export const localDB = {
+  async commitLearningBatch(rows: Record<string, unknown>[]): Promise<void> {
+    const db=await openDB();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction(['cards','queue'],'readwrite');
+      try { rows.forEach((row,index)=>{
+        tx.objectStore('cards').put(row);
+        tx.objectStore('queue').put({id:crypto.randomUUID(),table:'cards',action:'insert',payload:row,timestamp:Date.now()+index});
+      }); } catch(error) { tx.abort();reject(error);return; }
+      tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('Lote não salvo.'));
+    });
+  },
+  async commitLearningReview(card: Record<string, unknown>, review: Record<string, unknown>, progress:Record<string,unknown>): Promise<void> {
+    const db=await openDB();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction(['cards','review_history','queue'],'readwrite');
+      try {
+      tx.objectStore('cards').put(card);tx.objectStore('review_history').put(review);
+      [{table:'cards',action:'update',payload:progress},{table:'review_history',action:'insert',payload:review}].forEach((mutation,index)=>{
+        tx.objectStore('queue').put({...mutation,id:crypto.randomUUID(),timestamp:Date.now()+index});
+      });
+      } catch(error) { tx.abort();reject(error);return; }
+      tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('Revisão não salva.'));
+    });
+  },
   // Commit the visible change and its retry record together, without waiting for network.
   async commitCardMutation(mutation: NewQueuedMutation): Promise<void> {
     const db = await openDB();

@@ -1,4 +1,5 @@
 import LearningSummary from '@/components/LearningSummary';
+import CurriculumPanel from '@/components/CurriculumPanel';
 import BottomNav from '@/components/BottomNav';
 import PageHeader from '@/components/PageHeader';
 import PageTransition from '@/components/PageTransition';
@@ -32,6 +33,7 @@ export default function StatsPage() {
       <PageTransition>
       <main className="max-w-3xl mx-auto px-3 py-4 space-y-6" style={{ paddingTop: 'calc(var(--app-header-height) + 1rem)' }}>
 
+        <CurriculumPanel />
         <LearningSummary />
         <PinnableSection id="daily-chart" title="Revisões de cartões · últimos 30 dias">
           <DailyChartSection />

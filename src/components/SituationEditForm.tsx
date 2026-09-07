@@ -8,6 +8,8 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { toast } from 'sonner';
+import PedagogyFields from './PedagogyFields';
+import { manualPedagogy } from '@/lib/curriculum';
 
 function mediaDetails(html: string) {
   const root = document.createElement('div');
@@ -24,12 +26,13 @@ function extension(file: File) {
 }
 
 export default function SituationEditForm({ cardId, deckId, audioId, initial, onSaved }: { cardId: string; deckId: string; audioId: string|null; initial: SituationContent; onSaved: () => void }) {
+  const [stage,setStage]=useState(initial.pedagogy?.stage||0),[hint,setHint]=useState(initial.context);
   const existing = mediaDetails(initial.mediaHtml);
   const [english,setEnglish]=useState(initial.english),[portuguese,setPortuguese]=useState(initial.portuguese);
   const [image,setImage]=useState<File|null>(null),[audio,setAudio]=useState<File|null>(null);
   const [imageUrl,setImageUrl]=useState(existing.image),[audioUrl,setAudioUrl]=useState(existing.audio),[audioName,setAudioName]=useState(existing.audioName);
   const [saving,setSaving]=useState(false);
-  const ready=!!english.trim()&&!!portuguese.trim()&&!!imageUrl&&(!!audioUrl||!!audioId);
+  const ready=!!english.trim()&&!!portuguese.trim();
   const pickImage=(file:File)=>{if(image&&imageUrl)URL.revokeObjectURL(imageUrl);setImage(file);setImageUrl(URL.createObjectURL(file));};
   const pickAudio=(file:File)=>{if(audio&&audioUrl)URL.revokeObjectURL(audioUrl);setAudio(file);setAudioUrl(URL.createObjectURL(file));setAudioName(file.name);};
   const save=async()=>{
@@ -43,8 +46,9 @@ export default function SituationEditForm({ cardId, deckId, audioId, initial, on
       const upload=async(file:File)=>{const path=`${user.id}/situations/${deckId}/${crypto.randomUUID()}.${extension(file)}`;const {error}=await supabase.storage.from('card-media').upload(path,file,{contentType:file.type,upsert:false});if(error)throw error;uploaded.push(path);return supabase.storage.from('card-media').getPublicUrl(path).data.publicUrl;};
       const finalImage=image?await upload(image):imageUrl;
       const finalAudio=audio?await upload(audio):audioUrl;
-      const media=`<img src="${escapeHtml(finalImage)}" alt="Situação visual">${finalAudio?`<div data-audio="true" data-src="${escapeHtml(finalAudio)}" data-filename="${escapeHtml(audioName)}" class="audio-node"><audio src="${escapeHtml(finalAudio)}" class="audio-node-element"></audio></div>`:''}`;
-      const html=buildSituationHtml({english:english.trim(),context:'',portuguese:portuguese.trim(),mediaHtml:media});
+      const media=`${finalImage?`<img src="${escapeHtml(finalImage)}" alt="Situação visual">`:''}${finalAudio?`<div data-audio="true" data-src="${escapeHtml(finalAudio)}" data-filename="${escapeHtml(audioName)}" class="audio-node"><audio src="${escapeHtml(finalAudio)}" class="audio-node-element"></audio></div>`:''}`;
+      const pedagogy=stage===initial.pedagogy?.stage?initial.pedagogy:manualPedagogy(stage,initial.pedagogy);
+      const html=buildSituationHtml({english:english.trim(),context:hint.trim(),portuguese:portuguese.trim(),mediaHtml:media,pedagogy});
       await updateCard(cardId,{front:html.front,back:html.back,dictationAnswer:english.trim()});
       toast.success('Situação atualizada!');
       onSaved();
@@ -54,6 +58,8 @@ export default function SituationEditForm({ cardId, deckId, audioId, initial, on
     } finally { setSaving(false); }
   };
   return <>
+    <PedagogyFields stage={stage} onStage={setStage} hint={hint} onHint={setHint}/>
+    {initial.pedagogy?.imagePrompt&&<details className="text-sm"><summary className="cursor-pointer">Instrução para gerar imagem</summary><p className="p-3 whitespace-pre-wrap">{initial.pedagogy.imagePrompt}</p></details>}
     <section className="rounded-2xl border border-border bg-card p-4 space-y-4"><div className="flex gap-2"><Upload className="h-5 w-5 text-primary"/><div><h2 className="font-bold">1. Imagem e áudio</h2><p className="text-xs text-muted-foreground">Você pode manter os arquivos atuais ou substituí-los.</p></div></div><div className="grid gap-4 sm:grid-cols-2"><MediaDropBox kind="image" file={image} preview={imageUrl} onFile={pickImage} onClear={()=>{if(image&&imageUrl)URL.revokeObjectURL(imageUrl);setImage(null);setImageUrl('');}}/><MediaDropBox kind="audio" file={audio} preview={audioUrl} fileName={audioName} onFile={pickAudio} onClear={()=>{if(audio&&audioUrl)URL.revokeObjectURL(audioUrl);setAudio(null);setAudioUrl('');}}/></div></section>
     <section className="rounded-2xl border border-border bg-card p-4 space-y-4"><div className="flex gap-2"><MessageSquareText className="h-5 w-5 text-primary"/><h2 className="font-bold">2. Frases</h2></div><div><Label htmlFor="english">Frase em inglês</Label><Input id="english" lang="en" value={english} onChange={e=>setEnglish(e.target.value)}/><p className="mt-1 text-xs text-muted-foreground">Esta mesma frase será usada para corrigir o ditado.</p></div><div><Label htmlFor="portuguese">Frase em português</Label><Input id="portuguese" value={portuguese} onChange={e=>setPortuguese(e.target.value)}/><p className="mt-1 text-xs text-muted-foreground">Serve como apoio quando você precisar consultar o significado.</p></div></section>
     <Button type="button" onClick={save} className="w-full h-12" disabled={!ready||saving}>{saving?'Salvando…':'Salvar situação'}</Button>

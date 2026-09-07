@@ -2,6 +2,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Deck, Flashcard, CardStatus } from './types';
 import { localDB, offlineQueue } from './offline-db';
 import { persistMutations, syncOfflineQueue, announceSyncState } from './sync';
+import { processReview } from './srs';
+import { exerciseInfo, type ExerciseMode } from './adaptive-study';
+import type { Rating } from './types';
 const deletedThisSession = new Set<string>();
 
 async function withoutDeletedCards(rows: any[]): Promise<any[]> {
@@ -984,6 +987,32 @@ export async function addReviewHistory(cardId: string, rating: string, adaptive?
   await persistMutations([{ table: 'review_history', action: 'insert', payload: row }]);
 }
 
+/** A reviewed AI batch and its outbox are all-or-nothing on this device. */
+export async function importLearningCards(deckId:string,items:Array<{front:string;back:string;english:string}>):Promise<void>{
+  const userId=await getCachedUserId();
+  const cards:Flashcard[]=items.map(item=>{
+    const now=new Date().toISOString();
+    return {id:crypto.randomUUID(),front:item.front,back:item.back,dictationAnswer:item.english,deckId,audioId:null,status:'new',interval:0,easeFactor:2.5,stepsIndex:0,repetition:0,reviewCount:0,lapseCount:0,dueDate:now,createdAt:now,updatedAt:now,progressUpdatedAt:now,flagged:false,cardType:'standard'};
+  });
+  await localDB.commitLearningBatch(cards.map(c=>cardToRow(c,userId)));
+  invalidateCache('cards');announceSyncState();
+  if(isOnline())void syncOfflineQueue().catch(console.error);
+}
+
+/** Persist schedule and the actual modality before moving to another exercise. */
+export async function saveLearningReview(card:Flashcard,rating:Rating,mode?:ExerciseMode):Promise<Flashcard>{
+  const userId=await getCachedUserId(),now=new Date().toISOString();
+  const updated={...card,...processReview(card,rating),updatedAt:now,progressUpdatedAt:now};
+  const review={id:crypto.randomUUID(),card_id:card.id,user_id:userId,rating,reviewed_at:now,skill:mode?exerciseInfo[mode].skill:null,exercise_mode:mode||null};
+  const row=cardToRow(updated,userId);
+  const progress={id:card.id,...Object.fromEntries(PROGRESS_FIELDS.map(field=>[field,row[field]]))};
+  await localDB.commitLearningReview(row,review,progress);
+  if(cache.cards)cache.cards=cache.cards.map(c=>c.id===card.id?updated:c);
+  invalidateCache('reviewHistory');announceSyncState();
+  if(isOnline())void syncOfflineQueue().catch(console.error);
+  return updated;
+}
+
 export interface CardReviewRow { id:string;card_id:string;rating:string;user_id:string;reviewed_at:string;skill:string|null;exercise_mode:string|null }
 
 export async function getCardReviewRows(cardId: string): Promise<CardReviewRow[]> {
@@ -996,9 +1025,16 @@ export async function getCardReviewRows(cardId: string): Promise<CardReviewRow[]
 }
 
 async function fetchReviewHistoryFromDB(): Promise<{ date: string; count: number }[]> {
-  const { data, error } = await supabase.from('review_history').select('*');
-  if (error) throw error;
-  localDB.replaceReviewHistory(data || []).catch(console.error);
+  const userId=await getCachedUserId();
+  const fetched:CardReviewRow[]=[];
+  for(let from=0;;from+=1000){
+    const {data,error}=await supabase.from('review_history').select('*').eq('user_id',userId).order('reviewed_at').order('id').range(from,from+999);
+    if(error)throw error;fetched.push(...(data||[]));if(!data||data.length<1000)break;
+  }
+  const pending=(await offlineQueue.getAll()).filter(m=>m.table==='review_history'&&m.action==='insert'&&m.payload.user_id===userId).map(m=>m.payload as CardReviewRow);
+  const data=[...new Map([...fetched,...pending].map(row=>[row.id,row])).values()];
+  // Never clear the store while a new local review may be committing.
+  await Promise.all(data.map(row=>localDB.saveReview(row)));
   const countMap: Record<string, number> = {};
   (data || []).forEach((r: any) => {
     const date = r.reviewed_at.slice(0, 10);

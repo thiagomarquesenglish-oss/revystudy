@@ -46,6 +46,7 @@ const App = () => (
           <OfflineBanner />
           <TabLayout />
           <Routes>
+            <Route path="/curriculum/study" element={<ProtectedRoute><StudyPage /></ProtectedRoute>} />
             <Route path="/library/manage" element={<ProtectedRoute><LibraryManagePage /></ProtectedRoute>} />
             <Route path="/auth" element={<AuthRoute />} />
             <Route path="/" element={null} />

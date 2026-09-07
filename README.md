@@ -2,6 +2,12 @@
 
 Aplicativo de flashcards com repeticao espacada, feito com React, TypeScript e Supabase.
 
+## Currículo progressivo de inglês
+
+A área **Progresso** inclui 30 microetapas, domínio por habilidade, estudo multimodal adaptativo e troca de lotes com um chat externo. Use **Copiar Prompt Master**, **Copiar contexto para IA** e **Importar conteúdo da IA** para continuar o curso.
+
+Fluxo, regras de liberação, formato JSON, decisões de compatibilidade e limitações do MVP: [documentação do currículo](docs/ENGLISH_CURRICULUM.md).
+
 ## Desenvolvimento local
 
 1. Instale as dependencias com `npm install`.
