@@ -16,4 +16,10 @@ describe('position based study queue',()=>{
     expect(pickQueueIndex([{id:'failed'}],1,retryAt)).toBe(-1);
     expect(pickQueueIndex([{id:'failed'}],6,retryAt)).toBe(0);
   });
+
+  it('tracks variations independently even when they share one card id',()=>{
+    const queue=[{id:'one',sessionKey:'one:image'},{id:'one',sessionKey:'one:audio'}];
+    const retryAt=new Map([['one:image',6]]);
+    expect(pickQueueIndex(queue,1,retryAt)).toBe(1);
+  });
 });

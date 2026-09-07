@@ -15,6 +15,15 @@ export const exerciseInfo: Record<ExerciseMode,{label:string;skill:LearningSkill
   'audio-dictation': { label:'Áudio → escrever em inglês', skill:'writing' },
 };
 
+export const coreSituationModes:ExerciseMode[]=[
+  'image-production',
+  'audio-comprehension',
+  'text-comprehension',
+  'translation-production',
+  'image-audio',
+  'image-translation-production',
+];
+
 export function parseAdaptiveEvent(row: {rating?:string;skill?:string|null;exercise_mode?:string|null;reviewed_at?:string}): AdaptiveEvent|null {
   const rating=row.rating||'',skill=row.skill||'',mode=row.exercise_mode||'';
   if(!['again','hard','good','easy'].includes(rating)||!['comprehension','listening','production','writing'].includes(skill)||!(mode in exerciseInfo))return null;

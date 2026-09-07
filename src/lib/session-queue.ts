@@ -6,6 +6,6 @@ export function retryGap(rating: Rating): number|null {
   return null;
 }
 
-export function pickQueueIndex<T extends {id:string}>(queue:T[],position:number,retryAt:Map<string,number>):number {
-  return queue.findIndex(item=>(retryAt.get(item.id)??0)<=position);
+export function pickQueueIndex<T extends {id:string;sessionKey?:string}>(queue:T[],position:number,retryAt:Map<string,number>):number {
+  return queue.findIndex(item=>(retryAt.get(item.sessionKey||item.id)??0)<=position);
 }

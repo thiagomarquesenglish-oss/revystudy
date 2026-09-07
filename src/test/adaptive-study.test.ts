@@ -1,10 +1,17 @@
 import { describe,expect,it } from 'vitest';
-import { availableSituationModes,chooseAdaptiveMode,parseAdaptiveEvent,type AdaptiveEvent } from '@/lib/adaptive-study';
+import { availableSituationModes,chooseAdaptiveMode,coreSituationModes,parseAdaptiveEvent,type AdaptiveEvent } from '@/lib/adaptive-study';
 
 describe('adaptive multimodal study',()=>{
   it('creates the six multimodal variations plus dictation from one situation',()=>{
     expect(availableSituationModes({hasImage:true,hasAudio:true,hasEnglish:true,hasPortuguese:true})).toHaveLength(7);
     expect(availableSituationModes({hasImage:true,hasAudio:true,hasEnglish:true,hasPortuguese:true})).toContain('image-translation-production');
+  });
+
+  it('puts exactly the requested six variations into scheduled sessions',()=>{
+    expect(coreSituationModes).toEqual([
+      'image-production','audio-comprehension','text-comprehension',
+      'translation-production','image-audio','image-translation-production',
+    ]);
   });
 
   it('stores the skill and exercise inside the existing review history',()=>{

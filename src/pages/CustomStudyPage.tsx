@@ -350,11 +350,11 @@ export default function CustomStudyPage() {
 
   const promptImages = front.imagesHtml || back.imagesHtml;
   const promptText = situation ? situation.english : (hasText(front.textHtml) ? front.textHtml : back.textHtml);
-  const situationAnswer = situation ? `<p lang="en"><strong>${situation.english}</strong></p>` : '';
+  const situationAnswer = situation && mode!=='text-comprehension' ? `<p lang="en"><strong>${situation.english}</strong></p>` : '';
   const answerText = situation ? situationAnswer : mode === 'text-comprehension'
     ? (hasText(front.textHtml) ? back.textHtml : front.textHtml)
     : front.textHtml + back.textHtml;
-  const answerImages = !situation && mode === 'image-production'
+  const answerImages = situation && ['audio-comprehension','text-comprehension'].includes(mode) ? promptImages : !situation && mode === 'image-production'
     ? (front.imagesHtml ? back.imagesHtml : front.imagesHtml)
     : situation ? '' : front.imagesHtml + back.imagesHtml;
   const isDictation=mode==='audio-dictation';

@@ -11,8 +11,9 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
-import { exerciseInfo, type ExerciseMode } from '@/lib/adaptive-study';
+import { coreSituationModes, exerciseInfo, type ExerciseMode } from '@/lib/adaptive-study';
 import { pickQueueIndex, retryGap } from '@/lib/session-queue';
+import { readSituation } from '@/lib/situation';
 import {
   Drawer,
   DrawerContent,
@@ -20,25 +21,35 @@ import {
   DrawerTitle,
 } from '@/components/ui/drawer';
 
+type SessionCard=Flashcard&{sessionKey:string;sessionMode?:ExerciseMode};
+
+function expandStudyQueue(cards:Flashcard[]):SessionCard[]{
+  return cards.flatMap(card=>readSituation(card.front,card.back)
+    ? coreSituationModes.map(mode=>({...card,sessionKey:`${card.id}:${mode}`,sessionMode:mode}))
+    : [{...card,sessionKey:card.id}]);
+}
+
 export default function StudyPage() {
   const { deckId } = useParams<{ deckId: string }>();
   const navigate = useNavigate();
   const [deck, setDeck] = useState<Deck | null>(null);
-  const [queue, setQueue] = useState<Flashcard[]>([]);
+  const [queue, setQueue] = useState<SessionCard[]>([]);
   const [totalCards, setTotalCards] = useState(0);
-  const [currentCard, setCurrentCard] = useState<Flashcard | null>(null);
+  const [currentCard, setCurrentCard] = useState<SessionCard | null>(null);
   const [stats, setStats] = useState<StudyStats>({ totalReviewed: 0, again: 0, hard: 0, good: 0, easy: 0 });
   const [finished, setFinished] = useState(false);
   const [loading, setLoading] = useState(true);
   const startTimeRef = useRef(Date.now());
   const queuePositionRef = useRef(0);
   const retryAtRef = useRef(new Map<string,number>());
+  const conceptRatingsRef=useRef(new Map<string,Map<ExerciseMode,Rating>>());
+  const scheduledConceptsRef=useRef(new Set<string>());
   const [showOptionsDrawer, setShowOptionsDrawer] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [cardsStudied, setCardsStudied] = useState(0);
 
   useEffect(() => {
-    const upcoming = queue.filter(card => card.id !== currentCard?.id);
+    const upcoming = queue.filter(card => card.sessionKey !== currentCard?.sessionKey);
     const first = pickQueueIndex(upcoming,queuePositionRef.current,retryAtRef.current);
     const candidates = [currentCard, first >= 0 ? upcoming[first] : null, ...upcoming.slice(0, 2)];
     candidates.forEach(card => {
@@ -47,7 +58,7 @@ export default function StudyPage() {
   }, [queue, currentCard]);
 
   // Pick the next card from the queue and set it as current
-  const advanceToNext = useCallback((q: Flashcard[]) => {
+  const advanceToNext = useCallback((q: SessionCard[]) => {
     if (q.length === 0) {
       setCurrentCard(null);
       setFinished(true);
@@ -70,22 +81,23 @@ export default function StudyPage() {
         getStudyQueue(deckId!),
         getCardsByDeck(deckId!),
       ]);
-      // Shuffle the queue (Fisher-Yates)
-      for (let i = studyQueue.length - 1; i > 0; i--) {
+      const expandedQueue=expandStudyQueue(studyQueue);
+      // Shuffle the exercises, not the underlying situations.
+      for (let i = expandedQueue.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [studyQueue[i], studyQueue[j]] = [studyQueue[j], studyQueue[i]];
+        [expandedQueue[i], expandedQueue[j]] = [expandedQueue[j], expandedQueue[i]];
       }
       setDeck(allDecks.find(d => d.id === deckId) || null);
-      setQueue(studyQueue);
+      setQueue(expandedQueue);
       setTotalCards(deckCards.length);
 
-      if (studyQueue.length === 0) {
+      if (expandedQueue.length === 0) {
         setFinished(true);
       } else {
         // Pick first card
-        const idx = pickQueueIndex(studyQueue,0,retryAtRef.current);
+        const idx = pickQueueIndex(expandedQueue,0,retryAtRef.current);
         if (idx >= 0) {
-          setCurrentCard(studyQueue[idx]);
+          setCurrentCard(expandedQueue[idx]);
         } else {
           setFinished(true);
         }
@@ -98,8 +110,19 @@ export default function StudyPage() {
   const handleRate = useCallback((rating: Rating, mode?: ExerciseMode) => {
     if (!currentCard) return;
 
-    const updates = processReview(currentCard, rating);
-    const updatedCard = { ...currentCard, ...updates } as Flashcard;
+    let scheduleRating:Rating|null=null;
+    if(currentCard.sessionMode){
+      const modeRatings=conceptRatingsRef.current.get(currentCard.id)||new Map<ExerciseMode,Rating>();
+      modeRatings.set(currentCard.sessionMode,rating);
+      conceptRatingsRef.current.set(currentCard.id,modeRatings);
+      if(modeRatings.size===coreSituationModes.length&&!scheduledConceptsRef.current.has(currentCard.id)){
+        const rank:Record<Rating,number>={again:0,hard:1,good:2,easy:3};
+        scheduleRating=[...modeRatings.values()].sort((a,b)=>rank[a]-rank[b])[0];
+        scheduledConceptsRef.current.add(currentCard.id);
+      }
+    }else scheduleRating=rating;
+    const updates=scheduleRating?processReview(currentCard,scheduleRating):{};
+    const updatedCard = { ...currentCard, ...updates } as SessionCard;
 
     // Update stats
     const newStats = {
@@ -112,13 +135,13 @@ export default function StudyPage() {
 
     queuePositionRef.current += 1;
     // Repetitions inside this session use position, never elapsed minutes.
-    let newQueue = queue.filter(c => c.id !== currentCard.id);
+    let newQueue = queue.filter(c => c.sessionKey !== currentCard.sessionKey);
     const gap=retryGap(rating);
     if (gap !== null) {
-      retryAtRef.current.set(currentCard.id,queuePositionRef.current+gap);
+      retryAtRef.current.set(currentCard.sessionKey,queuePositionRef.current+gap);
       newQueue.push(updatedCard);
     } else {
-      retryAtRef.current.delete(currentCard.id);
+      retryAtRef.current.delete(currentCard.sessionKey);
     }
 
     setQueue(newQueue);
@@ -139,7 +162,7 @@ export default function StudyPage() {
     }
 
     // Persist to DB in background
-    updateCard(currentCard.id, updates).catch(() => toast.error('Não foi possível salvar o progresso deste cartão.'));
+    if(scheduleRating)updateCard(currentCard.id, updates).catch(() => toast.error('Não foi possível salvar o progresso deste cartão.'));
     addReviewHistory(currentCard.id, rating, mode ? {skill:exerciseInfo[mode].skill,exerciseMode:mode} : undefined).catch(() => toast.error('Não foi possível salvar esta revisão no histórico.'));
   }, [currentCard, queue, stats, deck, advanceToNext]);
 
@@ -232,9 +255,10 @@ export default function StudyPage() {
           </div>
         ) : currentCard ? (
           <StudyCard
-            key={`${currentCard.id}-${cardsStudied}`}
+            key={`${currentCard.sessionKey}-${cardsStudied}`}
             card={currentCard}
             onRate={handleRate}
+            forcedMode={currentCard.sessionMode}
             remainingNew={remainingNew}
             remainingLearning={remainingLearning}
             remainingReview={remainingReview}
