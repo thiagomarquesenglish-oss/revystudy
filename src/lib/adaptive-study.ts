@@ -30,13 +30,13 @@ export function parseAdaptiveEvent(row: {rating?:string;skill?:string|null;exerc
   return {rating:rating as Rating,skill:skill as LearningSkill,mode:mode as ExerciseMode,reviewedAt:row.reviewed_at||''};
 }
 
-const ratingScore:Record<Rating,number>={again:0,hard:.35,good:.72,easy:1};
+const ratingScore:Record<Rating,number>={again:0,hard:.4,good:.9,easy:1};
 
 export function chooseAdaptiveMode(available:ExerciseMode[],events:AdaptiveEvent[],last?:ExerciseMode|null):ExerciseMode {
   if(!available.length)return 'text-comprehension';
   const recent=events.slice(-24);
   const skillStrength=(skill:LearningSkill)=>{
-    const values=recent.filter(e=>e.skill===skill).slice(-6).map(e=>ratingScore[e.rating]);
+    const values=recent.filter(e=>e.skill===skill||(skill==='listening'&&e.mode==='audio-dictation')).slice(-6).map(e=>ratingScore[e.rating]);
     return values.length?values.reduce((a,b)=>a+b,0)/values.length:.45;
   };
   const modeAttempts=(mode:ExerciseMode)=>recent.filter(e=>e.mode===mode).length;

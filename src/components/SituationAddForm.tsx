@@ -8,6 +8,8 @@ import { Label } from './ui/label';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { toast } from 'sonner';
+import PedagogyFields from './PedagogyFields';
+import { manualPedagogy } from '@/lib/curriculum';
 
 const MAX_MEDIA_BYTES = 25 * 1024 * 1024;
 function extension(file: File) { return file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || (file.type.startsWith('image/') ? 'jpg' : 'mp3'); }
@@ -28,6 +30,7 @@ export function MediaDropBox({ kind, file, preview, fileName, onFile, onClear }:
 }
 
 export default function SituationAddForm({ deckId }: { deckId: string }) {
+  const [stage,setStage]=useState(0),[hint,setHint]=useState('');
   const [english,setEnglish]=useState(''),[portuguese,setPortuguese]=useState('');
   const [image,setImage]=useState<File|null>(null),[audio,setAudio]=useState<File|null>(null),[imageUrl,setImageUrl]=useState(''),[audioUrl,setAudioUrl]=useState('');
   const [audioId,setAudioId]=useState('none'),[audios,setAudios]=useState<{id:string;name:string}[]>([]),[saving,setSaving]=useState(false); const lock=useRef(false);
@@ -40,10 +43,11 @@ export default function SituationAddForm({ deckId }: { deckId: string }) {
       const upload=async(file:File)=>{const path=`${user.id}/situations/${deckId}/${crypto.randomUUID()}.${extension(file)}`;const {error}=await supabase.storage.from('card-media').upload(path,file,{contentType:file.type,upsert:false});if(error)throw error;uploaded.push(path);return supabase.storage.from('card-media').getPublicUrl(path).data.publicUrl};
       const imagePublic=await upload(image);const audioPublic=audio?await upload(audio):'';
       const media=`<img src="${escapeHtml(imagePublic)}" alt="Situação visual">${audioPublic?`<div data-audio="true" data-src="${escapeHtml(audioPublic)}" data-filename="${escapeHtml(audio!.name)}" class="audio-node"><audio src="${escapeHtml(audioPublic)}" class="audio-node-element"></audio></div>`:''}`;
-      const html=buildSituationHtml({english:english.trim(),context:'',portuguese:portuguese.trim(),mediaHtml:media});await addCard(deckId,html.front,html.back,audioId==='none'?null:audioId,'standard',english.trim());
+      const html=buildSituationHtml({english:english.trim(),context:hint.trim(),portuguese:portuguese.trim(),mediaHtml:media,pedagogy:manualPedagogy(stage)});await addCard(deckId,html.front,html.back,audioId==='none'?null:audioId,'standard',english.trim());
       URL.revokeObjectURL(imageUrl);if(audioUrl)URL.revokeObjectURL(audioUrl);setEnglish('');setPortuguese('');setImage(null);setAudio(null);setImageUrl('');setAudioUrl('');setAudioId('none');toast.success('Situação criada!',{description:'Compreensão, produção e ditado foram configurados automaticamente.'});
     }catch(error){if(uploaded.length)void supabase.storage.from('card-media').remove(uploaded);toast.error(error instanceof Error?error.message:'Não foi possível criar a situação.');}finally{lock.current=false;setSaving(false)}};
   return <form id="situation-form" onSubmit={save} className="space-y-5">
+    <PedagogyFields stage={stage} onStage={setStage} hint={hint} onHint={setHint}/>
     <section className="rounded-2xl border border-border bg-card p-4 space-y-4"><div className="flex gap-2"><Upload className="h-5 w-5 text-primary"/><div><h2 className="font-bold">1. Imagem e áudio</h2><p className="text-xs text-muted-foreground">Arraste cada arquivo para seu próprio espaço.</p></div></div><div className="grid gap-4 sm:grid-cols-2"><MediaDropBox kind="image" file={image} preview={imageUrl} onFile={setPickedImage} onClear={()=>{if(imageUrl)URL.revokeObjectURL(imageUrl);setImage(null);setImageUrl('')}}/><MediaDropBox kind="audio" file={audio} preview={audioUrl} onFile={setPickedAudio} onClear={()=>{if(audioUrl)URL.revokeObjectURL(audioUrl);setAudio(null);setAudioUrl('')}}/></div>
       {audios.length>0&&<div><Label>Ou escolher um áudio da biblioteca</Label><Select value={audioId} onValueChange={value=>{setAudioId(value);if(value!=='none'){if(audioUrl)URL.revokeObjectURL(audioUrl);setAudio(null);setAudioUrl('')}}}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="none">Enviar áudio acima</SelectItem>{audios.map(a=><SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent></Select></div>}
     </section>
