@@ -87,3 +87,6 @@ Limites: 1 MB de entrada e 50 situações por lote. A validação rejeita versõ
 - O lint geral tem problemas anteriores ao MVP (principalmente `any` em módulos existentes). Não se reescreveu o projeto para resolver avisos não relacionados. O build também mantém o aviso de tamanho de bundle já presente.
 
 Para reverter a interface, reverta o commit de implementação. Os campos HTML e eventos permanecem compatíveis com a versão anterior; não exclua os dados para fazer rollback.
+
+## Treino livre
+Acesse Treino livre pelo progresso ou por um baralho. Escolha aleatório, escuta, produção ou ditado e um limite de 5, 10, 20 ou 30 exercícios. Cada situação aparece no máximo uma vez por sessão, usando os materiais disponíveis. Ditado compara com a frase inglesa cadastrada. As avaliações servem apenas ao resumo da sessão, não são persistidas como evidência de domínio e não alteram SRS nem liberação de etapas. A revisão diária continua escolhendo uma modalidade por situação, com reforço quando necessário.

@@ -47,6 +47,27 @@ vi.mock("@/components/StudyCard", () => ({
 }));
 import CurriculumPanel from "@/components/CurriculumPanel";
 import StudyPage, { buildSessionQueue } from "@/pages/StudyPage";
+import FreePracticePage, { buildPractice, practiceOptions } from '@/pages/FreePracticePage';
+
+it('free practice filters dictation by audio and selects each situation only once', () => {
+  expect(practiceOptions(card, 'dictation')).toEqual([]);
+  const withAudio = {...card, audioId: 'audio'};
+  expect(practiceOptions(withAudio, 'dictation')).toEqual(['audio-dictation']);
+  const cards = Array.from({length: 10}, (_, i) => ({...withAudio, id: String(i)}));
+  const session = buildPractice(cards, 'random', 30);
+  expect(session).toHaveLength(10);
+  expect(new Set(session.map(item => item.card.id)).size).toBe(10);
+  expect(buildPractice(cards, 'dictation', 5)).toHaveLength(5);
+});
+
+it('finishes free practice without saving reviews or changing curriculum evidence', async () => {
+  mocks.load.mockResolvedValue({cards:[card], events:[], decks:[]});
+  render(<MemoryRouter><FreePracticePage /></MemoryRouter>);
+  fireEvent.click(await screen.findByRole('button', {name:'Começar treino'}));
+  fireEvent.click(await screen.findByRole('button', {name:'Avaliar one'}));
+  expect(await screen.findByText('Treino concluído')).toBeTruthy();
+  expect(mocks.save).not.toHaveBeenCalled();
+});
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();

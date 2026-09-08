@@ -172,6 +172,7 @@ export default function CurriculumPanel() {
                 : "Para avançar: 80% geral, ao menos 65% em cada habilidade, 5 situações, 80% de cobertura por habilidade e revisão em 3 dias, com retenção de pelo menos 48 horas em 80% das situações."}
         </p>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => navigate('/practice')}>Treino livre</Button>
           <Button onClick={() => navigate("/curriculum/study")}>
             Estudar meu currículo
           </Button>
