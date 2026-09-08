@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MessageSquareText, Upload } from 'lucide-react';
+import { Copy, MessageSquareText, Upload } from 'lucide-react';
 import { updateCard } from '@/lib/storage';
 import { buildSituationHtml, escapeHtml, type SituationContent } from '@/lib/situation';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,6 +32,17 @@ export default function SituationEditForm({ cardId, deckId, audioId, initial, on
   const [image,setImage]=useState<File|null>(null),[audio,setAudio]=useState<File|null>(null);
   const [imageUrl,setImageUrl]=useState(existing.image),[audioUrl,setAudioUrl]=useState(existing.audio),[audioName,setAudioName]=useState(existing.audioName);
   const [saving,setSaving]=useState(false);
+  const imagePrompt = initial.pedagogy?.imagePrompt
+    ? `${initial.pedagogy.imagePrompt.trim()}\n\nFormato obrigatório: imagem quadrada, proporção 1:1. Não inclua texto, letras, legendas ou marcas d’água na imagem.`
+    : '';
+  const copyImagePrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(imagePrompt);
+      toast.success('Prompt copiado! Gere a imagem no formato quadrado (1:1).');
+    } catch {
+      toast.error('Não foi possível copiar. Selecione e copie o prompt abaixo.');
+    }
+  };
   const ready=!!english.trim()&&!!portuguese.trim();
   const pickImage=(file:File)=>{if(image&&imageUrl)URL.revokeObjectURL(imageUrl);setImage(file);setImageUrl(URL.createObjectURL(file));};
   const pickAudio=(file:File)=>{if(audio&&audioUrl)URL.revokeObjectURL(audioUrl);setAudio(file);setAudioUrl(URL.createObjectURL(file));setAudioName(file.name);};
@@ -59,7 +70,7 @@ export default function SituationEditForm({ cardId, deckId, audioId, initial, on
   };
   return <>
     <PedagogyFields stage={stage} onStage={setStage} hint={hint} onHint={setHint}/>
-    {initial.pedagogy?.imagePrompt&&<details className="text-sm"><summary className="cursor-pointer">Instrução para gerar imagem</summary><p className="p-3 whitespace-pre-wrap">{initial.pedagogy.imagePrompt}</p></details>}
+    {imagePrompt&&<section className="rounded-2xl border border-border bg-card p-4 space-y-3 text-sm"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-bold">Prompt para gerar imagem</h2><Button type="button" variant="outline" size="sm" onClick={copyImagePrompt}><Copy className="mr-2 h-4 w-4"/>Copiar prompt</Button></div><p className="text-xs text-muted-foreground">Imagem quadrada (1:1), sem texto.</p><p className="whitespace-pre-wrap select-text break-words">{imagePrompt}</p></section>}
     <section className="rounded-2xl border border-border bg-card p-4 space-y-4"><div className="flex gap-2"><Upload className="h-5 w-5 text-primary"/><div><h2 className="font-bold">1. Imagem e áudio</h2><p className="text-xs text-muted-foreground">Você pode manter os arquivos atuais ou substituí-los.</p></div></div><div className="grid gap-4 sm:grid-cols-2"><MediaDropBox kind="image" file={image} preview={imageUrl} onFile={pickImage} onClear={()=>{if(image&&imageUrl)URL.revokeObjectURL(imageUrl);setImage(null);setImageUrl('');}}/><MediaDropBox kind="audio" file={audio} preview={audioUrl} fileName={audioName} onFile={pickAudio} onClear={()=>{if(audio&&audioUrl)URL.revokeObjectURL(audioUrl);setAudio(null);setAudioUrl('');}}/></div></section>
     <section className="rounded-2xl border border-border bg-card p-4 space-y-4"><div className="flex gap-2"><MessageSquareText className="h-5 w-5 text-primary"/><h2 className="font-bold">2. Frases</h2></div><div><Label htmlFor="english">Frase em inglês</Label><Input id="english" lang="en" value={english} onChange={e=>setEnglish(e.target.value)}/><p className="mt-1 text-xs text-muted-foreground">Esta mesma frase será usada para corrigir o ditado.</p></div><div><Label htmlFor="portuguese">Frase em português</Label><Input id="portuguese" value={portuguese} onChange={e=>setPortuguese(e.target.value)}/><p className="mt-1 text-xs text-muted-foreground">Serve como apoio quando você precisar consultar o significado.</p></div></section>
     <Button type="button" onClick={save} className="w-full h-12" disabled={!ready||saving}>{saving?'Salvando…':'Salvar situação'}</Button>
