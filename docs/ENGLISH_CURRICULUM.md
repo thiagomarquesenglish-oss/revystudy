@@ -79,14 +79,10 @@ Limites: 1 MB de entrada e 50 situações por lote. A validação rejeita versõ
 
 ## Verificação e operação
 
-- Instalação: 
-pm ci`.
-- Testes sem credenciais reais: definir `VITE_SUPABASE_URL=https://test.supabase.co` e `VITE_SUPABASE_PUBLISHABLE_KEY=test-public-key`, executar 
-pm test`.
-- Tipos: 
-px tsc --noEmit -p tsconfig.app.json`.
-- Build: 
-pm run build`, com as variáveis reais configuradas na Vercel para produção.
+- Instalação: `npm ci`.
+- Testes sem credenciais reais: definir `VITE_SUPABASE_URL=https://test.supabase.co` e `VITE_SUPABASE_PUBLISHABLE_KEY=test-public-key`, executar `npm test`.
+- Tipos: `npx tsc --noEmit -p tsconfig.app.json`.
+- Build: `npm run build`, com as variáveis reais configuradas na Vercel para produção.
 - Casos cobertos: domínio/retencão, conservação de acesso, legado, mistura sem duplicação, rejeição de lotes, importação repetida, escape de texto, prévia/aprovação, falha de salvamento e rollback transacional IndexedDB.
 - O lint geral tem problemas anteriores ao MVP (principalmente `any` em módulos existentes). Não se reescreveu o projeto para resolver avisos não relacionados. O build também mantém o aviso de tamanho de bundle já presente.
 
