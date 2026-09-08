@@ -79,11 +79,18 @@ Limites: 1 MB de entrada e 50 situações por lote. A validação rejeita versõ
 
 ## Verificação e operação
 
-- Instalação: `npm ci`.
-- Testes sem credenciais reais: definir `VITE_SUPABASE_URL=https://test.supabase.co` e `VITE_SUPABASE_PUBLISHABLE_KEY=test-public-key`, executar `npm test`.
-- Tipos: `npx tsc --noEmit -p tsconfig.app.json`.
-- Build: `npm run build`, com as variáveis reais configuradas na Vercel para produção.
+- Instalação: 
+pm ci`.
+- Testes sem credenciais reais: definir `VITE_SUPABASE_URL=https://test.supabase.co` e `VITE_SUPABASE_PUBLISHABLE_KEY=test-public-key`, executar 
+pm test`.
+- Tipos: 
+px tsc --noEmit -p tsconfig.app.json`.
+- Build: 
+pm run build`, com as variáveis reais configuradas na Vercel para produção.
 - Casos cobertos: domínio/retencão, conservação de acesso, legado, mistura sem duplicação, rejeição de lotes, importação repetida, escape de texto, prévia/aprovação, falha de salvamento e rollback transacional IndexedDB.
 - O lint geral tem problemas anteriores ao MVP (principalmente `any` em módulos existentes). Não se reescreveu o projeto para resolver avisos não relacionados. O build também mantém o aviso de tamanho de bundle já presente.
 
 Para reverter a interface, reverta o commit de implementação. Os campos HTML e eventos permanecem compatíveis com a versão anterior; não exclua os dados para fazer rollback.
+
+## Treino livre
+Acesse Treino livre pelo progresso ou por um baralho. Escolha aleatório, escuta, produção ou ditado e um limite de 5, 10, 20 ou 30 exercícios. Cada situação aparece no máximo uma vez por sessão, usando os materiais disponíveis. Ditado compara com a frase inglesa cadastrada. As avaliações servem apenas ao resumo da sessão, não são persistidas como evidência de domínio e não alteram SRS nem liberação de etapas. A revisão diária continua escolhendo uma modalidade por situação, com reforço quando necessário.

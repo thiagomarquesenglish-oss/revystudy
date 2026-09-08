@@ -198,6 +198,9 @@ export default function DeckPage() {
         </button>
 
         {cards.length > 0 && (
+          <Button variant="outline" onClick={() => navigate(`/practice/${deckId}`)}>Treino livre · escuta, produção e ditado</Button>
+        )}
+        {cards.length > 0 && (
           <button
             type="button"
             onClick={() => navigate(`/custom-study/${deckId}`)}
