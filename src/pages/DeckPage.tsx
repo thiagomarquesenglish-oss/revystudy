@@ -2,11 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getDecks, getCardsByDeck, getNewCards, getLearningCards, getReviewCards, invalidateDeckAudios, forceSyncDeckCards, checkDeckUpdates, downloadDeckPackage } from '@/lib/storage';
 import { Deck, Flashcard } from '@/lib/types';
-import { Button } from '@/components/ui/button';
-import { Play, Plus, Layers, MoreVertical, Music, RefreshCw, LayoutGrid, ListPlus, CloudDownload, Sparkles, ChevronRight, Headphones } from 'lucide-react';
+import { Play, Plus, Layers, MoreVertical, Music, RefreshCw, LayoutGrid, ListPlus, CloudDownload, Sparkles, ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageHeader from '@/components/PageHeader';
-import Heatmap from '@/components/Heatmap';
 import BulkAddCardsDrawer from '@/components/BulkAddCardsDrawer';
 import { toast } from 'sonner';
 import {
@@ -151,12 +149,12 @@ export default function DeckPage() {
           <div className="text-center py-12 space-y-4">
             <Layers className="w-14 h-14 mx-auto text-muted-foreground/50" />
             <h2 className="text-xl font-bold">Baralho vazio</h2>
-            <p className="text-muted-foreground text-sm">Adicione seus primeiros cartões para começar a estudar.</p>
+            <p className="text-muted-foreground text-sm">Abra o menu de opções e escolha Criar situação para adicionar seus primeiros cards.</p>
           </div>
         ) : studyCount === 0 ? (
           <div className="text-center py-12 space-y-4">
             <h2 className="text-xl font-bold">Revisões de hoje concluídas</h2>
-            <p className="text-muted-foreground text-sm">Quer continuar praticando? Escolha uma atividade abaixo.</p>
+            <p className="text-muted-foreground text-sm">Você pode continuar no treino livre.</p>
           </div>
         ) : (
           <>
@@ -178,84 +176,19 @@ export default function DeckPage() {
           </>
         )}
 
-        <h2 className="text-sm font-medium text-muted-foreground">Praticar</h2>
         <div className="native-list">
-        <button
-          type="button"
-          onClick={() => navigate(`/dictation/${deckId}`)}
-          className="native-row"
-        >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary">
-            <Headphones className="h-5 w-5 text-primary" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-bold text-foreground">Ouvir e escrever</span>
-            <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
-              Ditado com revisão espaçada
-            </span>
-          </span>
-          <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
-        </button>
-
-        {cards.length > 0 && (
-          <Button variant="outline" onClick={() => navigate(`/practice/${deckId}`)}>Treino livre · escuta, produção e ditado</Button>
-        )}
-        {cards.length > 0 && (
-          <button
-            type="button"
-            onClick={() => navigate(`/custom-study/${deckId}`)}
-            className="native-row"
-          >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary">
-              <Sparkles className="h-5 w-5 text-primary" />
-            </span>
-            <span className="min-w-0 flex-1">
-            <span className="block text-sm font-bold text-foreground">Compreensão e produção</span>
-              <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
-                Imagem, contexto e áudio em exercícios automáticos
-              </span>
-            </span>
-            <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+          <button type="button" disabled={!studyCount} onClick={() => navigate('/study/' + deckId)} className="native-row disabled:opacity-50">
+            <Play className="h-6 w-6 shrink-0 text-primary" />
+            <span className="min-w-0 flex-1"><span className="block font-bold">Estudar cards disponíveis</span><span className="block text-sm text-muted-foreground">{studyCount ? studyCount + ' cards para estudar agora' : 'Nenhum card agendado para agora'}</span></span>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </button>
-        )}
-
-        <button
-          type="button"
-          onClick={() => navigate(`/deck/${deckId}/audios`)}
-          className="native-row"
-        >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary">
-            <Music className="h-5 w-5 text-primary" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-bold text-foreground">Textos e áudios</span>
-            <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
-              Sua biblioteca de gravações
-            </span>
-          </span>
-          <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
-        </button>
+          <button type="button" disabled={!cards.length} onClick={() => navigate('/practice/' + deckId)} className="native-row disabled:opacity-50">
+            <Sparkles className="h-6 w-6 shrink-0 text-primary" />
+            <span className="min-w-0 flex-1"><span className="block font-bold">Treino livre</span><span className="block text-sm text-muted-foreground">Escolha escuta, produção, ditado ou aleatório</span></span>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </button>
         </div>
       </main>
-
-      {/* Botões fixos no rodapé */}
-      <div className="fixed bottom-0 left-0 right-0 z-10 bg-background border-t border-border" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div className="max-w-3xl mx-auto px-3 py-3 flex gap-2">
-          {studyCount > 0 && (
-            <Button
-              onClick={() => navigate(`/study/${deckId}`)}
-              className="flex-1 gap-2 font-bold"
-            >
-              <Play className="w-4 h-4" />
-              Estudar agora
-            </Button>
-          )}
-          <Button className="flex-1 gap-2 bg-card hover:bg-card/80 text-foreground" onClick={() => navigate(`/deck/${deckId}/add`)}>
-            <Plus className="w-4 h-4" />
-              Criar situação
-          </Button>
-        </div>
-      </div>
 
       {/* Menu drawer */}
       <Drawer open={menuOpen} onOpenChange={setMenuOpen}>
@@ -264,6 +197,12 @@ export default function DeckPage() {
             <DrawerTitle className="font-display">Opções</DrawerTitle>
           </DrawerHeader>
           <div className="px-4 pb-6 space-y-2">
+            <button onClick={() => { setMenuOpen(false); navigate('/deck/' + deckId + '/add'); }} className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border text-sm">
+              <Plus className="w-4 h-4" /> Criar situação
+            </button>
+            <button onClick={() => { setMenuOpen(false); navigate('/deck/' + deckId + '/audios'); }} className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border text-sm">
+              <Music className="w-4 h-4" /> Textos e áudios
+            </button>
             <button
               onClick={() => {
                 setMenuOpen(false);
