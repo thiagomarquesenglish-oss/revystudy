@@ -210,7 +210,7 @@ function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remaining
   const reveal=flipped||!!dictation;
   const showEnglishAnswer=mode!=='text-comprehension';
   const showImageAnswer=['audio-comprehension','text-comprehension'].includes(mode);
-  return <div className="flex flex-col w-full max-w-lg mx-auto overflow-hidden" style={{minHeight:'calc(100dvh - 120px)',paddingBottom:'160px'}}>
+  return <div className="study-exercise flex flex-col w-full max-w-lg mx-auto" >
     <div className="pt-5 flex justify-center"><SkillBadge skill={exerciseInfo[mode].skill}/></div>
     {exerciseInfo[mode].skill==='production'&&<div className="text-center text-sm text-muted-foreground mt-3 space-y-2"><p>Fale em voz alta e compare depois. Uma resposta natural com a mesma intenção também pode estar correta.</p>{situation.context&&<button className="text-primary" onClick={()=>setShowHint(!showHint)}>{showHint?situation.context:'Ver dica de intenção'}</button>}<p className="text-xs">Autoavaliação: o app não analisa sua voz.</p></div>}
     <div className="w-full pt-8 flex flex-col items-center gap-4">
@@ -263,7 +263,7 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
   };
 
   return (
-    <div className="flex flex-col w-full max-w-lg mx-auto overflow-hidden" style={{ minHeight: 'calc(100dvh - 120px)', paddingBottom: '160px' }}>
+    <div className="study-exercise flex flex-col w-full max-w-lg mx-auto" >
       {/* Content */}
       <StudyMedia html={card.front} key={`front-${card.id}`}>
         <CardContent html={card.front} audioSrc={frontAudioSrc} />
