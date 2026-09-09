@@ -268,8 +268,20 @@ html {
 }
 
 .safe-page {
-  padding-top: env(safe-area-inset-top);
   padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+}
+
+/* Use the visible viewport on mobile; content can still grow naturally. */
+.min-h-screen {
+  min-height: 100dvh;
+}
+
+/* The fixed study controls need one reserved space, not a second full page. */
+.study-exercise {
+  padding-bottom: calc(130px + env(safe-area-inset-bottom));
+}
+.safe-page:has(.study-exercise) {
+  padding-bottom: 0;
 }
 
 
