@@ -1,30 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Flame } from 'lucide-react';
-import { getReviewHistory } from '@/lib/storage';
-
-function computeStreak(history: { date: string; count: number }[]): number {
-  if (history.length === 0) return 0;
-
-  const dates = new Set(history.map(h => h.date));
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  // Check if studied today; if not, start from yesterday
-  const todayStr = today.toISOString().slice(0, 10);
-  let current = new Date(today);
-  if (!dates.has(todayStr)) {
-    current.setDate(current.getDate() - 1);
-    if (!dates.has(current.toISOString().slice(0, 10))) return 0;
-  }
-
-  let streak = 0;
-  while (dates.has(current.toISOString().slice(0, 10))) {
-    streak++;
-    current.setDate(current.getDate() - 1);
-  }
-
-  return streak;
-}
+import { getStreakHistory } from '@/lib/storage';
+import { computeStreak } from '@/lib/streak';
+import { useTabVisible } from '@/hooks/useTabVisible';
 
 /** Fire color based on streak: gray(0), warm yellow → orange → red → white-hot */
 function getFireColor(streak: number): string {
@@ -39,9 +17,18 @@ function getFireColor(streak: number): string {
 export default function StreakBadge() {
   const [streak, setStreak] = useState<number | null>(null);
 
-  useEffect(() => {
-    getReviewHistory().then(h => setStreak(computeStreak(h))).catch(() => setStreak(0));
+  const refresh = useCallback(() => {
+    getStreakHistory().then(h => setStreak(computeStreak(h))).catch(() => setStreak(null));
   }, []);
+  useTabVisible('/', refresh);
+  useEffect(() => {
+    refresh();
+    const visible = () => { if (document.visibilityState === 'visible') refresh(); };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', visible);
+    const timer = window.setInterval(visible, 60000);
+    return () => { window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', visible); window.clearInterval(timer); };
+  }, [refresh]);
 
   if (streak === null) return null;
 

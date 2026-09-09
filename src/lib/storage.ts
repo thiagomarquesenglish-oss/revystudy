@@ -5,6 +5,25 @@ import { persistMutations, syncOfflineQueue, announceSyncState } from './sync';
 import { processReview } from './srs';
 import { exerciseInfo, type ExerciseMode } from './adaptive-study';
 import type { Rating } from './types';
+import { localStudyDate } from './streak';
+
+export async function getStreakHistory(): Promise<{date: string; count: number}[]> {
+  const userId = await getCachedUserId();
+  if (!userId) return [];
+  if (isOnline()) {
+    try { await fetchReviewHistoryFromDB(); } catch { /* Local saved reviews remain usable offline. */ }
+  }
+  const counts = new Map<string, number>();
+  const rows = await localDB.getReviewHistory();
+  for (const row of rows) {
+    if (row.user_id !== userId || !row.reviewed_at) continue;
+    const at = new Date(row.reviewed_at);
+    if (!Number.isFinite(at.getTime()) || at.getTime() > Date.now()) continue;
+    const day = localStudyDate(at);
+    counts.set(day, (counts.get(day) || 0) + 1);
+  }
+  return [...counts].map(([date,count]) => ({date,count}));
+}
 const deletedThisSession = new Set<string>();
 
 async function withoutDeletedCards(rows: any[]): Promise<any[]> {
