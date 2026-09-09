@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, ArrowRight, Play, Plus } from 'lucide-react';
+import { BookOpen, ArrowRight, Plus } from 'lucide-react';
 import { getDecks, getNewCards, getLearningCards, getReviewCards } from '@/lib/storage';
 import type { Deck } from '@/lib/types';
 import { useTabVisible } from '@/hooks/useTabVisible';
@@ -29,27 +29,16 @@ export default function Index() {
   }, []);
   useEffect(() => { void loadData(); }, [loadData]);
   useTabVisible('/', loadData);
-  let remembered = '';
-  try { remembered = localStorage.getItem('revystudy:last-deck') || ''; } catch { /* optional preference */ }
-  const last = decks.find(deck => deck.id === remembered) || decks.find(deck => counts[deck.id] > 0) || decks[0];
-  const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
   return <div className="min-h-screen bg-background safe-bottom">
     <PageHeader title="Hoje" rightContent={<StreakBadge />} />
     <main className="max-w-3xl mx-auto px-4 space-y-7 pb-6" style={{ paddingTop: 'calc(var(--app-header-height, 48px) + 1.5rem)' }}>
       {loading ? <p role="status" className="text-muted-foreground">Preparando seu estudo...</p>
         : error ? <div role="alert" className="space-y-3"><p>Não foi possível carregar seus baralhos.</p><Button onClick={loadData}>Tentar novamente</Button></div>
-        : !last ? <section className="rounded-3xl border border-border bg-card p-7 space-y-4">
+        : !decks.length ? <section className="rounded-3xl border border-border bg-card p-7 space-y-4">
           <BookOpen className="h-10 w-10 text-primary" /><h1 className="text-2xl font-bold">Seu inglês começa aqui</h1>
           <p className="text-muted-foreground">Reúna frases, imagens e áudios em um baralho para começar a praticar.</p>
           <Button onClick={() => navigate('/library/manage')}><Plus />Criar meu primeiro baralho</Button>
         </section> : <>
-          <section className="py-3 space-y-5">
-            <p className="text-sm text-muted-foreground capitalize">{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-            <h1 className="native-title">{total > 0 ? 'Vamos estudar.' : 'Tudo em dia.'}</h1>
-            <p className="text-muted-foreground">{total > 0 ? `${total} ${total === 1 ? 'cartão disponível' : 'cartões disponíveis'} para estudar agora.` : 'Revisões em dia. Você pode continuar com uma prática livre.'}</p>
-            <div className="flex items-center gap-3 text-muted-foreground"><BookOpen className="text-primary shrink-0" /><span className="font-semibold break-words min-w-0">{last.name}</span></div>
-            <Button className="w-full" size="lg" onClick={() => navigate(counts[last.id] > 0 ? `/study/${last.id}` : `/deck/${last.id}`)}><Play />{counts[last.id] > 0 ? 'Começar revisão' : 'Abrir baralho'}</Button>
-          </section>
           <section className="space-y-3">
             <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-bold">Seus baralhos</h2><Button variant="ghost" size="sm" onClick={() => navigate('/decks')}>Ver biblioteca<ArrowRight /></Button></div>
             <div className="native-list">{decks.map(deck => <button key={deck.id} onClick={() => navigate(`/deck/${deck.id}`)} className="native-row">
