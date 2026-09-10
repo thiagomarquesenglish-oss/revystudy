@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   import: vi.fn(),
   error: vi.fn(),
 }));
-vi.mock("@/lib/learning-data", () => ({ loadLearningData: mocks.load }));
+vi.mock("@/lib/learning-data", () => ({ loadLearningData: mocks.load,saveManualCurriculumStage:vi.fn() }));
 vi.mock("@/lib/storage", () => ({
   saveLearningReview: mocks.save,
   importLearningCards: mocks.import,
@@ -45,7 +45,7 @@ vi.mock("@/components/StudyCard", () => ({
     </button>
   ),
 }));
-import CurriculumPanel from "@/components/CurriculumPanel";
+import CurriculumContentPage from "@/pages/CurriculumContentPage";
 import StudyPage, { buildSessionQueue } from "@/pages/StudyPage";
 import FreePracticePage, { buildPractice, practiceOptions } from '@/pages/FreePracticePage';
 
@@ -140,14 +140,12 @@ it("requires a valid preview and explicit batch approval before importing", asyn
   mocks.import.mockResolvedValue(undefined);
   render(
     <MemoryRouter>
-      <CurriculumPanel />
+      <CurriculumContentPage />
     </MemoryRouter>,
   );
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Importar conteúdo da IA" }),
-  );
+  await screen.findByText('Preparar conteúdo da Etapa 1');
   const batch = {
-    format: "REVYSTUDY_BATCH_V1",
+    format: "REVYSTUDY_BATCH_V2",
     curriculum: "english-v1",
     stage: 1,
     unit: 1,
@@ -157,8 +155,8 @@ it("requires a valid preview and explicit batch approval before importing", asyn
         id: "C01",
         english: "I am a student.",
         portuguese: "Eu sou estudante.",
-        goal: "Dizer quem você é",
-        structures: ["I am"],
+        goal: "Cumprimentar e se apresentar usando nome e ocupação",
+        structures: ["I'm a/an + occupation"],
         vocabulary: ["student"],
       },
     ],
@@ -167,12 +165,12 @@ it("requires a valid preview and explicit batch approval before importing", asyn
     target: { value: JSON.stringify(batch) },
   });
   fireEvent.click(
-    screen.getByRole("button", { name: "Validar e revisar lote" }),
+    screen.getByRole("button", { name: "Validar lote" }),
   );
   expect(mocks.import).not.toHaveBeenCalled();
   expect(screen.getByText("I am a student.")).toBeVisible();
   fireEvent.click(
-    screen.getByRole("button", { name: "Aprovar e importar lote" }),
+    screen.getByRole("button", { name: "Aprovar e importar" }),
   );
   await waitFor(() => expect(mocks.import).toHaveBeenCalledOnce());
   expect(mocks.import.mock.calls[0][0]).toBe("d");

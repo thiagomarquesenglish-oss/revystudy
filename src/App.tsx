@@ -19,6 +19,7 @@ import EditCardPage from "./pages/EditCardPage";
 import LineByLinePage from "./pages/LineByLinePage";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
+import CurriculumContentPage from './pages/CurriculumContentPage';
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/practice" element={<ProtectedRoute><FreePracticePage /></ProtectedRoute>} />
             <Route path="/practice/:deckId" element={<ProtectedRoute><FreePracticePage /></ProtectedRoute>} />
             <Route path="/curriculum/study" element={<ProtectedRoute><StudyPage /></ProtectedRoute>} />
+            <Route path="/curriculum/content" element={<ProtectedRoute><CurriculumContentPage /></ProtectedRoute>} />
             <Route path="/library/manage" element={<ProtectedRoute><LibraryManagePage /></ProtectedRoute>} />
             <Route path="/auth" element={<AuthRoute />} />
             <Route path="/" element={null} />

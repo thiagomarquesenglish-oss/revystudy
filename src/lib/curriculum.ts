@@ -4,6 +4,7 @@ export const CURRICULUM_VERSION = "english-v1";
 export interface CurriculumUnit {
   stage: number;
   unit: number;
+  targetContent: number;
   title: string;
   goal: string;
   structures: string[];
@@ -13,48 +14,49 @@ export interface CurriculumUnit {
 // A versioned, cumulative syllabus. Entries introduce only the listed material.
 const syllabus: [string, string, string[], string[]][] = [
   [
-    "Apresentar-se",
     "Dizer quem você é",
-    ["I am", "you are", "a/an"],
+    "Cumprimentar e se apresentar usando nome e ocupação",
+    ["Hi / Hello", "I'm + name", "My name is + name", "I'm a/an + occupation", "Nice to meet you"],
     [
       "I",
-      "you",
       "a",
       "an",
+      "hi",
       "hello",
       "name",
       "student",
       "teacher",
-      "Ana",
-      "Sam",
+      "doctor",
+      "engineer",
+      "designer",
     ],
   ],
   [
-    "Identificar coisas",
+    "Identificar pessoas e coisas",
     "Identificar pessoas e objetos",
     ["he is", "she is", "it is", "a/an"],
     ["he", "she", "it", "book", "phone", "table", "friend"],
   ],
   [
-    "Descrever estados",
+    "Descrever como alguém está",
     "Expressar estados e características",
     ["be + adjective"],
     ["happy", "tired", "hungry", "busy", "new", "old"],
   ],
   [
-    "Pessoas e grupos",
+    "Falar sobre grupos",
     "Falar sobre grupos e quantidades",
     ["we are", "they are", "regular plurals"],
     ["we", "they", "people", "one", "two", "three", "four", "five"],
   ],
   [
-    "Posse",
+    "Falar sobre posse",
     "Dizer o que alguém tem",
     ["have/has", "my/your/his/her"],
     ["have", "has", "my", "your", "his", "her", "bag", "car", "house"],
   ],
   [
-    "Localização",
+    "Dizer onde as coisas estão",
     "Dizer onde algo está",
     ["in/on/under/next to", "where is"],
     [
@@ -70,7 +72,7 @@ const syllabus: [string, string, string[], string[]][] = [
     ],
   ],
   [
-    "Horas e dias",
+    "Informar horários e dias",
     "Entender e informar horários",
     ["at + time", "on + day"],
     [
@@ -93,7 +95,7 @@ const syllabus: [string, string, string[], string[]][] = [
     ],
   ],
   [
-    "Rotina",
+    "Falar sobre sua rotina",
     "Falar sobre ações habituais",
     ["simple present affirmative"],
     [
@@ -110,133 +112,133 @@ const syllabus: [string, string, string[], string[]][] = [
     ],
   ],
   [
-    "Frequência",
+    "Dizer com que frequência algo acontece",
     "Descrever a frequência de hábitos",
     ["frequency adverbs"],
     ["always", "usually", "sometimes", "never", "every day", "often"],
   ],
   [
-    "Preferências",
+    "Falar do que você gosta",
     "Expressar gostos e interesses",
     ["like/love + noun", "like + ing"],
     ["like", "love", "read", "music", "coffee", "tea", "play", "walk"],
   ],
   [
-    "Desejos e necessidades",
+    "Dizer o que você quer e precisa",
     "Expressar desejos e necessidades",
     ["want/need + noun", "want/need to + verb"],
     ["want", "need", "help", "buy", "drink", "rest"],
   ],
   [
-    "Negação",
+    "Dizer o que não acontece",
     "Dizer o que não é ou não acontece",
     ["be negative", "do not/does not"],
     ["not", "don't", "doesn't", "isn't", "aren't"],
   ],
   [
-    "Perguntas básicas",
+    "Perguntar sobre hábitos",
     "Fazer perguntas sobre hábitos",
     ["do/does questions", "be questions"],
     ["do", "does", "yes", "no"],
   ],
   [
-    "Buscar informações",
+    "Pedir informações",
     "Perguntar o quê, quando e por quê",
     ["what/when/why/how questions"],
     ["what", "when", "why", "how", "because"],
   ],
   [
-    "Habilidades e permissão",
+    "Falar sobre habilidades e permissão",
     "Dizer o que consegue fazer",
     ["can/cannot", "can questions"],
     ["can", "can't", "swim", "drive", "speak", "open", "close"],
   ],
   [
-    "Ações em andamento",
+    "Descrever o que acontece agora",
     "Descrever o que acontece agora",
     ["present continuous"],
     ["now", "today", "listen", "cook", "wait", "run"],
   ],
   [
-    "Existência e quantidade",
+    "Descrever lugares e quantidades",
     "Descrever o que existe em um lugar",
     ["there is/are", "some/any"],
     ["some", "any", "many", "much", "shop", "park", "city"],
   ],
   [
-    "Pedidos cotidianos",
+    "Fazer pedidos com educação",
     "Pedir algo com educação",
     ["would like", "could you"],
     ["please", "thank you", "menu", "ticket", "price", "bring"],
   ],
   [
-    "Passado: estados",
+    "Descrever como algo era",
     "Contar como algo era",
     ["was/were"],
     ["yesterday", "last week", "last year", "before"],
   ],
   [
-    "Passado: ações",
+    "Contar ações passadas",
     "Contar ações concluídas",
     ["simple past regular"],
     ["worked", "studied", "played", "walked", "visited"],
   ],
   [
-    "Passado irregular",
+    "Contar acontecimentos passados",
     "Relatar experiências cotidianas passadas",
     ["simple past irregular"],
     ["went", "ate", "had", "saw", "bought", "got"],
   ],
   [
-    "Perguntar sobre o passado",
+    "Conversar sobre o passado",
     "Perguntar e negar acontecimentos passados",
     ["did questions", "did not"],
     ["did", "didn't", "ago"],
   ],
   [
-    "Planos",
+    "Falar sobre planos",
     "Falar sobre planos e intenções",
     ["going to"],
     ["tomorrow", "next week", "travel", "meet", "plan"],
   ],
   [
-    "Decisões e previsões",
+    "Fazer previsões e tomar decisões",
     "Expressar decisões e previsões",
     ["will/will not"],
     ["will", "won't", "think", "hope", "soon"],
   ],
   [
-    "Comparações",
+    "Comparar pessoas e coisas",
     "Comparar opções e características",
     ["comparatives", "superlatives"],
     ["bigger", "smaller", "better", "best", "more", "most", "than"],
   ],
   [
-    "Conselhos e obrigações",
+    "Dar conselhos e explicar obrigações",
     "Dar conselhos e explicar obrigações",
     ["should", "must", "have to"],
     ["should", "must", "safe", "careful", "rule"],
   ],
   [
-    "Experiências",
+    "Falar sobre experiências",
     "Falar sobre experiências sem data específica",
     ["present perfect", "ever/never"],
     ["been", "done", "seen", "ever", "already", "yet"],
   ],
   [
-    "Histórias",
+    "Contar histórias",
     "Relacionar ações passadas e interrupções",
     ["past continuous", "when/while"],
     ["while", "suddenly", "happen", "arrive"],
   ],
   [
-    "Possibilidades",
+    "Falar sobre possibilidades",
     "Relacionar condições e consequências reais",
     ["first conditional"],
     ["if", "rain", "stay", "finish", "enough"],
   ],
   [
-    "Opiniões conectadas",
+    "Explicar e conectar opiniões",
     "Explicar opiniões com razões e contrastes",
     ["although", "relative clauses who/which"],
     ["although", "however", "agree", "believe", "opinion", "which", "who"],
@@ -246,6 +248,7 @@ export const CURRICULUM: CurriculumUnit[] = syllabus.map(
   ([title, goal, structures, vocabulary], i) => ({
     stage: i + 1,
     unit: 1,
+    targetContent: 12,
     title,
     goal,
     structures,

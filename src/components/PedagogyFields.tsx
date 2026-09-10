@@ -23,7 +23,7 @@ export default function PedagogyFields({
           <option value={0}>Sem etapa · conteúdo livre</option>
           {CURRICULUM.map((u) => (
             <option key={u.stage} value={u.stage}>
-              {u.stage}. {u.title} · Unidade {u.unit}
+              Etapa {u.stage} — {u.title}
             </option>
           ))}
         </select>

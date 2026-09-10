@@ -75,8 +75,8 @@ const batch = {
       id: "S01-U01-B01-C01",
       english: "I am a student.",
       portuguese: "Eu sou estudante.",
-      goal: "Dizer quem você é",
-      structures: ["I am"],
+      goal: "Cumprimentar e se apresentar usando nome e ocupação",
+      structures: ["I'm a/an + occupation"],
       vocabulary: ["student"],
       image_prompt: "A student with books.",
     },
@@ -87,7 +87,8 @@ describe("curriculum evidence and retention", () => {
   it("keeps unseen skills explicit and cannot unlock an empty unit", () => {
     const m = measureUnit([], []);
     expect(m.ready).toBe(false);
-    expect(m.skills.writing).toBe(0);
+    expect(m.skills.writing).toBeNull();
+    expect(m.evidence.writing).toBe('none');
   });
   it("does not grant access from massed same-day easy ratings", () => {
     expect(
@@ -252,11 +253,11 @@ describe("external AI protocol", () => {
     expect(html.front).not.toContain("<audio");
   });
   it("exports the app state without allowing a chat to assign mastery", () => {
-    const state = JSON.parse(exportLearningContext(cards, [], 10));
-    expect(state.current.stage).toBe(1);
-    expect(state.current.skills.listening).toBe(0);
-    expect(state.new_material.structures).toContain("I am");
-    expect(state.allowed_previous.structures).toEqual([]);
+    const state = JSON.parse(exportLearningContext(cards, []));
+    expect(state.stage).toBe(1);
+    expect(state).not.toHaveProperty('skills');
+    expect(state.new_material.patterns).toContain("I'm a/an + occupation");
+    expect(state.allowed_previous.patterns).toEqual([]);
     expect(() =>
       inspectAiBatch(JSON.stringify({ ...batch, mastery: 100 }), [], []),
     ).toThrow();

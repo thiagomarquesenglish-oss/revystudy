@@ -14,11 +14,12 @@ export const SKILLS: LearningSkill[] = [
   "writing",
 ];
 export const SKILL_LABELS: Record<LearningSkill, string> = {
-  listening: "Listening",
-  comprehension: "Compreensão / leitura",
-  production: "Produção",
+  listening: "Escuta",
+  comprehension: "Leitura",
+  production: "Fala",
   writing: "Escrita",
 };
+export type EvidenceStatus='none'|'low'|'sufficient';
 export interface LearningEvent {
   id: string;
   cardId: string;
@@ -66,8 +67,9 @@ const average = (values: number[]) =>
   values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
 export interface UnitMetrics {
   count: number;
-  skills: Record<LearningSkill, number>;
+  skills: Record<LearningSkill, number|null>;
   coverage: Record<LearningSkill, number>;
+  evidence: Record<LearningSkill,EvidenceStatus>;
   overall: number;
   retained: number;
   days: number;
@@ -83,8 +85,9 @@ export function measureUnit(
   const attempts = events
     .filter((e) => ids.has(e.cardId) && Date.parse(e.at) <= now)
     .sort((a, b) => a.at.localeCompare(b.at));
-  const skills = {} as Record<LearningSkill, number>,
-    coverage = {} as Record<LearningSkill, number>;
+  const skills = {} as Record<LearningSkill, number|null>,
+    coverage = {} as Record<LearningSkill, number>,
+    evidence = {} as Record<LearningSkill,EvidenceStatus>;
   for (const skill of SKILLS) {
     let covered = 0;
     const values = cards.map((card) => {
@@ -104,8 +107,11 @@ export function measureUnit(
       const age = (now - Date.parse(recent.at(-1)!.at)) / DAY;
       return weighted * Math.max(0.5, 1 - Math.max(0, age - 30) / 120);
     });
-    skills[skill] = Math.round(average(values));
+    const skillAttempts=attempts.filter(e=>modeSkills(e.mode).includes(skill));
+    const skillDays=new Set(skillAttempts.map(e=>e.at.slice(0,10))).size;
+    skills[skill] = skillAttempts.length ? Math.round(average(values)) : null;
     coverage[skill] = cards.length ? covered / cards.length : 0;
+    evidence[skill]=skillAttempts.length===0?'none':coverage[skill]>=.8&&skillDays>=2?'sufficient':'low';
   }
   const retained = cards.filter((card) => {
     const good = attempts.filter(
@@ -118,24 +124,26 @@ export function measureUnit(
     );
   }).length;
   const days = new Set(attempts.map((e) => e.at.slice(0, 10))).size;
-  const overall = Math.round(average(Object.values(skills)));
-  const evidence =
+  const observed=Object.values(skills).filter((value):value is number=>value!==null);
+  const overall = Math.round(average(observed));
+  const enoughEvidence =
     cards.length >= 5 &&
     days >= 3 &&
     retained / cards.length >= 0.8 &&
-    SKILLS.every((s) => coverage[s] >= 0.8);
+    SKILLS.every((s) => evidence[s] === 'sufficient');
   const ready =
-    evidence && overall >= 80 && SKILLS.every((s) => skills[s] >= 65);
+    enoughEvidence && overall >= 80 && SKILLS.every((s) => (skills[s]??0) >= 65);
   const mastered =
-    evidence &&
+    enoughEvidence &&
     overall >= 90 &&
-    SKILLS.every((s) => skills[s] >= 80) &&
+    SKILLS.every((s) => (skills[s]??0) >= 80) &&
     attempts.length > 0 &&
     Date.parse(attempts.at(-1)!.at) - Date.parse(attempts[0].at) >= 7 * DAY;
   return {
     count: cards.length,
     skills,
     coverage,
+    evidence,
     overall,
     retained,
     days,
