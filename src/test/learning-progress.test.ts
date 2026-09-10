@@ -4,6 +4,7 @@ import {
   measureUnit,
   mixedCurriculumQueue,
   modeSkills,
+  stageLearningState,
   type LearningEvent,
 } from "@/lib/learning-progress";
 import { buildSituationHtml, readSituation } from "@/lib/situation";
@@ -84,6 +85,15 @@ const batch = {
 };
 
 describe("curriculum evidence and retention", () => {
+  it('separates stage access from its learning state',()=>{
+    const base={unlocked:true,count:0,targetContent:12,reviewCount:0,mastered:false};
+    expect(stageLearningState(base)).toBe('available');
+    expect(stageLearningState({...base,count:5})).toBe('preparing');
+    expect(stageLearningState({...base,count:12})).toBe('ready');
+    expect(stageLearningState({...base,count:12,reviewCount:1})).toBe('studying');
+    expect(stageLearningState({...base,count:12,reviewCount:1,mastered:true})).toBe('mastered');
+    expect(stageLearningState({...base,unlocked:false})).toBe('locked');
+  });
   it("keeps unseen skills explicit and cannot unlock an empty unit", () => {
     const m = measureUnit([], []);
     expect(m.ready).toBe(false);

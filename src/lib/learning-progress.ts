@@ -67,6 +67,7 @@ const average = (values: number[]) =>
   values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
 export interface UnitMetrics {
   count: number;
+  reviewCount: number;
   skills: Record<LearningSkill, number|null>;
   coverage: Record<LearningSkill, number>;
   evidence: Record<LearningSkill,EvidenceStatus>;
@@ -141,6 +142,7 @@ export function measureUnit(
     Date.parse(attempts.at(-1)!.at) - Date.parse(attempts[0].at) >= 7 * DAY;
   return {
     count: cards.length,
+    reviewCount: attempts.length,
     skills,
     coverage,
     evidence,
@@ -150,6 +152,16 @@ export function measureUnit(
     ready,
     mastered,
   };
+}
+
+export type StageLearningState='locked'|'available'|'preparing'|'ready'|'studying'|'mastered';
+export function stageLearningState(stage:{unlocked:boolean;count:number;targetContent:number;reviewCount:number;mastered:boolean}):StageLearningState{
+  if(!stage.unlocked)return 'locked';
+  if(stage.mastered)return 'mastered';
+  if(stage.count===0)return 'available';
+  if(stage.count<stage.targetContent)return 'preparing';
+  if(stage.reviewCount===0)return 'ready';
+  return 'studying';
 }
 export function curriculumProgress(
   cards: Flashcard[],
