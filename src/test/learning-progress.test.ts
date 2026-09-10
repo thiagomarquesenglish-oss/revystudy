@@ -167,7 +167,7 @@ describe("curriculum evidence and retention", () => {
   it('allows each stage to define its own content target',()=>{
     const progress=curriculumProgress(Array.from({length:10},(_,i)=>card(`legacy-${i}`,1)),[],start,2);
     expect(progress.units[0]).toMatchObject({targetContent:10,count:10,manuallyCompleted:true});
-    expect(progress.units[1].targetContent).toBe(12);
+    expect(progress.units[1].targetContent).toBe(30);
   });
   it("keeps old due content, omits locked and future-due content, never duplicates", () => {
     const list = [
@@ -277,5 +277,12 @@ describe("external AI protocol", () => {
     expect(() =>
       inspectAiBatch(JSON.stringify({ ...batch, mastery: 100 }), [], []),
     ).toThrow();
+  });
+  it("exports the active legacy stage with prior learned content", () => {
+    const state = JSON.parse(exportLearningContext([card("stage-one", 1)], [], 2));
+    expect(state).toMatchObject({stage:2,target_content:30,needed:30});
+    expect(state.learned_previous_content).toEqual([
+      expect.objectContaining({stage:1,english:"Example stage-one"}),
+    ]);
   });
 });

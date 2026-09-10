@@ -178,8 +178,9 @@ export function batchCardHtml(batch: AiBatch, item: AiBatch["cards"][number]) {
 export function exportLearningContext(
   cards: Flashcard[],
   events: LearningEvent[],
+  manualStage=1,
 ) {
-  const progress = curriculumProgress(cards, events),
+  const progress = curriculumProgress(cards, events,Date.now(),manualStage),
     current = progress.current;
   const situations = cards
     .map((c) => ({ card: c, s: readSituation(c.front, c.back) }))
@@ -216,6 +217,13 @@ export function exportLearningContext(
         patterns: allowedKnowledge(current.stage).structures,
         words: allowedKnowledge(current.stage).vocabulary,
       },
+      learned_previous_content: situations
+        .filter(x=>(x.s?.pedagogy?.stage||0)<current.stage)
+        .map(x=>({
+          stage:x.s!.pedagogy!.stage,
+          english:x.s!.english,
+          portuguese:x.s!.portuguese,
+        })),
       focus,
       existing_sentences: currentSituations.map(x=>x.s!.english),
       next_batch: `S${String(current.stage).padStart(2,'0')}-B${String(batches.size+1).padStart(2,'0')}`,
@@ -226,7 +234,7 @@ export function exportLearningContext(
 }
 export const MASTER_PROMPT = `Você é o gerador de conteúdo do RevyStudy. Sempre aguarde um REVYSTUDY_GENERATION_REQUEST_V2.
 Gere conteúdo somente para a etapa informada. Não decida progressão e não infira conhecimentos ausentes do pedido.
-Use apenas new_material e allowed_previous. Não repita existing_sentences e gere exatamente a quantidade indicada em needed.
+Use new_material, allowed_previous e learned_previous_content. Reaproveite naturalmente o conhecimento das etapas anteriores, mas não copie frases já existentes. Não repita existing_sentences e gere exatamente a quantidade indicada em needed.
 Produza inglês natural e cotidiano. Ensine padrões reutilizáveis, sem criar variações artificiais da mesma sentença.
 hint deve descrever em português a intenção comunicativa sem entregar a tradução.
 image_prompt deve representar visualmente a situação, ser 1:1 e não conter texto, letras, legendas ou marcas d'água.

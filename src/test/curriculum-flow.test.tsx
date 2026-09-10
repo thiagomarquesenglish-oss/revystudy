@@ -145,6 +145,8 @@ it("requires a valid preview and explicit batch approval before importing", asyn
   );
   await screen.findByText('Preparar conteúdo da Etapa 1');
   expect(screen.queryByRole('button', {name:/Pular para a próxima etapa/i})).toBeNull();
+  expect(screen.getByRole('button', {name:'Copiar Prompt Master'})).toBeVisible();
+  expect(screen.getByRole('button', {name:'Copiar conteúdo para IA'})).toBeVisible();
   const batch = {
     format: "REVYSTUDY_BATCH_V2",
     curriculum: "english-v1",
