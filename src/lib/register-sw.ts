@@ -79,10 +79,12 @@ export async function registerServiceWorker() {
     document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
     window.setInterval(check, 60 * 60 * 1000);
     window.setInterval(() => {
-      // Never interrupt a study, editor, upload, backup, or an open dialog.
-      const safePage = ['/', '/stats'].includes(location.pathname);
+      // Apply releases on every safe screen. Preserve active studies and any
+      // form with unsaved text so an update can never discard user work.
+      const protectedPage = /^\/(study|custom-study)(\/|$)/.test(location.pathname) || /^\/card\/[^/]+\/edit$/.test(location.pathname) || /^\/deck\/[^/]+\/add$/.test(location.pathname);
+      const hasUnsavedText = [...document.querySelectorAll<HTMLInputElement|HTMLTextAreaElement>('input, textarea')].some(field => field.value.trim().length > 0);
       const editing = document.querySelector('[role="dialog"], [data-state="open"][role="alertdialog"]') || document.activeElement?.matches('input, textarea, [contenteditable="true"]');
-      if (updateReady && safePage && !document.hidden && !editing && Date.now() - lastInteraction > 10000) {
+      if (updateReady && !protectedPage && !hasUnsavedText && !document.hidden && !editing && Date.now() - lastInteraction > 10000) {
         updateReady = false; location.reload();
       }
     }, 2000);
