@@ -45,7 +45,7 @@ export async function loadLearningData() {
     try {
       const {data:settings,error:settingsError}=await withDeadline(supabase.from('learning_settings').select('manual_stage').eq('user_id',userId).maybeSingle());
       if(settingsError)throw settingsError;
-      if(settings?.manual_stage){manualStage=Math.max(manualStage,settings.manual_stage);localStorage.setItem(MANUAL_STAGE_KEY,String(manualStage));}
+      if(settings?.manual_stage){manualStage=settings.manual_stage;localStorage.setItem(MANUAL_STAGE_KEY,String(manualStage));}
       const { data, error } = await withDeadline(supabase
         .from("decks")
         .select("*")

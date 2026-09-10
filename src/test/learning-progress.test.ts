@@ -161,6 +161,7 @@ describe("curriculum evidence and retention", () => {
     expect(progress.current.stage).toBe(3);
     expect(progress.units[0]).toMatchObject({unlocked:true,earned:false,manuallyCompleted:true,overall:0});
     expect(progress.units[2]).toMatchObject({unlocked:true,earned:false,overall:0});
+    expect(progress.units[1].manuallyCompleted).toBe(false);
     expect(progress.units[3].unlocked).toBe(false);
   });
   it('allows each stage to define its own content target',()=>{
