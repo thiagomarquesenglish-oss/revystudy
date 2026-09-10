@@ -4,7 +4,7 @@ import {toast} from 'sonner';
 import PageHeader from '@/components/PageHeader';
 import {Button} from '@/components/ui/button';
 import {Textarea} from '@/components/ui/textarea';
-import {loadLearningData,saveManualCurriculumStage} from '@/lib/learning-data';
+import {loadLearningData} from '@/lib/learning-data';
 import {curriculumProgress} from '@/lib/learning-progress';
 import {exportLearningContext,inspectAiBatch,batchCardHtml,MASTER_PROMPT} from '@/lib/ai-protocol';
 import {importLearningCards} from '@/lib/storage';
@@ -25,7 +25,7 @@ export default function CurriculumContentPage(){
    <div className="space-y-3">{progress.units.map(stage=><div key={stage.stage} className="flex justify-between gap-4 rounded-xl border border-border p-4"><div><p className="font-medium">Etapa {stage.stage} — {stage.title}</p><p className="text-sm text-muted-foreground">{stage.count} / {stage.targetContent} conteúdos preparados</p></div><span className="text-sm">{stage.manuallyCompleted?'✅ Concluída':stage.count>=stage.targetContent?'✅ Pronta':stage.unlocked?'Disponível':'🔒'}</span></div>)}</div>
    {current.unlocked&&needed>0&&<section className="rounded-2xl border border-primary/30 bg-card p-5 space-y-4"><div><h2 className="font-semibold">Preparar conteúdo da Etapa {current.stage}</h2><p className="text-sm text-muted-foreground mt-1">{prepared} de {current.targetContent} preparados · faltam {needed}</p></div><Button onClick={()=>copy(exportLearningContext(data.cards,data.events))}>Copiar pedido para IA</Button><Textarea aria-label="JSON da IA" rows={9} value={json} onChange={e=>{setJson(e.target.value);setPreview(null)}} placeholder="Cole aqui o REVYSTUDY_BATCH_V2"/><Button variant="outline" disabled={!json.trim()} onClick={inspect}>Validar lote</Button>{preview&&<div className="space-y-3"><p>{preview.additions.length} novos conteúdos · {preview.duplicates} duplicados ignorados</p><div className="max-h-72 overflow-y-auto space-y-2">{preview.additions.map(item=><div key={item.id} className="rounded-lg border border-border p-3"><p lang="en">{item.english}</p><p className="text-sm text-muted-foreground">{item.portuguese}</p></div>)}</div><Button disabled={busy||!preview.additions.length} onClick={save}>{busy?'Importando…':'Aprovar e importar'}</Button></div>}</section>}
    {current.count>=current.targetContent&&<div className="rounded-xl bg-card p-4 space-y-3"><p>✅ Conteúdo preparado. As ferramentas de geração ficam ocultas enquanto você estuda.</p>{current.reviewCount===0&&<Button onClick={()=>navigate('/curriculum/study')}>Começar etapa</Button>}</div>}
-   <details className="rounded-xl border border-border p-4"><summary className="cursor-pointer font-medium">Configuração avançada</summary><div className="pt-4 space-y-3"><Button variant="outline" onClick={()=>copy(MASTER_PROMPT)}>Copiar Prompt Master</Button>{current.stage<30&&<Button variant="ghost" disabled={busy} onClick={async()=>{setBusy(true);try{await saveManualCurriculumStage(current.stage+1);await refresh();toast.success(`Etapa ${current.stage+1} liberada`)}finally{setBusy(false)}}}>Pular para a próxima etapa</Button>}</div></details>
+   <details className="rounded-xl border border-border p-4"><summary className="cursor-pointer font-medium">Configuração avançada</summary><div className="pt-4"><Button variant="outline" onClick={()=>copy(MASTER_PROMPT)}>Copiar Prompt Master</Button></div></details>
   </>}{error&&<p role="alert" className="text-sm text-destructive">{error}</p>}
  </main></div>;
 }

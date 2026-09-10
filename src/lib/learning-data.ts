@@ -18,18 +18,6 @@ function localManualStage():number {
   catch { return 1; }
 }
 
-export async function saveManualCurriculumStage(stage:number):Promise<number>{
-  const value=Math.max(1,Math.min(30,Math.floor(stage)));
-  const {data:{session}}=await supabase.auth.getSession();
-  if(!session)throw new Error('Entre novamente para salvar o avanço.');
-  if(navigator.onLine){
-    const {error}=await supabase.from('learning_settings').upsert({user_id:session.user.id,manual_stage:value,updated_at:new Date().toISOString()});
-    if(error)throw error;
-  }
-  localStorage.setItem(MANUAL_STAGE_KEY,String(value));
-  return value;
-}
-
 export async function loadLearningData() {
   const {
     data: { session },

@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   import: vi.fn(),
   error: vi.fn(),
 }));
-vi.mock("@/lib/learning-data", () => ({ loadLearningData: mocks.load,saveManualCurriculumStage:vi.fn() }));
+vi.mock("@/lib/learning-data", () => ({ loadLearningData: mocks.load }));
 vi.mock("@/lib/storage", () => ({
   saveLearningReview: mocks.save,
   importLearningCards: mocks.import,
@@ -144,6 +144,7 @@ it("requires a valid preview and explicit batch approval before importing", asyn
     </MemoryRouter>,
   );
   await screen.findByText('Preparar conteúdo da Etapa 1');
+  expect(screen.queryByRole('button', {name:/Pular para a próxima etapa/i})).toBeNull();
   const batch = {
     format: "REVYSTUDY_BATCH_V2",
     curriculum: "english-v1",
