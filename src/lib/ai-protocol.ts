@@ -106,18 +106,21 @@ export function inspectAiBatch(
     .filter((s) => !!s);
   const additions: AiBatch["cards"] = [];
   let duplicates = 0;
+  const metadataErrors:string[]=[];
   for (const item of batch.cards) {
     if (seen.has(item.id)) throw new Error(`ID repetido no lote: ${item.id}`);
     seen.add(item.id);
     if (item.goal !== unit.goal)
       throw new Error(`${item.id}: objetivo diferente do definido na etapa.`);
-    if (
-      item.structures.some((s) => !structures.has(normalized(s))) ||
-      item.vocabulary.some((v) => !vocabulary.has(normalized(v)))
-    )
-      throw new Error(
-        `${item.id}: estrutura ou vocabulário declarado fora do currículo permitido.`,
-      );
+    const invalidStructures=item.structures.filter(s=>!structures.has(normalized(s)));
+    const invalidVocabulary=item.vocabulary.filter(v=>!vocabulary.has(normalized(v)));
+    if(invalidStructures.length||invalidVocabulary.length){
+      metadataErrors.push(`${item.id}: ${[
+        invalidStructures.length?`estruturas inválidas: ${invalidStructures.join(', ')}`:'',
+        invalidVocabulary.length?`vocabulário inválido: ${invalidVocabulary.join(', ')}`:'',
+      ].filter(Boolean).join(' · ')}`);
+      continue;
+    }
     const old = existing.find((s) => s?.pedagogy?.contentId === item.id);
     if (
       old &&
@@ -139,6 +142,7 @@ export function inspectAiBatch(
     sentences.add(key);
     additions.push(item);
   }
+  if(metadataErrors.length)throw new Error(`A IA saiu das regras da etapa. Corrija o lote usando somente os valores literais enviados pelo aplicativo:\n${metadataErrors.slice(0,8).join('\n')}${metadataErrors.length>8?`\n…e mais ${metadataErrors.length-8} cartões.`:''}`);
   const existingCount=existing.filter(s=>s?.pedagogy?.stage===batch.stage).length;
   const remaining=Math.max(0,unit.targetContent-existingCount);
   if(batch.format==='REVYSTUDY_BATCH_V2'&&additions.length>remaining)
@@ -217,6 +221,14 @@ export function exportLearningContext(
         patterns: allowedKnowledge(current.stage).structures,
         words: allowedKnowledge(current.stage).vocabulary,
       },
+      strict_output_rules: {
+        structures: "Cada item deve ser copiado literalmente de allowed_structure_values. Não combine, traduza ou invente rótulos.",
+        allowed_structure_values:[...allowedKnowledge(current.stage).structures,...current.structures],
+        vocabulary: "Cada item deve ser copiado literalmente de allowed_vocabulary_values. Não use palavras futuras.",
+        allowed_vocabulary_values:[...allowedKnowledge(current.stage).vocabulary,...current.vocabulary],
+        goal: "Copie goal literalmente em todos os cartões.",
+        self_check: "Antes de responder, valide todos os cartões contra estas listas e corrija qualquer valor não permitido.",
+      },
       learned_previous_content: situations
         .filter(x=>(x.s?.pedagogy?.stage||0)<current.stage)
         .map(x=>({
@@ -235,9 +247,16 @@ export function exportLearningContext(
 export const MASTER_PROMPT = `Você é o gerador de conteúdo do RevyStudy. Sempre aguarde um REVYSTUDY_GENERATION_REQUEST_V2.
 Gere conteúdo somente para a etapa informada. Não decida progressão e não infira conhecimentos ausentes do pedido.
 Use new_material, allowed_previous e learned_previous_content. Reaproveite naturalmente o conhecimento das etapas anteriores, mas não copie frases já existentes. Não repita existing_sentences e gere exatamente a quantidade indicada em needed.
+OBRIGATÓRIO: em cada cartão, cada item de structures deve ser copiado literalmente de strict_output_rules.allowed_structure_values. Nunca crie rótulos compostos como "He is + a/an + occupation".
+OBRIGATÓRIO: em cada cartão, cada item de vocabulary deve ser copiado literalmente de strict_output_rules.allowed_vocabulary_values. Não introduza perguntas, negativas, adjetivos, possessivos ou qualquer matéria futura ausente das listas.
+Antes de responder, confira todos os cartões contra strict_output_rules. Se um valor não estiver nas listas, corrija-o; jamais amplie o currículo por conta própria.
 Produza inglês natural e cotidiano. Ensine padrões reutilizáveis, sem criar variações artificiais da mesma sentença.
 hint deve descrever em português a intenção comunicativa sem entregar a tradução.
 image_prompt deve representar visualmente a situação, ser 1:1 e não conter texto, letras, legendas ou marcas d'água.
 Não gere mídia nem URLs. Copie goal exatamente do pedido.
 Retorne somente JSON válido no formato REVYSTUDY_BATCH_V2, sem HTML, comentários ou campos extras:
 {"format":"REVYSTUDY_BATCH_V2","curriculum":"english-v1","stage":1,"batch":"S01-B01","cards":[{"id":"S01-B01-C01","english":"I'm a student.","portuguese":"Eu sou estudante.","hint":"Apresente sua ocupação.","goal":"Cumprimentar e se apresentar usando nome e ocupação","structures":["I'm a/an + occupation"],"vocabulary":["student"],"tags":[],"difficulty":1,"image_prompt":"Uma pessoa adulta com material de estudo, composição quadrada, sem texto."}]}`;
+
+export function exportGeneratorPackage(cards:Flashcard[],events:LearningEvent[],manualStage=1){
+  return `${MASTER_PROMPT}\n\nPEDIDO ATUAL DO APLICATIVO:\n${exportLearningContext(cards,events,manualStage)}`;
+}

@@ -13,6 +13,7 @@ import {
   inspectAiBatch,
   batchCardHtml,
   exportLearningContext,
+  exportGeneratorPackage,
 } from "@/lib/ai-protocol";
 import type { Flashcard } from "@/lib/types";
 
@@ -221,7 +222,7 @@ describe("external AI protocol", () => {
         [],
         [],
       ),
-    ).toThrow("fora");
+    ).toThrow("estruturas inválidas");
   });
   it("rejects duplicate IDs, conflicting existing IDs, unsafe URLs and oversized input", () => {
     expect(() =>
@@ -284,5 +285,9 @@ describe("external AI protocol", () => {
     expect(state.learned_previous_content).toEqual([
       expect.objectContaining({stage:1,english:"Example stage-one"}),
     ]);
+    expect(state.strict_output_rules.allowed_structure_values).toContain("he is");
+    const packaged=exportGeneratorPackage([card("stage-one",1)],[],2);
+    expect(packaged).toContain("OBRIGATÓRIO:");
+    expect(packaged).toContain('"stage": 2');
   });
 });
