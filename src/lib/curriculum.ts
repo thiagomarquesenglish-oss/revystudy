@@ -248,7 +248,7 @@ export const CURRICULUM: CurriculumUnit[] = syllabus.map(
   ([title, goal, structures, vocabulary], i) => ({
     stage: i + 1,
     unit: 1,
-    targetContent: 12,
+    targetContent: i === 0 ? 10 : 12,
     title,
     goal,
     structures,

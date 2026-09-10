@@ -212,6 +212,7 @@ export function curriculumProgress(
       ...metrics,
       unlocked: isUnlocked,
       earned: isUnlocked && earned,
+      manuallyCompleted: unit.stage < manualFloor,
     };
     // A manual jump bypasses only earlier gates; progress after the selected
     // stage still has to be earned normally.

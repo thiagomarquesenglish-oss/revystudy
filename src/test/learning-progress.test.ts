@@ -159,9 +159,14 @@ describe("curriculum evidence and retention", () => {
   it("unlocks a manually selected stage without inventing mastery", () => {
     const progress=curriculumProgress([card("first",1),card("third",3)],[],start,3);
     expect(progress.current.stage).toBe(3);
-    expect(progress.units[0]).toMatchObject({unlocked:true,earned:false,overall:0});
+    expect(progress.units[0]).toMatchObject({unlocked:true,earned:false,manuallyCompleted:true,overall:0});
     expect(progress.units[2]).toMatchObject({unlocked:true,earned:false,overall:0});
     expect(progress.units[3].unlocked).toBe(false);
+  });
+  it('allows each stage to define its own content target',()=>{
+    const progress=curriculumProgress(Array.from({length:10},(_,i)=>card(`legacy-${i}`,1)),[],start,2);
+    expect(progress.units[0]).toMatchObject({targetContent:10,count:10,manuallyCompleted:true});
+    expect(progress.units[1].targetContent).toBe(12);
   });
   it("keeps old due content, omits locked and future-due content, never duplicates", () => {
     const list = [
