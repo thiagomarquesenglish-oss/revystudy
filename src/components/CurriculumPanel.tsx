@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { Progress } from "./ui/progress";
-import { loadLearningData } from "@/lib/learning-data";
+import { loadLearningData, saveManualCurriculumStage } from "@/lib/learning-data";
 import {
   curriculumProgress,
   SKILLS,
@@ -34,7 +34,7 @@ export default function CurriculumPanel() {
     typeof inspectAiBatch
   > | null>(null);
   const [count, setCount] = useState(10);
-  const progress = useMemo(() => data ? curriculumProgress(data.cards, data.events) : null, [data]);
+  const progress = useMemo(() => data ? curriculumProgress(data.cards, data.events,Date.now(),data.manualStage) : null, [data]);
   const refresh = async () => {
     try {
       const value = await loadLearningData();
@@ -182,6 +182,24 @@ export default function CurriculumPanel() {
           <Button variant="ghost" onClick={refresh}>
             Atualizar progresso
           </Button>
+          {!progress.complete && current.stage < 30 && (
+            <Button
+              variant="outline"
+              disabled={busy}
+              onClick={async()=>{
+                setBusy(true);
+                try{
+                  const next=current.stage+1;
+                  await saveManualCurriculumStage(next);
+                  await refresh();
+                  toast.success(`Etapa ${next} liberada`,{description:'Seu domínio e seu histórico não foram alterados.'});
+                }catch{toast.error('Não foi possível liberar a próxima etapa.');}
+                finally{setBusy(false);}
+              }}
+            >
+              Pular para a próxima etapa
+            </Button>
+          )}
         </div>
       </div>
       <div className="rounded-2xl border border-border p-4 space-y-3">

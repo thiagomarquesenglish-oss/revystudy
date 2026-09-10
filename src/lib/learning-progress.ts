@@ -147,6 +147,7 @@ export function curriculumProgress(
   cards: Flashcard[],
   input: LearningEvent[],
   now = Date.now(),
+  manualStage = 1,
 ) {
   const events = [...new Map(input.map((e) => [e.id, e])).values()].filter(
     (e) => Date.parse(e.at) <= now,
@@ -155,6 +156,7 @@ export function curriculumProgress(
     card,
     meta: readSituation(card.front, card.back)?.pedagogy,
   }));
+  const manualFloor = Math.max(1, Math.min(CURRICULUM.length, manualStage));
   let unlocked = true;
   const units = CURRICULUM.map((unit) => {
     const members = classified
@@ -184,16 +186,19 @@ export function curriculumProgress(
             time,
           ).ready,
       );
+    const isUnlocked = unlocked || unit.stage <= manualFloor;
     const result = {
       ...unit,
       ...metrics,
-      unlocked,
-      earned: unlocked && earned,
+      unlocked: isUnlocked,
+      earned: isUnlocked && earned,
     };
-    unlocked = unlocked && earned;
+    // A manual jump bypasses only earlier gates; progress after the selected
+    // stage still has to be earned normally.
+    unlocked = unit.stage < manualFloor ? true : isUnlocked && earned;
     return result;
   });
-  const current = units.find((u) => u.unlocked && !u.earned) || units.at(-1)!;
+  const current = units.find((u) => u.stage >= manualFloor && u.unlocked && !u.earned) || units.at(-1)!;
   return {
     units,
     current,
@@ -207,8 +212,9 @@ export function mixedCurriculumQueue(
   events: LearningEvent[],
   now = Date.now(),
   limit = 30,
+  manualStage = 1,
 ): Flashcard[] {
-  const progress = curriculumProgress(cards, events, now);
+  const progress = curriculumProgress(cards, events, now, manualStage);
   const unlocked = new Set(
     progress.units.filter((u) => u.unlocked).map(unitKey),
   );

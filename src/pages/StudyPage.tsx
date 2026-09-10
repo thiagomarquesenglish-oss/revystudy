@@ -87,7 +87,7 @@ export default function StudyPage() {
       try {
       const data=await loadLearningData();
       const deckCards=deckId?data.cards.filter(c=>c.deckId===deckId):data.cards;
-      const studyQueue=deckId?deckCards.filter(c=>c.status==='new'||Date.parse(c.dueDate)<=Date.now()):mixedCurriculumQueue(data.cards,data.events);
+      const studyQueue=deckId?deckCards.filter(c=>c.status==='new'||Date.parse(c.dueDate)<=Date.now()):mixedCurriculumQueue(data.cards,data.events,Date.now(),30,data.manualStage);
       const expandedQueue=buildSessionQueue(studyQueue,data.events);
       // Curriculum sessions already interleave current, recent and old content.
       for (let i = deckId?expandedQueue.length - 1:0; i > 0; i--) {

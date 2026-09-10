@@ -145,6 +145,13 @@ describe("curriculum evidence and retention", () => {
     expect(curriculumProgress([legacy], []).legacy).toBe(1);
     expect(readSituation(legacy.front, legacy.back)).toBeNull();
   });
+  it("unlocks a manually selected stage without inventing mastery", () => {
+    const progress=curriculumProgress([card("first",1),card("third",3)],[],start,3);
+    expect(progress.current.stage).toBe(3);
+    expect(progress.units[0]).toMatchObject({unlocked:true,earned:false,overall:0});
+    expect(progress.units[2]).toMatchObject({unlocked:true,earned:false,overall:0});
+    expect(progress.units[3].unlocked).toBe(false);
+  });
   it("keeps old due content, omits locked and future-due content, never duplicates", () => {
     const list = [
       ...cards,

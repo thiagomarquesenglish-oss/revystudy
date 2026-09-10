@@ -186,6 +186,12 @@ export type Database = {
           },
         ]
       }
+      learning_settings: {
+        Row: { manual_stage: number; updated_at: string; user_id: string }
+        Insert: { manual_stage?: number; updated_at?: string; user_id: string }
+        Update: { manual_stage?: number; updated_at?: string; user_id?: string }
+        Relationships: []
+      }
       deck_audios: {
         Row: {
           created_at: string

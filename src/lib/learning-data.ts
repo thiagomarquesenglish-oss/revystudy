@@ -11,6 +11,25 @@ function withDeadline<T>(request:PromiseLike<T>):Promise<T>{
   });
 }
 
+const MANUAL_STAGE_KEY='revystudy-manual-curriculum-stage';
+
+function localManualStage():number {
+  try { return Math.max(1,Math.min(30,Number(localStorage.getItem(MANUAL_STAGE_KEY))||1)); }
+  catch { return 1; }
+}
+
+export async function saveManualCurriculumStage(stage:number):Promise<number>{
+  const value=Math.max(1,Math.min(30,Math.floor(stage)));
+  const {data:{session}}=await supabase.auth.getSession();
+  if(!session)throw new Error('Entre novamente para salvar o avanço.');
+  if(navigator.onLine){
+    const {error}=await supabase.from('learning_settings').upsert({user_id:session.user.id,manual_stage:value,updated_at:new Date().toISOString()});
+    if(error)throw error;
+  }
+  localStorage.setItem(MANUAL_STAGE_KEY,String(value));
+  return value;
+}
+
 export async function loadLearningData() {
   const {
     data: { session },
@@ -18,11 +37,15 @@ export async function loadLearningData() {
   if (!session) throw new Error("Entre novamente para carregar seu currículo.");
   const userId = session.user.id;
   let offline = !navigator.onLine;
+  let manualStage=localManualStage();
   let deckRows = (await localDB.getDecks()).filter(
     (row) => row.user_id === userId,
   );
   if (navigator.onLine) {
     try {
+      const {data:settings,error:settingsError}=await withDeadline(supabase.from('learning_settings').select('manual_stage').eq('user_id',userId).maybeSingle());
+      if(settingsError)throw settingsError;
+      if(settings?.manual_stage){manualStage=Math.max(manualStage,settings.manual_stage);localStorage.setItem(MANUAL_STAGE_KEY,String(manualStage));}
       const { data, error } = await withDeadline(supabase
         .from("decks")
         .select("*")
@@ -112,5 +135,5 @@ export async function loadLearningData() {
     });
   }
   events.sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
-  return { cards, decks, events, offline };
+  return { cards, decks, events, offline, manualStage };
 }
