@@ -92,13 +92,6 @@ export function inspectAiBatch(
     )?.unlocked
   )
     throw new Error("Esta etapa ainda não foi liberada pelo seu progresso.");
-  const prior = allowedKnowledge(batch.stage);
-  const structures = new Set(
-    [...prior.structures, ...unit.structures].map(normalized),
-  );
-  const vocabulary = new Set(
-    [...prior.vocabulary, ...unit.vocabulary].map(normalized),
-  );
   const seen = new Set<string>(),
     sentences = new Set<string>();
   const existing = cards
@@ -106,21 +99,11 @@ export function inspectAiBatch(
     .filter((s) => !!s);
   const additions: AiBatch["cards"] = [];
   let duplicates = 0;
-  const metadataErrors:string[]=[];
   for (const item of batch.cards) {
     if (seen.has(item.id)) throw new Error(`ID repetido no lote: ${item.id}`);
     seen.add(item.id);
     if (item.goal !== unit.goal)
       throw new Error(`${item.id}: objetivo diferente do definido na etapa.`);
-    const invalidStructures=item.structures.filter(s=>!structures.has(normalized(s)));
-    const invalidVocabulary=item.vocabulary.filter(v=>!vocabulary.has(normalized(v)));
-    if(invalidStructures.length||invalidVocabulary.length){
-      metadataErrors.push(`${item.id}: ${[
-        invalidStructures.length?`estruturas inválidas: ${invalidStructures.join(', ')}`:'',
-        invalidVocabulary.length?`vocabulário inválido: ${invalidVocabulary.join(', ')}`:'',
-      ].filter(Boolean).join(' · ')}`);
-      continue;
-    }
     const old = existing.find((s) => s?.pedagogy?.contentId === item.id);
     if (
       old &&
@@ -142,7 +125,6 @@ export function inspectAiBatch(
     sentences.add(key);
     additions.push(item);
   }
-  if(metadataErrors.length)throw new Error(`A IA saiu das regras da etapa. Corrija o lote usando somente os valores literais enviados pelo aplicativo:\n${metadataErrors.slice(0,8).join('\n')}${metadataErrors.length>8?`\n…e mais ${metadataErrors.length-8} cartões.`:''}`);
   const existingCount=existing.filter(s=>s?.pedagogy?.stage===batch.stage).length;
   const remaining=Math.max(0,unit.targetContent-existingCount);
   if(batch.format==='REVYSTUDY_BATCH_V2'&&additions.length>remaining)

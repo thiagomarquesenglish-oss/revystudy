@@ -208,7 +208,7 @@ describe("external AI protocol", () => {
       { additions: [], duplicates: 1 },
     );
   });
-  it("rejects locked stages, malformed JSON and undeclared future structures", () => {
+  it("rejects locked stages and malformed JSON but accepts AI metadata labels", () => {
     expect(() => inspectAiBatch("{", [], [])).toThrow("JSON");
     expect(() =>
       inspectAiBatch(JSON.stringify({ ...batch, stage: 2 }), [], []),
@@ -222,7 +222,7 @@ describe("external AI protocol", () => {
         [],
         [],
       ),
-    ).toThrow("estruturas inválidas");
+    ).not.toThrow();
   });
   it("rejects duplicate IDs, conflicting existing IDs, unsafe URLs and oversized input", () => {
     expect(() =>
