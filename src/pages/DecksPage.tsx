@@ -37,6 +37,7 @@ import PageHeader from '@/components/PageHeader';
 import PageTransition from '@/components/PageTransition';
 import CardThumbnail from '@/components/CardThumbnail';
 import QuickCardMedia from '@/components/QuickCardMedia';
+import { readSituation } from '@/lib/situation';
 
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -54,6 +55,10 @@ function stripHtml(html: string): string {
   cleaned = cleaned.replace(/<audio[^>]*>[\s\S]*?<\/audio>/gi, '');
   cleaned = cleaned.replace(/<audio[^>]*\/?>/gi, '');
   return cleaned.replace(/<[^>]*>/g, '').trim();
+}
+
+function englishText(card: Flashcard): string {
+  return readSituation(card.front, card.back)?.english || stripHtml(card.front) || stripHtml(card.back) || 'Frase em inglês';
 }
 
 function statusLabel(status: string) {
@@ -245,23 +250,18 @@ export default function DecksPage() {
                 onClick={() => isMobile ? setActionCard(card) : openEdit(card)}
                 className="w-full text-left hover:bg-secondary/50 p-3.5 pr-12 transition-colors"
               >
-                {hasImage(card.front + card.back) && <CardThumbnail cardId={card.id} alt={`Imagem do cartão ${stripHtml(card.front)}`} />}
+                {hasImage(card.front + card.back) && <CardThumbnail cardId={card.id} alt={`Imagem do cartão ${englishText(card)}`} />}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2.5">
-                    <p className="text-sm font-medium truncate">{stripHtml(card.front) || 'Frente'}</p>
-                    {hasAudio(card.front) && <Volume2 className="w-4 h-4 text-muted-foreground shrink-0" />}
-                    {hasImage(card.front) && <ImageIcon className="w-4 h-4 text-muted-foreground shrink-0" />}
+                    <p className="text-sm font-medium truncate" lang="en">{englishText(card)}</p>
+                    {hasAudio(card.front + card.back) && <Volume2 className="w-4 h-4 text-muted-foreground shrink-0" />}
+                    {hasImage(card.front + card.back) && <ImageIcon className="w-4 h-4 text-muted-foreground shrink-0" />}
                     {card.flagged && <Flag className="w-3.5 h-3.5 fill-red-500 text-red-500 shrink-0 ml-auto" />}
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <p className="text-sm text-muted-foreground truncate mt-0.5">{stripHtml(card.back) || 'Resposta'}</p>
-                    {hasAudio(card.back) && <Volume2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
-                    {hasImage(card.back) && <ImageIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
                   </div>
                 </div>
               </button>
               <QuickCardMedia card={card} onSaved={loadData}/>
-              <button type="button" aria-label={`Excluir cartão: ${stripHtml(card.front) || 'sem texto'}`} title="Excluir cartão"
+              <button type="button" aria-label={`Excluir cartão: ${englishText(card)}`} title="Excluir cartão"
                 onClick={() => openDelete(card)}
                 className="absolute right-1 top-1 p-3 rounded-xl bg-card text-destructive hover:bg-destructive/10 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 transition-opacity">
                 <Trash2 className="w-5 h-5" />
@@ -276,7 +276,7 @@ export default function DecksPage() {
       <Drawer open={!!actionCard} onOpenChange={(open) => !open && setActionCard(null)}>
         <DrawerContent>
           <DrawerHeader>
-            <DrawerTitle className="truncate">{actionCard ? stripHtml(actionCard.front) : ''}</DrawerTitle>
+            <DrawerTitle className="truncate" lang="en">{actionCard ? englishText(actionCard) : ''}</DrawerTitle>
             {actionCard && (
               <p className="text-sm text-muted-foreground">
                 {new Date(actionCard.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
