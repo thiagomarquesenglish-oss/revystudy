@@ -36,6 +36,7 @@ import BottomNav from '@/components/BottomNav';
 import PageHeader from '@/components/PageHeader';
 import PageTransition from '@/components/PageTransition';
 import CardThumbnail from '@/components/CardThumbnail';
+import QuickCardMedia from '@/components/QuickCardMedia';
 
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -239,10 +240,10 @@ export default function DecksPage() {
         ) : (
           <div className="grid grid-cols-2 gap-2">
             {filteredCards.map((card, index) => (
-              <div key={card.id} className="relative group">
+              <div key={card.id} className="relative group overflow-hidden rounded-2xl border border-border bg-card">
               <button
                 onClick={() => isMobile ? setActionCard(card) : openEdit(card)}
-                className="w-full h-full text-left bg-card hover:bg-secondary/50 border border-border rounded-2xl p-3.5 pr-12 transition-colors"
+                className="w-full text-left hover:bg-secondary/50 p-3.5 pr-12 transition-colors"
               >
                 {hasImage(card.front + card.back) && <CardThumbnail cardId={card.id} alt={`Imagem do cartão ${stripHtml(card.front)}`} />}
                 <div className="flex-1 min-w-0">
@@ -259,6 +260,7 @@ export default function DecksPage() {
                   </div>
                 </div>
               </button>
+              <QuickCardMedia card={card} onSaved={loadData}/>
               <button type="button" aria-label={`Excluir cartão: ${stripHtml(card.front) || 'sem texto'}`} title="Excluir cartão"
                 onClick={() => openDelete(card)}
                 className="absolute right-1 top-1 p-3 rounded-xl bg-card text-destructive hover:bg-destructive/10 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 transition-opacity">
