@@ -5,7 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTabVisible } from '@/hooks/useTabVisible';
 import { getDecks, getLocalCardSummaries, deleteCard, updateCard } from '@/lib/storage';
 import { Flashcard, Deck } from '@/lib/types';
-import { Trash2, Pencil, Search, ChevronDown, Check, Volume2, ImageIcon, Inbox, Flag } from 'lucide-react';
+import { Trash2, Pencil, Search, ChevronDown, Inbox, Flag } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -40,10 +40,6 @@ import QuickCardMedia from '@/components/QuickCardMedia';
 import { readSituation } from '@/lib/situation';
 
 import { useIsMobile } from '@/hooks/use-mobile';
-
-function hasAudio(html: string): boolean {
-  return /<audio|class="audio-node"/i.test(html);
-}
 
 function hasImage(html: string): boolean {
   return /<img\s/i.test(html);
@@ -245,7 +241,7 @@ export default function DecksPage() {
         ) : (
           <div className="grid grid-cols-2 gap-2">
             {filteredCards.map((card, index) => (
-              <div key={card.id} className="relative group overflow-hidden rounded-2xl border border-border bg-card">
+              <QuickCardMedia key={card.id} card={card} onSaved={loadData}>
               <button
                 onClick={() => isMobile ? setActionCard(card) : openEdit(card)}
                 className="w-full text-left hover:bg-secondary/50 p-3.5 pr-12 transition-colors"
@@ -254,19 +250,16 @@ export default function DecksPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2.5">
                     <p className="text-sm font-medium truncate" lang="en">{englishText(card)}</p>
-                    {hasAudio(card.front + card.back) && <Volume2 className="w-4 h-4 text-muted-foreground shrink-0" />}
-                    {hasImage(card.front + card.back) && <ImageIcon className="w-4 h-4 text-muted-foreground shrink-0" />}
                     {card.flagged && <Flag className="w-3.5 h-3.5 fill-red-500 text-red-500 shrink-0 ml-auto" />}
                   </div>
                 </div>
               </button>
-              <QuickCardMedia card={card} onSaved={loadData}/>
               <button type="button" aria-label={`Excluir cartão: ${englishText(card)}`} title="Excluir cartão"
                 onClick={() => openDelete(card)}
                 className="absolute right-1 top-1 p-3 rounded-xl bg-card text-destructive hover:bg-destructive/10 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 transition-opacity">
                 <Trash2 className="w-5 h-5" />
               </button>
-              </div>
+              </QuickCardMedia>
             ))}
           </div>
         )}

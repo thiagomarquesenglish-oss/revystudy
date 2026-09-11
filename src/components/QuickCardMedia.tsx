@@ -1,5 +1,5 @@
-import {useRef,useState} from 'react';
-import {Copy,ImagePlus,Pause,Play,Volume2} from 'lucide-react';
+import {useRef,useState,type ReactNode} from 'react';
+import {Copy,Pause,Play} from 'lucide-react';
 import {toast} from 'sonner';
 import {supabase} from '@/integrations/supabase/client';
 import {buildImageGenerationPrompt,buildSituationHtml,escapeHtml,readSituation} from '@/lib/situation';
@@ -12,10 +12,10 @@ function mediaDetails(html:string){
 }
 function extension(file:File){return file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g,'')||(file.type.startsWith('image/')?'jpg':'mp3')}
 
-export default function QuickCardMedia({card,onSaved}:{card:Flashcard;onSaved:()=>void}){
+export default function QuickCardMedia({card,onSaved,children}:{card:Flashcard;onSaved:()=>void;children:ReactNode}){
   const situation=readSituation(card.front,card.back),existing=situation?mediaDetails(situation.mediaHtml):{image:'',audio:'',audioName:''};
-  const [busy,setBusy]=useState<'image'|'audio'|null>(null),[playing,setPlaying]=useState(false),audioRef=useRef<HTMLAudioElement>(null);
-  if(!situation)return null;
+  const [busy,setBusy]=useState<'image'|'audio'|null>(null),[playing,setPlaying]=useState(false),[dragging,setDragging]=useState(false),audioRef=useRef<HTMLAudioElement>(null);
+  if(!situation)return <div className="relative group overflow-hidden rounded-2xl border border-border bg-card">{children}</div>;
   const prompt=situation.pedagogy?.imagePrompt?.trim()||'';
   const copy=async()=>{if(!prompt){toast.info('Este cartão não possui prompt de imagem.');return}await navigator.clipboard.writeText(buildImageGenerationPrompt(situation));toast.success('Prompt completo da imagem copiado!')};
   const copyEnglish=async()=>{await navigator.clipboard.writeText(situation.english);toast.success('Frase em inglês copiada!')};
@@ -37,11 +37,14 @@ export default function QuickCardMedia({card,onSaved}:{card:Flashcard;onSaved:()
       toast.success(kind==='image'?'Imagem adicionada!':'Áudio adicionado!');onSaved();
     }catch(error){if(path)void supabase.storage.from('card-media').remove([path]);toast.error(error instanceof Error?error.message:'Não foi possível adicionar a mídia.')}finally{setBusy(null)}
   };
-  const drop=(kind:'image'|'audio')=>(event:React.DragEvent)=>{event.preventDefault();event.stopPropagation();const file=event.dataTransfer.files[0];if(file)void saveFile(file,kind)};
-  return <div className="grid grid-cols-4 gap-1.5 border-t border-border p-2" onClick={event=>event.stopPropagation()}>
-    <button type="button" onClick={copy} className="min-h-12 rounded-lg bg-secondary px-1.5 text-[11px] flex flex-col items-center justify-center gap-1"><Copy className="h-4 w-4"/>Prompt</button>
-    <button type="button" onClick={copyEnglish} className="min-h-12 rounded-lg bg-secondary px-1.5 text-[11px] flex flex-col items-center justify-center gap-1"><Copy className="h-4 w-4"/>Frase</button>
-    <label onDragOver={e=>e.preventDefault()} onDrop={drop('image')} className="min-h-12 rounded-lg bg-secondary px-1.5 text-[11px] flex cursor-pointer flex-col items-center justify-center gap-1"><ImagePlus className="h-4 w-4"/>{busy==='image'?'Enviando…':existing.image?'Trocar imagem':'Soltar imagem'}<input className="sr-only" type="file" accept="image/*" onChange={e=>{const file=e.target.files?.[0];if(file)void saveFile(file,'image');e.target.value=''}}/></label>
-    <div onDragOver={e=>e.preventDefault()} onDrop={drop('audio')} className="min-h-12 rounded-lg bg-secondary px-1.5 text-[11px] flex items-center justify-center gap-1"><label className="flex cursor-pointer flex-col items-center gap-1"><Volume2 className="h-4 w-4"/>{busy==='audio'?'Enviando…':existing.audio?'Trocar':'Soltar áudio'}<input className="sr-only" type="file" accept="audio/*" onChange={e=>{const file=e.target.files?.[0];if(file)void saveFile(file,'audio');e.target.value=''}}/></label>{existing.audio&&<><audio ref={audioRef} src={existing.audio} onEnded={()=>setPlaying(false)} onPause={()=>setPlaying(false)}/><button type="button" aria-label={playing?'Pausar áudio':'Ouvir áudio'} className="rounded-full bg-primary/15 p-1.5 text-primary" onClick={()=>{const audio=audioRef.current;if(!audio)return;if(playing)audio.pause();else void audio.play().then(()=>setPlaying(true)).catch(()=>toast.error('Não foi possível reproduzir o áudio.'))}}>{playing?<Pause className="h-4 w-4"/>:<Play className="h-4 w-4"/>}</button></>}</div>
+  const drop=(event:React.DragEvent)=>{event.preventDefault();event.stopPropagation();setDragging(false);const file=event.dataTransfer.files[0];if(!file)return;if(file.type.startsWith('image/'))void saveFile(file,'image');else if(file.type.startsWith('audio/'))void saveFile(file,'audio');else toast.error('Solte uma imagem ou um áudio.')};
+  return <div className={`relative group overflow-hidden rounded-2xl border bg-card transition-colors ${dragging?'border-primary ring-2 ring-primary/40':'border-border'}`} onDragEnter={e=>{e.preventDefault();setDragging(true)}} onDragOver={e=>e.preventDefault()} onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node))setDragging(false)}} onDrop={drop}>
+    {children}
+    {busy&&<div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 text-sm font-medium">{busy==='image'?'Salvando imagem…':'Salvando áudio…'}</div>}
+    <div className={`grid ${existing.audio?'grid-cols-3':'grid-cols-2'} gap-1.5 border-t border-border p-2`} onClick={event=>event.stopPropagation()}>
+      <button type="button" onClick={copy} className="min-h-12 rounded-lg bg-secondary px-1.5 text-[11px] flex flex-col items-center justify-center gap-1"><Copy className="h-4 w-4"/>Prompt</button>
+      <button type="button" onClick={copyEnglish} className="min-h-12 rounded-lg bg-secondary px-1.5 text-[11px] flex flex-col items-center justify-center gap-1"><Copy className="h-4 w-4"/>Frase</button>
+      {existing.audio&&<div className="flex min-h-12 items-center justify-center rounded-lg bg-secondary"><audio ref={audioRef} src={existing.audio} onEnded={()=>setPlaying(false)} onPause={()=>setPlaying(false)}/><button type="button" aria-label={playing?'Pausar áudio':'Ouvir áudio'} className="rounded-full bg-primary/15 p-2 text-primary" onClick={()=>{const audio=audioRef.current;if(!audio)return;if(playing)audio.pause();else void audio.play().then(()=>setPlaying(true)).catch(()=>toast.error('Não foi possível reproduzir o áudio.'))}}>{playing?<Pause className="h-5 w-5"/>:<Play className="h-5 w-5"/>}</button></div>}
+    </div>
   </div>;
 }
