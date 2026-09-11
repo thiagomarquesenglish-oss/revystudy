@@ -18,6 +18,7 @@ export default function QuickCardMedia({card,onSaved}:{card:Flashcard;onSaved:()
   if(!situation)return null;
   const prompt=situation.pedagogy?.imagePrompt?.trim()||'';
   const copy=async()=>{if(!prompt){toast.info('Este cartão não possui prompt de imagem.');return}await navigator.clipboard.writeText(`${prompt}\n\nFormato obrigatório: imagem quadrada, proporção 1:1. Não inclua texto, letras, legendas ou marcas d’água.`);toast.success('Prompt da imagem copiado!')};
+  const copyEnglish=async()=>{await navigator.clipboard.writeText(situation.english);toast.success('Frase em inglês copiada!')};
   const saveFile=async(file:File,kind:'image'|'audio')=>{
     if(busy)return;
     if(kind==='image'&&!file.type.startsWith('image/')){toast.error('Solte um arquivo de imagem.');return}
@@ -37,8 +38,9 @@ export default function QuickCardMedia({card,onSaved}:{card:Flashcard;onSaved:()
     }catch(error){if(path)void supabase.storage.from('card-media').remove([path]);toast.error(error instanceof Error?error.message:'Não foi possível adicionar a mídia.')}finally{setBusy(null)}
   };
   const drop=(kind:'image'|'audio')=>(event:React.DragEvent)=>{event.preventDefault();event.stopPropagation();const file=event.dataTransfer.files[0];if(file)void saveFile(file,kind)};
-  return <div className="grid grid-cols-3 gap-1.5 border-t border-border p-2" onClick={event=>event.stopPropagation()}>
+  return <div className="grid grid-cols-4 gap-1.5 border-t border-border p-2" onClick={event=>event.stopPropagation()}>
     <button type="button" onClick={copy} className="min-h-12 rounded-lg bg-secondary px-1.5 text-[11px] flex flex-col items-center justify-center gap-1"><Copy className="h-4 w-4"/>Prompt</button>
+    <button type="button" onClick={copyEnglish} className="min-h-12 rounded-lg bg-secondary px-1.5 text-[11px] flex flex-col items-center justify-center gap-1"><Copy className="h-4 w-4"/>Frase</button>
     <label onDragOver={e=>e.preventDefault()} onDrop={drop('image')} className="min-h-12 rounded-lg bg-secondary px-1.5 text-[11px] flex cursor-pointer flex-col items-center justify-center gap-1"><ImagePlus className="h-4 w-4"/>{busy==='image'?'Enviando…':existing.image?'Trocar imagem':'Soltar imagem'}<input className="sr-only" type="file" accept="image/*" onChange={e=>{const file=e.target.files?.[0];if(file)void saveFile(file,'image');e.target.value=''}}/></label>
     <div onDragOver={e=>e.preventDefault()} onDrop={drop('audio')} className="min-h-12 rounded-lg bg-secondary px-1.5 text-[11px] flex items-center justify-center gap-1"><label className="flex cursor-pointer flex-col items-center gap-1"><Volume2 className="h-4 w-4"/>{busy==='audio'?'Enviando…':existing.audio?'Trocar':'Soltar áudio'}<input className="sr-only" type="file" accept="audio/*" onChange={e=>{const file=e.target.files?.[0];if(file)void saveFile(file,'audio');e.target.value=''}}/></label>{existing.audio&&<><audio ref={audioRef} src={existing.audio} onEnded={()=>setPlaying(false)} onPause={()=>setPlaying(false)}/><button type="button" aria-label={playing?'Pausar áudio':'Ouvir áudio'} className="rounded-full bg-primary/15 p-1.5 text-primary" onClick={()=>{const audio=audioRef.current;if(!audio)return;if(playing)audio.pause();else void audio.play().then(()=>setPlaying(true)).catch(()=>toast.error('Não foi possível reproduzir o áudio.'))}}>{playing?<Pause className="h-4 w-4"/>:<Play className="h-4 w-4"/>}</button></>}</div>
   </div>;
