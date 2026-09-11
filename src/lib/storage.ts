@@ -607,10 +607,10 @@ export async function downloadDeckPackage(
   onProgress?: (progress: PackageSyncProgress) => void,
 ): Promise<Flashcard[]> {
   if (!isOnline()) throw new Error('Você está offline');
+  // Best-effort upload first, but never hold a cloud download hostage to a
+  // stale outbox entry. The package merge below preserves newer local study
+  // progress, while the durable queue remains available for a later retry.
   await syncOfflineQueue();
-  if (await offlineQueue.count()) {
-    throw new Error('Este aparelho ainda tem alterações aguardando a nuvem. Aguarde a sincronização antes de baixar.');
-  }
 
   const { manifest, rows: remoteRows, audios, totalSteps, localRows, cardChanges } = await fetchVerifiedDeckPackage(update.deckId, onProgress);
   const localById = new Map(localRows.map((row: any) => [row.id, row]));
