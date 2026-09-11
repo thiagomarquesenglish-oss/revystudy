@@ -2,7 +2,7 @@ import {useRef,useState} from 'react';
 import {Copy,ImagePlus,Pause,Play,Volume2} from 'lucide-react';
 import {toast} from 'sonner';
 import {supabase} from '@/integrations/supabase/client';
-import {buildSituationHtml,escapeHtml,readSituation} from '@/lib/situation';
+import {buildImageGenerationPrompt,buildSituationHtml,escapeHtml,readSituation} from '@/lib/situation';
 import {updateCard} from '@/lib/storage';
 import type {Flashcard} from '@/lib/types';
 
@@ -17,7 +17,7 @@ export default function QuickCardMedia({card,onSaved}:{card:Flashcard;onSaved:()
   const [busy,setBusy]=useState<'image'|'audio'|null>(null),[playing,setPlaying]=useState(false),audioRef=useRef<HTMLAudioElement>(null);
   if(!situation)return null;
   const prompt=situation.pedagogy?.imagePrompt?.trim()||'';
-  const copy=async()=>{if(!prompt){toast.info('Este cartão não possui prompt de imagem.');return}await navigator.clipboard.writeText(`${prompt}\n\nFormato obrigatório: imagem quadrada, proporção 1:1. Não inclua texto, letras, legendas ou marcas d’água.`);toast.success('Prompt da imagem copiado!')};
+  const copy=async()=>{if(!prompt){toast.info('Este cartão não possui prompt de imagem.');return}await navigator.clipboard.writeText(buildImageGenerationPrompt(situation));toast.success('Prompt completo da imagem copiado!')};
   const copyEnglish=async()=>{await navigator.clipboard.writeText(situation.english);toast.success('Frase em inglês copiada!')};
   const saveFile=async(file:File,kind:'image'|'audio')=>{
     if(busy)return;

@@ -234,7 +234,7 @@ OBRIGATÓRIO: em cada cartão, cada item de vocabulary deve ser copiado literalm
 Antes de responder, confira todos os cartões contra strict_output_rules. Se um valor não estiver nas listas, corrija-o; jamais amplie o currículo por conta própria.
 Produza inglês natural e cotidiano. Ensine padrões reutilizáveis, sem criar variações artificiais da mesma sentença.
 hint deve descrever em português a intenção comunicativa sem entregar a tradução.
-image_prompt deve representar visualmente a situação, ser 1:1 e não conter texto, letras, legendas ou marcas d'água.
+image_prompt deve ser um esqueleto específico da cena, coerente com english, hint e goal. Descreva pessoas, ação, ambiente e uma composição fotográfica realista e cinematográfica. Para he/she/they, inclua outra pessoa ou interação que deixe visualmente claro que o sujeito está sendo identificado. Varie ângulo e enquadramento; evite poses e selfies repetidas. A cena deve ser 1:1 e não conter texto, letras, legendas ou marcas d'água.
 Não gere mídia nem URLs. Copie goal exatamente do pedido.
 Retorne somente JSON válido no formato REVYSTUDY_BATCH_V2, sem HTML, comentários ou campos extras:
 {"format":"REVYSTUDY_BATCH_V2","curriculum":"english-v1","stage":1,"batch":"S01-B01","cards":[{"id":"S01-B01-C01","english":"I'm a student.","portuguese":"Eu sou estudante.","hint":"Apresente sua ocupação.","goal":"Cumprimentar e se apresentar usando nome e ocupação","structures":["I'm a/an + occupation"],"vocabulary":["student"],"tags":[],"difficulty":1,"image_prompt":"Uma pessoa adulta com material de estudo, composição quadrada, sem texto."}]}`;

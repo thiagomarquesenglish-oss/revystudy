@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Copy, MessageSquareText, Upload } from 'lucide-react';
 import { updateCard } from '@/lib/storage';
-import { buildSituationHtml, escapeHtml, type SituationContent } from '@/lib/situation';
+import { buildImageGenerationPrompt, buildSituationHtml, escapeHtml, type SituationContent } from '@/lib/situation';
 import { supabase } from '@/integrations/supabase/client';
 import { MediaDropBox } from './SituationAddForm';
 import { Button } from './ui/button';
@@ -32,9 +32,7 @@ export default function SituationEditForm({ cardId, deckId, audioId, initial, on
   const [image,setImage]=useState<File|null>(null),[audio,setAudio]=useState<File|null>(null);
   const [imageUrl,setImageUrl]=useState(existing.image),[audioUrl,setAudioUrl]=useState(existing.audio),[audioName,setAudioName]=useState(existing.audioName);
   const [saving,setSaving]=useState(false);
-  const imagePrompt = initial.pedagogy?.imagePrompt
-    ? `${initial.pedagogy.imagePrompt.trim()}\n\nFormato obrigatório: imagem quadrada, proporção 1:1. Não inclua texto, letras, legendas ou marcas d’água na imagem.`
-    : '';
+  const imagePrompt = initial.pedagogy?.imagePrompt ? buildImageGenerationPrompt(initial) : '';
   const copyImagePrompt = async () => {
     try {
       await navigator.clipboard.writeText(imagePrompt);
