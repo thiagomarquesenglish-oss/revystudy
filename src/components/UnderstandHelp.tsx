@@ -73,11 +73,11 @@ export default function UnderstandHelp({ sentence, portuguese, deckId, level = '
 
   return <>
     <button type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground py-2">
-      <Lightbulb className="h-4 w-4"/> Entender
+      <Lightbulb className="h-4 w-4"/> Explicação
     </button>
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerContent>
-        <DrawerHeader><DrawerTitle>Entender esta frase</DrawerTitle></DrawerHeader>
+        <DrawerHeader><DrawerTitle>Explicar esta frase</DrawerTitle></DrawerHeader>
         <div className="px-4 pb-6 space-y-5">
           <div className="flex flex-wrap justify-center gap-2" lang="en">
             {words.map((word,index)=><button type="button" key={`${word}-${index}`} onClick={()=>toggle(index)} className={`rounded-lg border px-3 py-2 text-lg ${selected.includes(index)?'border-primary bg-primary/15 text-primary':'border-border bg-background'}`}>{word}</button>)}
