@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { readSituation } from '@/lib/situation';
 import { compareDictation } from '@/lib/dictation';
 import { Textarea } from '@/components/ui/textarea';
-import { availableSituationModes, chooseAdaptiveMode, exerciseInfo, parseAdaptiveEvent, type AdaptiveEvent, type ExerciseMode } from '@/lib/adaptive-study';
+import { availableSituationModes, chooseAlternatingMode, exerciseInfo, parseAdaptiveEvent, type AdaptiveEvent, type ExerciseMode } from '@/lib/adaptive-study';
 import SkillBadge from '@/components/SkillBadge';
 import UnderstandHelp from '@/components/UnderstandHelp';
 
@@ -225,7 +225,7 @@ export default function CustomStudyPage() {
   // avoid repeating the same format twice in a row so the practice feels mixed.
   useLayoutEffect(() => {
     if (!started || !currentId || deckAudioPending || availableModes.length === 0) return;
-    const nextMode = chooseAdaptiveMode(availableModes,adaptiveEvents[currentId]||[],lastModeRef.current);
+    const nextMode = chooseAlternatingMode(availableModes,adaptiveEvents[currentId]||[],lastModeRef.current);
     lastModeRef.current = nextMode;
     setMode(nextMode);
     setRevealed(false);

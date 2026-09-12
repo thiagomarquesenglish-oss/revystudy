@@ -60,6 +60,14 @@ export function chooseAdaptiveMode(available:ExerciseMode[],events:AdaptiveEvent
   return scored.sort((a,b)=>b.score-a.score)[0].mode;
 }
 
+/** Never repeat the same skill back-to-back when another skill is available. */
+export function chooseAlternatingMode(available:ExerciseMode[],events:AdaptiveEvent[],last?:ExerciseMode|null):ExerciseMode {
+  if (!last || !available.length) return chooseAdaptiveMode(available,events,last);
+  const previousSkill=exerciseInfo[last].skill;
+  const differentSkill=available.filter(mode=>exerciseInfo[mode].skill!==previousSkill);
+  return chooseAdaptiveMode(differentSkill.length?differentSkill:available,events,last);
+}
+
 export function availableSituationModes(input:{hasImage:boolean;hasAudio:boolean;hasEnglish:boolean;hasPortuguese:boolean}):ExerciseMode[]{
   const modes:ExerciseMode[]=[];
   if(input.hasImage&&input.hasEnglish)modes.push('image-production');
