@@ -15,6 +15,7 @@ import { compareDictation } from '@/lib/dictation';
 import { Textarea } from '@/components/ui/textarea';
 import { availableSituationModes, chooseAdaptiveMode, exerciseInfo, parseAdaptiveEvent, type AdaptiveEvent, type ExerciseMode } from '@/lib/adaptive-study';
 import SkillBadge from '@/components/SkillBadge';
+import UnderstandHelp from '@/components/UnderstandHelp';
 
 interface Piece {
   audioSrc: string | null;
@@ -414,6 +415,7 @@ export default function CustomStudyPage() {
             </div>
             </StudyMedia>
           )}
+          {situation&&(revealed||(isDictation&&!!dictationResult))&&<div className="flex justify-center mt-3"><UnderstandHelp sentence={situation.english} portuguese={situation.portuguese} deckId={current.deckId} level={situation.pedagogy?.stage?`etapa ${situation.pedagogy.stage}`:'iniciante'}/></div>}
         </div>
       </main>
 
