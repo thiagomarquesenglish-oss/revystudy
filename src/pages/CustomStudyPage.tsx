@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { readSituation } from '@/lib/situation';
 import { compareDictation } from '@/lib/dictation';
 import { Textarea } from '@/components/ui/textarea';
-import { availableSituationModes, chooseAlternatingMode, exerciseInfo, parseAdaptiveEvent, type AdaptiveEvent, type ExerciseMode } from '@/lib/adaptive-study';
+import { availableSituationModes, chooseRotatingMode, exerciseInfo, parseAdaptiveEvent, type AdaptiveEvent, type ExerciseMode } from '@/lib/adaptive-study';
 import SkillBadge from '@/components/SkillBadge';
 import UnderstandHelp from '@/components/UnderstandHelp';
 
@@ -142,7 +142,7 @@ export default function CustomStudyPage() {
   const [typed, setTyped] = useState('');
   const [dictationResult, setDictationResult] = useState<ReturnType<typeof compareDictation> | null>(null);
   const [resolvedDeckAudio, setResolvedDeckAudio] = useState<ResolvedDeckAudio>({ cardId: null, url: null });
-  const lastModeRef = useRef<ExerciseMode | null>(null);
+  const recentModesRef = useRef<ExerciseMode[]>([]);
   const [adaptiveEvents,setAdaptiveEvents]=useState<Record<string,AdaptiveEvent[]>>({});
 
   useEffect(() => {
@@ -225,8 +225,8 @@ export default function CustomStudyPage() {
   // avoid repeating the same format twice in a row so the practice feels mixed.
   useLayoutEffect(() => {
     if (!started || !currentId || deckAudioPending || availableModes.length === 0) return;
-    const nextMode = chooseAlternatingMode(availableModes,adaptiveEvents[currentId]||[],lastModeRef.current);
-    lastModeRef.current = nextMode;
+    const nextMode = chooseRotatingMode(availableModes,adaptiveEvents[currentId]||[],recentModesRef.current);
+    recentModesRef.current.push(nextMode);
     setMode(nextMode);
     setRevealed(false);
     setShowTranslation(false);
@@ -324,7 +324,7 @@ export default function CustomStudyPage() {
                 setOrder(shuffle(cards));
                 setIndex(0);
                 setSeen(0);
-                lastModeRef.current = null;
+                recentModesRef.current = [];
                 setStarted(true);
               }}
             >

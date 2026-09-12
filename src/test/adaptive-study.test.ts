@@ -1,5 +1,5 @@
 import { describe,expect,it } from 'vitest';
-import { availableSituationModes,chooseAdaptiveMode,chooseAlternatingMode,coreSituationModes,exerciseInfo,parseAdaptiveEvent,type AdaptiveEvent } from '@/lib/adaptive-study';
+import { availableSituationModes,chooseAdaptiveMode,chooseAlternatingMode,chooseRotatingMode,coreSituationModes,exerciseInfo,parseAdaptiveEvent,type AdaptiveEvent } from '@/lib/adaptive-study';
 
 describe('adaptive multimodal study',()=>{
   it('creates the six multimodal variations plus dictation from one situation',()=>{
@@ -34,5 +34,12 @@ describe('adaptive multimodal study',()=>{
       expect(exerciseInfo[next].skill).not.toBe(exerciseInfo[previous].skill);
       previous=next;
     }
+  });
+
+  it('shows every available skill, including writing, before starting a new cycle',()=>{
+    const available=availableSituationModes({hasImage:true,hasAudio:true,hasEnglish:true,hasPortuguese:true});
+    const recent:typeof available=[];
+    for(let index=0;index<4;index++)recent.push(chooseRotatingMode(available,[],recent));
+    expect(new Set(recent.map(mode=>exerciseInfo[mode].skill))).toEqual(new Set(['production','listening','comprehension','writing']));
   });
 });

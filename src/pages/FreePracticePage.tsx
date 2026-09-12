@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { loadLearningData } from '@/lib/learning-data';
 import { readSituation } from '@/lib/situation';
-import { availableSituationModes, chooseAlternatingMode, exerciseInfo, type ExerciseMode } from '@/lib/adaptive-study';
+import { availableSituationModes, chooseRotatingMode, exerciseInfo, type ExerciseMode } from '@/lib/adaptive-study';
 import type { Flashcard, Rating } from '@/lib/types';
 import StudyCard from '@/components/StudyCard';
 import PageHeader from '@/components/PageHeader';
@@ -29,10 +29,10 @@ export function buildPractice(cards: Flashcard[], kind: PracticeKind, limit: num
     const j = Math.floor(Math.random() * (i + 1));
     [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
   }
-  let previousMode:ExerciseMode|null=null;
+  const recentModes:ExerciseMode[]=[];
   return eligible.slice(0, limit).map(card=>{
-    const mode=chooseAlternatingMode(practiceOptions(card,kind),[],previousMode);
-    previousMode=mode;
+    const mode=chooseRotatingMode(practiceOptions(card,kind),[],recentModes);
+    recentModes.push(mode);
     return {card,mode};
   });
 }

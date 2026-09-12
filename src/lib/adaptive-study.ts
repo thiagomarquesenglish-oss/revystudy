@@ -68,6 +68,15 @@ export function chooseAlternatingMode(available:ExerciseMode[],events:AdaptiveEv
   return chooseAdaptiveMode(differentSkill.length?differentSkill:available,events,last);
 }
 
+/** Cycle through every available skill before returning to one already shown. */
+export function chooseRotatingMode(available:ExerciseMode[],events:AdaptiveEvent[],recentModes:ExerciseMode[]):ExerciseMode {
+  if(!available.length)return 'text-comprehension';
+  const skills=[...new Set(available.map(mode=>exerciseInfo[mode].skill))];
+  const recentlyUsed=new Set(recentModes.slice(-Math.max(0,skills.length-1)).map(mode=>exerciseInfo[mode].skill));
+  const fresh=available.filter(mode=>!recentlyUsed.has(exerciseInfo[mode].skill));
+  return chooseAdaptiveMode(fresh.length?fresh:available,events,recentModes.at(-1));
+}
+
 export function availableSituationModes(input:{hasImage:boolean;hasAudio:boolean;hasEnglish:boolean;hasPortuguese:boolean}):ExerciseMode[]{
   const modes:ExerciseMode[]=[];
   if(input.hasImage&&input.hasEnglish)modes.push('image-production');

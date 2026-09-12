@@ -12,7 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
-import { availableSituationModes, chooseAlternatingMode, exerciseInfo, type ExerciseMode } from '@/lib/adaptive-study';
+import { availableSituationModes, chooseRotatingMode, exerciseInfo, type ExerciseMode } from '@/lib/adaptive-study';
 import { pickQueueIndex, retryGap } from '@/lib/session-queue';
 import { readSituation } from '@/lib/situation';
 import {
@@ -24,25 +24,27 @@ import {
 
 type SessionCard=Flashcard&{sessionKey:string;sessionMode?:ExerciseMode};
 
-function ensureAlternatingSkill(card:SessionCard,last:ExerciseMode|null):SessionCard{
-  if(!last||!card.sessionMode||exerciseInfo[card.sessionMode].skill!==exerciseInfo[last].skill)return card;
+function ensureRotatingSkill(card:SessionCard,recent:ExerciseMode[]):SessionCard{
   const situation=readSituation(card.front,card.back);
   if(!situation)return card;
   const root=document.createElement('div');root.innerHTML=situation.mediaHtml;
   const available=availableSituationModes({hasImage:!!root.querySelector('img[src]'),hasAudio:!!card.audioId||!!root.querySelector('audio[src],[data-audio][data-src]'),hasEnglish:!!situation.english,hasPortuguese:!!situation.portuguese});
-  return {...card,sessionMode:chooseAlternatingMode(available,[],last)};
+  const skills=[...new Set(available.map(mode=>exerciseInfo[mode].skill))];
+  const used=new Set(recent.slice(-Math.max(0,skills.length-1)).map(mode=>exerciseInfo[mode].skill));
+  if(card.sessionMode&&!used.has(exerciseInfo[card.sessionMode].skill))return card;
+  return {...card,sessionMode:chooseRotatingMode(available,[],recent)};
 }
 
 export function buildSessionQueue(cards:Flashcard[],history:LearningEvent[]):SessionCard[]{
-  let previousMode:ExerciseMode|null=null;
+  const recentModes:ExerciseMode[]=[];
   return cards.map(card=>{
     const situation=readSituation(card.front,card.back);
     if(!situation)return {...card,sessionKey:card.id};
     const root=document.createElement('div');root.innerHTML=situation.mediaHtml;
     const available=availableSituationModes({hasImage:!!root.querySelector('img[src]'),hasAudio:!!card.audioId||!!root.querySelector('audio[src],[data-audio][data-src]'),hasEnglish:!!situation.english,hasPortuguese:!!situation.portuguese});
     const events=history.filter(e=>e.cardId===card.id).sort((a,b)=>a.at.localeCompare(b.at)).map(e=>({rating:e.rating,mode:e.mode,skill:exerciseInfo[e.mode].skill,reviewedAt:e.at}));
-    const mode=chooseAlternatingMode(available,events,previousMode||events.at(-1)?.mode);
-    previousMode=mode;
+    const mode=chooseRotatingMode(available,events,recentModes.length?recentModes:events.at(-1)?.mode?[events.at(-1)!.mode]:[]);
+    recentModes.push(mode);
     return {...card,sessionKey:card.id,sessionMode:mode};
   });
 }
@@ -61,7 +63,7 @@ export default function StudyPage() {
   const queuePositionRef = useRef(0);
   const retryAtRef = useRef(new Map<string,number>());
   const savingRef=useRef(false);
-  const lastModeRef=useRef<ExerciseMode|null>(null);
+  const recentModesRef=useRef<ExerciseMode[]>([]);
   const [loadError,setLoadError]=useState('');
   const backPath=deckId?`/deck/${deckId}`:'/stats';
   const [showOptionsDrawer, setShowOptionsDrawer] = useState(false);
@@ -87,8 +89,8 @@ export default function StudyPage() {
 
     const idx = pickQueueIndex(q,queuePositionRef.current,retryAtRef.current);
     if (idx >= 0) {
-      const next=ensureAlternatingSkill(q[idx],lastModeRef.current);
-      lastModeRef.current=next.sessionMode||null;
+      const next=ensureRotatingSkill(q[idx],recentModesRef.current);
+      if(next.sessionMode)recentModesRef.current.push(next.sessionMode);
       setCurrentCard(next);
     } else {
       setCurrentCard(null);
@@ -119,8 +121,8 @@ export default function StudyPage() {
         // Pick first card
         const idx = pickQueueIndex(expandedQueue,0,retryAtRef.current);
         if (idx >= 0) {
-          const first=ensureAlternatingSkill(expandedQueue[idx],null);
-          lastModeRef.current=first.sessionMode||null;
+          const first=ensureRotatingSkill(expandedQueue[idx],[]);
+          recentModesRef.current=first.sessionMode?[first.sessionMode]:[];
           setCurrentCard(first);
         } else {
           setFinished(true);
@@ -158,7 +160,7 @@ export default function StudyPage() {
         const root=document.createElement('div');root.innerHTML=situation.mediaHtml;
         const available=availableSituationModes({hasImage:!!root.querySelector('img[src]'),hasAudio:!!updatedCard.audioId||!!root.querySelector('audio[src],[data-audio][data-src]'),hasEnglish:!!situation.english,hasPortuguese:!!situation.portuguese});
         const reviewedMode=mode||currentCard.sessionMode;
-        if(reviewedMode)updatedCard.sessionMode=chooseAlternatingMode(available,[{rating,skill:exerciseInfo[reviewedMode].skill,mode:reviewedMode,reviewedAt:new Date().toISOString()}],reviewedMode);
+        if(reviewedMode)updatedCard.sessionMode=chooseRotatingMode(available,[{rating,skill:exerciseInfo[reviewedMode].skill,mode:reviewedMode,reviewedAt:new Date().toISOString()}],recentModesRef.current);
       }
       retryAtRef.current.set(currentCard.sessionKey,queuePositionRef.current+gap);
       newQueue.push(updatedCard);
