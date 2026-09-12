@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Lightbulb, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { addCard } from '@/lib/storage';
 import { escapeHtml } from '@/lib/situation';
@@ -11,17 +10,23 @@ import { findExplanations, markExplanationUsed, requestExplanation, saveExplanat
 type Props = { sentence: string; portuguese: string; deckId: string; level?: string };
 
 export default function UnderstandHelp({ sentence, portuguese, deckId, level = 'iniciante' }: Props) {
-  const words = useMemo(() => sentence.match(/[\p{L}\p{N}'’-]+|[^\s]/gu) || [], [sentence]);
+  const words = useMemo(() => {
+    const unique = new Map<string,string>();
+    for (const word of sentence.match(/[\p{L}\p{N}'’-]+/gu) || []) {
+      const key = word.toLocaleLowerCase('en');
+      if (!unique.has(key)) unique.set(key, word);
+    }
+    return [...unique.values()];
+  }, [sentence]);
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);
-  const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
   const [created, setCreated] = useState(false);
   const [current, setCurrent] = useState<LearningExplanation | null>(null);
   const [related, setRelated] = useState<LearningExplanation[]>([]);
   const selectedText = [...selected].sort((a,b)=>a-b).map(index => words[index]).join(' ');
 
-  useEffect(() => { setSelected([]); setQuestion(''); setCurrent(null); setRelated([]); setCreated(false); }, [sentence]);
+  useEffect(() => { setSelected([]); setCurrent(null); setRelated([]); setCreated(false); }, [sentence]);
 
   const toggle = (index: number) => {
     setCurrent(null); setCreated(false);
@@ -34,13 +39,13 @@ export default function UnderstandHelp({ sentence, portuguese, deckId, level = '
     try {
       const result = await findExplanations(selectedText, sentence);
       setRelated(result.related);
-      if (result.exact && !question.trim()) {
+      if (result.exact) {
         setCurrent(result.exact);
         void markExplanationUsed(result.exact);
-      } else if (result.related.length && !question.trim() && !related.length) {
+      } else if (result.related.length && !related.length) {
         return;
       } else {
-        const generated = await requestExplanation({ sentence, selectedText, portuguese, question, level });
+        const generated = await requestExplanation({ sentence, selectedText, portuguese, question: '', level });
         const saved = await saveExplanation({
           conceptKey: generated.conceptKey, selectedText, sentence,
           title: generated.title, explanation: generated.explanation,
@@ -81,15 +86,14 @@ export default function UnderstandHelp({ sentence, portuguese, deckId, level = '
 
           {!current && <>
             {!!related.length && <div className="space-y-2"><p className="text-sm font-medium">Explicações que você já tem</p>{related.slice(0,3).map(item=><button key={item.id} type="button" onClick={()=>reuse(item)} className="w-full rounded-xl border border-border p-3 text-left"><span className="font-medium">{item.title}</span><span className="block text-xs text-muted-foreground mt-1">Exemplo: {item.sentence}</span></button>)}</div>}
-            <Textarea value={question} onChange={event=>setQuestion(event.target.value)} placeholder="Pergunta opcional: por que usamos isso aqui?" rows={2}/>
-            <Button className="w-full" disabled={!selectedText||loading} onClick={lookup}>{loading?<Loader2 className="h-4 w-4 animate-spin"/>:related.length&&!question.trim()?'Gerar uma nova explicação':`Explicar “${selectedText || 'trecho'}”`}</Button>
+            <Button className="w-full" disabled={!selectedText||loading} onClick={lookup}>{loading?<Loader2 className="h-4 w-4 animate-spin"/>:related.length?'Gerar uma nova explicação':`Explicar “${selectedText || 'trecho'}”`}</Button>
           </>}
 
           {current && <div className="rounded-2xl border border-border bg-background p-4 space-y-3">
             <div><h3 className="text-lg font-semibold">{current.title}</h3><p className="text-primary font-medium">{current.quickMeaning}</p></div>
             <p className="whitespace-pre-line leading-relaxed">{current.explanation}</p>
             <div className="grid grid-cols-2 gap-2 pt-2">
-              <Button variant="secondary" onClick={()=>{setCurrent(null);setQuestion('');}}>Perguntar mais</Button>
+              <Button variant="secondary" onClick={()=>setCurrent(null)}>Escolher outro</Button>
               <Button disabled={loading||created} onClick={createConceptCard}>{created?'Cartão criado':'Criar cartão'}</Button>
             </div>
           </div>}
