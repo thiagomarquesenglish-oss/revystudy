@@ -47,7 +47,7 @@ Identifique o conceito e o sentido específico no contexto. Use no máximo 120 p
 Responda APENAS JSON válido neste formato:
 {"conceptKey":"categoria:conceito_sentido","title":"título curto","quickMeaning":"significado em poucas palavras","explanation":"explicação curta com exemplos em linhas separadas","cardFront":"pergunta curta para revisão","cardBack":"resposta curta com regra e exemplos"}`;
 
-    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+    const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
     const gemini = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
@@ -69,4 +69,3 @@ Responda APENAS JSON válido neste formato:
     return response.status(500).json({ error: error instanceof Error ? error.message : 'Não foi possível gerar a explicação.' });
   }
 }
-
