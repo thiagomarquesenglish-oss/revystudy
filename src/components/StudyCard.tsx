@@ -201,7 +201,6 @@ export default function StudyCard({ card, onRate, forcedMode, remainingNew, rema
 
 function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remainingNew,remainingLearning,remainingReview}:{card:Flashcard;situation:NonNullable<ReturnType<typeof readSituation>>;audioSrc:string|null;onRate:(rating:Rating,mode?:ExerciseMode)=>void;forcedMode?:ExerciseMode;remainingNew:number;remainingLearning:number;remainingReview:number}){
   const [mode,setMode]=useState<ExerciseMode>(forcedMode||'text-comprehension');
-  const [showHint,setShowHint]=useState(false);
   const [flipped,setFlipped]=useState(false),[typed,setTyped]=useState(''),[dictation,setDictation]=useState<ReturnType<typeof compareDictation>|null>(null),[showPortuguese,setShowPortuguese]=useState(false);
   const media=useMemo(()=>{const root=document.createElement('div');root.innerHTML=situation.mediaHtml;root.querySelectorAll('audio,[data-audio]').forEach(el=>el.remove());return root.innerHTML;},[situation.mediaHtml]);
   useEffect(()=>{if(forcedMode){setMode(forcedMode);return;}let active=true;void getCardReviewRows(card.id).then(rows=>{if(!active)return;const events=rows.map(parseAdaptiveEvent).filter((event):event is NonNullable<typeof event>=>!!event);const modes=availableSituationModes({hasImage:!!media,hasAudio:!!audioSrc,hasEnglish:!!situation.english,hasPortuguese:!!situation.portuguese});setMode(chooseAdaptiveMode(modes,events,events.at(-1)?.mode));});return()=>{active=false};},[card.id,media,audioSrc,situation.english,situation.portuguese,forcedMode]);
@@ -212,7 +211,6 @@ function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remaining
   const showImageAnswer=['audio-comprehension','text-comprehension'].includes(mode);
   return <div className="study-exercise flex flex-col w-full max-w-lg mx-auto" >
     <div className="pt-5 flex justify-center"><SkillBadge skill={exerciseInfo[mode].skill}/></div>
-    {exerciseInfo[mode].skill==='production'&&<div className="text-center text-sm text-muted-foreground mt-3 space-y-2"><p>Fale em voz alta e compare depois. Uma resposta natural com a mesma intenção também pode estar correta.</p>{situation.context&&<button className="text-primary" onClick={()=>setShowHint(!showHint)}>{showHint?situation.context:'Ver dica de intenção'}</button>}<p className="text-xs">Autoavaliação: o app não analisa sua voz.</p></div>}
     <div className="w-full pt-8 flex flex-col items-center gap-4">
       {mode==='image-production'&&<div className="rich-text-render max-w-full" dangerouslySetInnerHTML={{__html:media}}/>}
       {mode==='image-audio'&&<><div className="rich-text-render max-w-full" dangerouslySetInnerHTML={{__html:media}}/>{audioSrc&&<AudioPlayButton src={audioSrc} centered/>}</>}
