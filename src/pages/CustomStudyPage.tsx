@@ -415,12 +415,13 @@ export default function CustomStudyPage() {
             </div>
             </StudyMedia>
           )}
-          {situation&&(revealed||(isDictation&&!!dictationResult))&&<div className="flex justify-center mt-3"><UnderstandHelp sentence={situation.english} portuguese={situation.portuguese} deckId={current.deckId} level={situation.pedagogy?.stage?`etapa ${situation.pedagogy.stage}`:'iniciante'}/></div>}
         </div>
       </main>
 
       <div className="fixed bottom-0 left-0 right-0 z-10 bg-background border-t border-border" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div className="max-w-lg mx-auto px-3 py-3 flex gap-2">
+        <div className="max-w-lg mx-auto px-3 py-3 flex flex-col gap-2">
+          {situation&&(revealed||(isDictation&&!!dictationResult))&&<div className="flex justify-center"><UnderstandHelp sentence={situation.english} portuguese={situation.portuguese} deckId={current.deckId} level={situation.pedagogy?.stage?`etapa ${situation.pedagogy.stage}`:'iniciante'}/></div>}
+          <div className="flex gap-2">
           {!revealed && !(isDictation && dictationResult) ? (
             <Button
               className="flex-1 bg-card hover:bg-card/80 text-foreground rounded-full py-6"
@@ -430,6 +431,7 @@ export default function CustomStudyPage() {
               {isDictation && situation ? 'Digite a frase acima' : 'Mostrar resposta'}
             </Button>
           ) : isDictation ? <Button className="flex-1 text-white font-bold rounded-full py-6" onClick={()=>recordResult(!!dictationResult?.correct)}>Continuar</Button> : <><Button variant="destructive" className="flex-1 rounded-full py-6" onClick={()=>recordResult(false)}>Não consegui</Button><Button className="flex-1 text-white font-bold rounded-full py-6" onClick={()=>recordResult(true)}>Consegui</Button></>}
+          </div>
         </div>
       </div>
     </div>
