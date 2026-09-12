@@ -7,6 +7,7 @@ import { readSituation, translationSupportLevel } from '@/lib/situation';
 import { Play, Pause, Check, X } from 'lucide-react';
 import { availableSituationModes, chooseAdaptiveMode, exerciseInfo, parseAdaptiveEvent, type ExerciseMode } from '@/lib/adaptive-study';
 import { compareDictation } from '@/lib/dictation';
+import StudyMedia from '@/components/StudyMedia';
 import SkillBadge from './SkillBadge';
 
 /** Normalize text for typing comparison: lowercase, strip accents, remove punctuation, collapse spaces */
@@ -181,6 +182,7 @@ export default function StudyCard({ card, onRate, forcedMode, remainingNew, rema
   if(situation)return <SituationStudyCard card={card} situation={situation} audioSrc={frontAudioSrc||backAudioSrc} onRate={onRate} forcedMode={forcedMode} remainingNew={remainingNew} remainingLearning={remainingLearning} remainingReview={remainingReview}/>;
 
   return (
+    <StudyMedia html={flipped ? card.back : card.front}>
     <StudyCardInner
       card={card}
       onRate={onRate}
@@ -196,6 +198,7 @@ export default function StudyCard({ card, onRate, forcedMode, remainingNew, rema
       typingResult={typingResult}
       setTypingResult={setTypingResult}
     />
+    </StudyMedia>
   );
 }
 
@@ -209,19 +212,20 @@ function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remaining
   const reveal=flipped||!!dictation;
   const showEnglishAnswer=mode!=='text-comprehension';
   const showImageAnswer=['audio-comprehension','text-comprehension'].includes(mode);
+  const renderedImage=<div className="rich-text-render max-w-full" dangerouslySetInnerHTML={{__html:media}}/>;
   return <div className="study-exercise flex flex-col w-full max-w-lg mx-auto" >
     <div className="pt-5 flex justify-center"><SkillBadge skill={exerciseInfo[mode].skill}/></div>
     <div className="w-full pt-8 flex flex-col items-center gap-4">
-      {mode==='image-production'&&<div className="rich-text-render max-w-full" dangerouslySetInnerHTML={{__html:media}}/>}
-      {mode==='image-audio'&&<><div className="rich-text-render max-w-full" dangerouslySetInnerHTML={{__html:media}}/>{audioSrc&&<AudioPlayButton src={audioSrc} centered/>}</>}
-      {mode==='image-translation-production'&&<><div className="rich-text-render max-w-full" dangerouslySetInnerHTML={{__html:media}}/><div className="text-xl text-white text-center" lang="pt">{situation.portuguese}</div></>}
+      {mode==='image-production'&&<StudyMedia html={media}>{renderedImage}</StudyMedia>}
+      {mode==='image-audio'&&<StudyMedia html={media}><>{renderedImage}{audioSrc&&<AudioPlayButton src={audioSrc} centered/>}</></StudyMedia>}
+      {mode==='image-translation-production'&&<StudyMedia html={media}><>{renderedImage}<div className="text-xl text-white text-center" lang="pt">{situation.portuguese}</div></></StudyMedia>}
       {['audio-comprehension','audio-dictation'].includes(mode)&&audioSrc&&<AudioPlayButton src={audioSrc} centered/>}
       {mode==='text-comprehension'&&<div className="text-2xl text-white text-center" lang="en">{situation.english}</div>}
       {mode==='translation-production'&&<div className="text-2xl text-white text-center" lang="pt">{situation.portuguese}</div>}
       {isDictation&&!dictation&&<div className="w-full px-2 space-y-3"><textarea value={typed} onChange={e=>setTyped(e.target.value)} rows={3} autoFocus lang="en" spellCheck={false} placeholder="Escreva em inglês..." className="w-full bg-card text-foreground text-lg rounded-lg p-3 border border-border resize-none"/><button disabled={!typed.trim()} onClick={()=>setDictation(compareDictation(situation.english,typed))} className="w-full bg-primary text-primary-foreground rounded-full py-3 disabled:opacity-40">Verificar</button></div>}
       {dictation&&<p className={dictation.correct?'text-green-500':'text-red-500'}>{dictation.correct?'Correto!':'Compare com a resposta.'}</p>}
     </div>
-    {reveal&&<><hr className="w-full border-0 h-px bg-muted-foreground/20 mt-8"/><div className="w-full pt-8 flex flex-col items-center gap-3">{showEnglishAnswer&&<div className="text-2xl text-white text-center font-semibold" lang="en">{situation.english}</div>}{showImageAnswer&&<div className="rich-text-render max-w-full" dangerouslySetInnerHTML={{__html:media}}/>}{!['translation-production','image-translation-production'].includes(mode)&&(showPortuguese?<div className="text-base text-muted-foreground text-center" lang="pt">{situation.portuguese}</div>:<button className="text-sm text-primary py-2" onClick={()=>setShowPortuguese(true)}>Mostrar significado</button>)}{!['audio-comprehension','audio-dictation','image-audio'].includes(mode)&&audioSrc&&<AudioPlayButton src={audioSrc} centered autoPlay={false}/>}</div></>}
+    {reveal&&<StudyMedia html={showImageAnswer?media:''}><><hr className="w-full border-0 h-px bg-muted-foreground/20 mt-8"/><div className="w-full pt-8 flex flex-col items-center gap-3">{showEnglishAnswer&&<div className="text-2xl text-white text-center font-semibold" lang="en">{situation.english}</div>}{showImageAnswer&&renderedImage}{!['translation-production','image-translation-production'].includes(mode)&&(showPortuguese?<div className="text-base text-muted-foreground text-center" lang="pt">{situation.portuguese}</div>:<button className="text-sm text-primary py-2" onClick={()=>setShowPortuguese(true)}>Mostrar significado</button>)}{!['audio-comprehension','audio-dictation','image-audio'].includes(mode)&&audioSrc&&<AudioPlayButton src={audioSrc} centered autoPlay={false}/>}</div></></StudyMedia>}
     <div className="flex-1"/>
     <div className="fixed bottom-0 left-0 right-0 px-4 pt-3 bg-background/95 backdrop-blur-xl sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[480px] z-10" style={{paddingBottom:'max(env(safe-area-inset-bottom), 16px)'}}><div className="flex flex-col gap-3"><div className="text-center text-sm"><span className="text-sky-400">{remainingNew}</span> + <span className="text-red-400">{remainingLearning}</span> + <span className="text-green-500">{remainingReview}</span></div>{!reveal?<button onClick={()=>setFlipped(true)} disabled={isDictation} className="w-full bg-card rounded-full py-3 disabled:opacity-40">{isDictation?'Digite a frase acima':'Mostrar resposta'}</button>:isDictation?<button onClick={()=>finish(dictation?.correct?'good':'again')} className={`w-full rounded-full py-3 font-bold text-white ${dictation?.correct?'bg-green-700':'bg-red-600'}`}>Continuar</button>:<div className="grid grid-cols-4 gap-2">{ratingConfig.map(item=><button key={item.rating} onClick={()=>finish(item.rating)} className={`rounded-full py-3 text-sm font-bold text-white ${item.rating==='again'?'bg-red-600':item.rating==='hard'?'bg-orange-500':item.rating==='good'?'bg-blue-600':'bg-green-700'}`}>{item.label}</button>)}</div>}</div></div>
   </div>;
