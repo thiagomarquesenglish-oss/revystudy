@@ -1,9 +1,9 @@
 import { expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ commit: vi.fn().mockResolvedValue(undefined), sync: vi.fn(() => new Promise(() => {})), queue: vi.fn().mockResolvedValue([]) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { auth: { onAuthStateChange: vi.fn() } } }));
-vi.mock('@/lib/offline-db', () => ({ localDB: { commitCardMutation: mocks.commit, getCardSummaries: async () => [{ id: 'deleted' }, { id: 'retained' }] }, offlineQueue: { getAll: mocks.queue } }));
+vi.mock('@/lib/offline-db', () => ({ localDB: { commitCardMutation: mocks.commit, getCardSummaries: async () => [{ id: 'deleted' }, { id: 'retained' }], getCardsByDeck: async () => [{ id: 'deleted', deck_id: 'deck' }, { id: 'retained', deck_id: 'deck' }], getDeckSyncStates: async () => [{ deckId: 'deck' }] }, offlineQueue: { getAll: mocks.queue } }));
 vi.mock('@/lib/sync', () => ({ persistMutations: vi.fn(), syncOfflineQueue: mocks.sync, announceSyncState: vi.fn() }));
-import { deleteCard, getLocalCardSummaries } from '@/lib/storage';
+import { deleteCard, getCardsByDeck, getLocalCardSummaries } from '@/lib/storage';
 
 it('removes locally without waiting for the cloud and hides stale copies', async () => {
   await deleteCard('deleted');
@@ -13,4 +13,5 @@ it('removes locally without waiting for the cloud and hides stale copies', async
 it('hides deletions still queued after a reload', async () => {
   mocks.queue.mockResolvedValue([{ table: 'cards', action: 'delete', payload: { id: 'retained' } }]);
   expect(await getLocalCardSummaries()).toEqual([]);
+  expect((await getCardsByDeck('deck')).map(card => card.id)).toEqual([]);
 });

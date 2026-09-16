@@ -764,9 +764,9 @@ export async function getCardsByDeck(deckId: string): Promise<Flashcard[]> {
   const localOnly = await isDeckInstalled(deckId);
 
   if (cache.cards !== null && loadedDeckCardIds.has(deckId)) {
-    const cachedDeckCards = cache.cards.filter(card => card.deckId === deckId);
+    const cachedDeckCards = await withoutDeletedCards(cache.cards.filter(card => card.deckId === deckId));
     if (!localOnly && !isDeckCardsFresh(deckId) && isOnline()) fetchCardsByDeckFromDB(deckId).catch(console.error);
-    return cachedDeckCards;
+    return cachedDeckCards as Flashcard[];
   }
 
   let localCards: any[] = [];
@@ -777,7 +777,8 @@ export async function getCardsByDeck(deckId: string): Promise<Flashcard[]> {
   }
 
   if (localCards.length > 0) {
-    const cards = sortCards(localCards.map(rowToCard));
+    const visibleRows = await withoutDeletedCards(localCards);
+    const cards = sortCards(visibleRows.map(rowToCard));
     mergeDeckCardsIntoCache(deckId, cards);
     if (!localOnly && isOnline()) fetchCardsByDeckFromDB(deckId).catch(console.error);
     return cards;
