@@ -52,7 +52,7 @@ export default function SettingsPage() {
         </div>
       </section>
       <section className="bg-card rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-start gap-3"><Cloud className="h-6 w-6 shrink-0 text-primary"/><div><h2 className="font-semibold">Sincronização da nuvem</h2><p className="text-sm text-muted-foreground mt-1">{!isOnline?'Sem internet. Os dados continuam seguros neste aparelho.':pendingCount>0?`${pendingCount} alterações ainda precisam ser enviadas.`:'Tudo foi enviado para a nuvem.'}</p></div></div>
+        <div className="flex items-start gap-3"><Cloud className="h-6 w-6 shrink-0 text-primary"/><div><h2 className="font-semibold">Cartões na nuvem</h2><p className="text-sm text-muted-foreground mt-1">{!isOnline?'Sem internet. Seus cartões continuam seguros neste aparelho.':isSyncing?'Atualizando sua biblioteca na nuvem…':pendingCount>0?`${pendingCount} cartões ou baralhos aguardando envio.`:'Sua biblioteca está atualizada na nuvem.'}</p></div></div>
         <Button variant="secondary" className="shrink-0" onClick={()=>void syncNow()} disabled={!isOnline||isSyncing}>{isSyncing?<RefreshCw className="animate-spin"/>:<Cloud/>}{isSyncing?'Enviando…':'Sincronizar agora'}</Button>
       </section>
       <section className="bg-card rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

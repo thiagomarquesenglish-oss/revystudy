@@ -20,12 +20,41 @@ function belongsInCloud(mutation: NewQueuedMutation): boolean {
   return true;
 }
 
-async function discardLocalOnlyMutations(): Promise<void> {
-  const queued = await offlineQueue.getAll();
+interface CompactedMutation { mutation: QueuedMutation; sourceIds: string[] }
+
+function compactMutations(queued: QueuedMutation[]): CompactedMutation[] {
+  const compacted = new Map<string, CompactedMutation>();
+  for (const next of queued) {
+    if (!belongsInCloud(next)) continue;
+    const key = `${next.table}:${String(next.payload.id || next.id)}`;
+    const previous = compacted.get(key);
+    if (!previous) {
+      compacted.set(key, { mutation: next, sourceIds: [next.id] });
+      continue;
+    }
+    const sourceIds = [...previous.sourceIds, next.id];
+    if (next.action === 'delete') {
+      compacted.set(key, { mutation: { ...next, payload: { id: next.payload.id } }, sourceIds });
+    } else if (next.action === 'insert' || previous.mutation.action === 'delete') {
+      compacted.set(key, { mutation: next, sourceIds });
+    } else {
+      compacted.set(key, {
+        mutation: {
+          ...next,
+          action: previous.mutation.action === 'insert' ? 'insert' : 'update',
+          payload: { ...previous.mutation.payload, ...next.payload },
+        },
+        sourceIds,
+      });
+    }
+  }
+  return [...compacted.values()];
+}
+
+async function discardLocalOnlyMutations(queued: QueuedMutation[]): Promise<void> {
   const localOnly = queued.filter((mutation) => !belongsInCloud(mutation));
-  if (!localOnly.length) return;
   await Promise.all(localOnly.map((mutation) => offlineQueue.remove(mutation.id)));
-  announceSyncState();
+  if (localOnly.length) announceSyncState();
 }
 
 export function announceSyncState() {
@@ -49,44 +78,46 @@ async function replayMutation(m: QueuedMutation): Promise<void> {
 }
 
 async function runSync(): Promise<void> {
-  await discardLocalOnlyMutations();
   const failures: unknown[] = [];
   const failedEntities = new Set<string>();
   while (navigator.onLine) {
-    const mutations = await offlineQueue.getAll();
+    const queued = await offlineQueue.getAll();
+    await discardLocalOnlyMutations(queued);
+    const mutations = compactMutations(queued);
     if (mutations.length === 0) break;
     announceSyncState();
     let removedThisRound = 0;
 
     for (let index = 0; index < mutations.length;) {
-      const mutation = mutations[index];
+      const item = mutations[index];
+      const mutation = item.mutation;
       const entityKey = `${mutation.table}:${String(mutation.payload.id || '')}`;
       if (failedEntities.has(entityKey)) { index += 1; continue; }
       try {
-        const batch = [mutation];
+        const batch = [item];
         if (mutation.action === 'insert') {
           for (let next = index + 1; next < Math.min(mutations.length, index + 100); next += 1) {
             const candidate = mutations[next];
-            if (candidate.action !== 'insert' || candidate.table !== mutation.table) break;
+            if (candidate.mutation.action !== 'insert' || candidate.mutation.table !== mutation.table) break;
             batch.push(candidate);
           }
         }
 
         if (batch.length > 1) {
-          const { error } = await supabase.from(mutation.table).upsert(batch.map((item) => item.payload) as any);
+          const { error } = await supabase.from(mutation.table).upsert(batch.map(({ mutation: current }) => current.payload) as any);
           if (error) {
             // Find the specific invalid row instead of allowing one old item
             // to block every newer card in the durable outbox.
-            for (const item of batch) {
-              const key = `${item.table}:${String(item.payload.id || '')}`;
+            for (const current of batch) {
+              const key = `${current.mutation.table}:${String(current.mutation.payload.id || '')}`;
               try {
-                await replayMutation(item);
-                await offlineQueue.remove(item.id);
-                removedThisRound += 1;
+                await replayMutation(current.mutation);
+                await Promise.all(current.sourceIds.map((id) => offlineQueue.remove(id)));
+                removedThisRound += current.sourceIds.length;
               } catch (itemError) {
                 failedEntities.add(key);
                 failures.push(itemError);
-                console.error(`[Sync] Failed to replay mutation ${item.id}:`, itemError);
+                console.error(`[Sync] Failed to replay mutation ${current.mutation.id}:`, itemError);
               }
             }
             index += batch.length;
@@ -96,8 +127,9 @@ async function runSync(): Promise<void> {
         } else {
           await replayMutation(mutation);
         }
-        await Promise.all(batch.map((item) => offlineQueue.remove(item.id)));
-        removedThisRound += batch.length;
+        const sourceIds = batch.flatMap((current) => current.sourceIds);
+        await Promise.all(sourceIds.map((id) => offlineQueue.remove(id)));
+        removedThisRound += sourceIds.length;
         index += batch.length;
         announceSyncState();
       } catch (err) {
@@ -132,8 +164,8 @@ export async function persistMutations(mutations: NewQueuedMutation[]): Promise<
   if (navigator.onLine) await syncOfflineQueue();
 }
 
-export function getPendingMutationCount(): Promise<number> {
-  return offlineQueue.count();
+export async function getPendingMutationCount(): Promise<number> {
+  return compactMutations(await offlineQueue.getAll()).length;
 }
 
 export async function cardHasPendingSync(cardId: string): Promise<boolean> {

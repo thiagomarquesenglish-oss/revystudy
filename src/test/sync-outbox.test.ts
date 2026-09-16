@@ -1,6 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 
-const state=vi.hoisted(()=>({queue:[] as any[]}));
+const state=vi.hoisted(()=>({queue:[] as any[],deleted:[] as string[]}));
 vi.mock('@/lib/offline-db',()=>({
   offlineQueue:{
     getAll:vi.fn(async()=>[...state.queue]),
@@ -12,7 +12,7 @@ vi.mock('@/lib/offline-db',()=>({
 vi.mock('@/integrations/supabase/client',()=>({supabase:{from:()=>({
   upsert:async(payload:any)=>({error:Array.isArray(payload)||payload.id==='bad'?new Error('invalid row'):null}),
   update:()=>({eq:async()=>({error:null})}),
-  delete:()=>({eq:async()=>({error:null})}),
+  delete:()=>({eq:async(_field:string,id:string)=>{state.deleted.push(id);return {error:null}}}),
 })}}));
 
 import { syncOfflineQueue } from '@/lib/sync';
@@ -22,7 +22,19 @@ beforeEach(()=>{
     {id:'q1',table:'cards',action:'insert',payload:{id:'bad'}},
     {id:'q2',table:'cards',action:'insert',payload:{id:'good'}},
   ];
+  state.deleted=[];
   vi.spyOn(navigator,'onLine','get').mockReturnValue(true);
+});
+
+it('collapses obsolete work into the final state for each card',async()=>{
+  state.queue=[
+    {id:'q1',table:'cards',action:'insert',payload:{id:'old',front:'Old'}},
+    {id:'q2',table:'cards',action:'update',payload:{id:'old',front:'Edited'}},
+    {id:'q3',table:'cards',action:'delete',payload:{id:'old'}},
+  ];
+  await syncOfflineQueue();
+  expect(state.deleted).toEqual(['old']);
+  expect(state.queue).toEqual([]);
 });
 
 it('does not let one invalid old mutation block newer cards from reaching the cloud',async()=>{
