@@ -75,8 +75,17 @@ export function resolveOfflineMediaUrl(url: string): Promise<string> {
   const existing = localObjectUrls.get(url);
   if (existing) return existing;
   const resolved = caches.open(OFFLINE_MEDIA_CACHE)
-    .then(cache => cache.match(url, { ignoreSearch: true }))
-    .then(async response => response ? URL.createObjectURL(await response.blob()) : url)
+    .then(async cache => {
+      let response = await cache.match(url, { ignoreSearch: true });
+      if (!response) {
+        const downloaded = await fetch(url, { cache: 'no-store' });
+        if (!downloaded.ok && downloaded.type !== 'opaque') return url;
+        await cache.put(url, downloaded.clone());
+        response = downloaded;
+      }
+      const blob = await response.blob();
+      return blob.size > 0 ? URL.createObjectURL(blob) : url;
+    })
     .catch(() => url);
   localObjectUrls.set(url, resolved);
   return resolved;

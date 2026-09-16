@@ -65,15 +65,15 @@ function AudioPlayButton({ src, centered, autoPlay = true }: { src: string; cent
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [playbackSrc, setPlaybackSrc] = useState(src);
+  const [playbackSrc, setPlaybackSrc] = useState('');
+  const requestedPlay = useRef(autoPlay);
 
   useEffect(() => {
     let active = true;
     setPlaying(false);
     setLoading(false);
-    // The button must remain usable while the local cache is being resolved.
-    // Start with the original URL, then swap to the device copy when ready.
-    setPlaybackSrc(src);
+    requestedPlay.current = autoPlay;
+    setPlaybackSrc('');
     void resolveOfflineMediaUrl(src).then(value => { if (active) setPlaybackSrc(value); });
     return () => { active = false; };
   }, [src]);
@@ -99,30 +99,38 @@ function AudioPlayButton({ src, centered, autoPlay = true }: { src: string; cent
       el.removeEventListener('canplay', handleReady);
       el.removeEventListener('playing', handleReady);
     };
-  }, []);
+  }, [playbackSrc]);
 
   // Mobile browsers often defer media downloads. Start warming both the media
   // element and the HTTP cache as soon as the card is shown.
   useEffect(() => {
     const el = audioRef.current;
-    if (!el) return;
+    if (!el || !playbackSrc) return;
     const controller = new AbortController();
     setPlaying(false);
     setLoading(el.readyState < HTMLMediaElement.HAVE_FUTURE_DATA);
     el.load();
     if (/^https:\/\//i.test(playbackSrc)) void fetch(playbackSrc, { cache: 'force-cache', signal: controller.signal }).catch(() => {});
-    if (autoPlay) void el.play().catch(() => setLoading(false));
+    if (requestedPlay.current) void el.play().catch(() => setLoading(false));
     return () => { controller.abort(); el.pause(); };
   }, [playbackSrc, autoPlay]);
 
   const toggle = useCallback(() => {
     const el = audioRef.current;
-    if (!el || !playbackSrc) return;
+    if (!el) return;
+    if (!playbackSrc) {
+      requestedPlay.current = true;
+      setLoading(true);
+      return;
+    }
     if (playing) {
+      requestedPlay.current = false;
       el.pause();
       el.currentTime = 0;
     } else {
+      requestedPlay.current = true;
       setLoading(true);
+      if (!playbackSrc) return;
       if (el.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) el.load();
       void el.play().catch(() => setLoading(false));
     }
@@ -145,7 +153,12 @@ function AudioPlayButton({ src, centered, autoPlay = true }: { src: string; cent
       <audio ref={audioRef} src={playbackSrc} preload="auto" playsInline onPlaying={() => { setPlaying(true); setLoading(false); }} onError={() => {
         setPlaying(false);
         setLoading(false);
-        if (playbackSrc !== src) setPlaybackSrc(src);
+        if (playbackSrc !== src) {
+          requestedPlay.current = true;
+          setPlaybackSrc(src);
+        } else {
+          requestedPlay.current = false;
+        }
       }} />
     </>
   );
