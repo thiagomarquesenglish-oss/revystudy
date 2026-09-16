@@ -2,11 +2,12 @@
  * Sync engine: replays queued offline mutations against Supabase.
  */
 import { supabase } from '@/integrations/supabase/client';
-import { offlineQueue, QueuedMutation, NewQueuedMutation } from './offline-db';
+import { localDB, offlineQueue, QueuedMutation, NewQueuedMutation } from './offline-db';
 
 export const SYNC_STATE_EVENT = 'revystudy:sync-state';
 
 let syncPromise: Promise<void> | null = null;
+let lastSyncError: string | null = null;
 
 const CLOUD_CARD_UPDATE_FIELDS = new Set([
   'front', 'back', 'audio_id', 'card_type', 'dictation_answer', 'deck_id', 'flagged',
@@ -51,6 +52,25 @@ function compactMutations(queued: QueuedMutation[]): CompactedMutation[] {
   return [...compacted.values()];
 }
 
+async function resolveCurrentLocalState(queued: QueuedMutation[]): Promise<CompactedMutation[]> {
+  const compacted = compactMutations(queued);
+  const [cards, decks] = await Promise.all([localDB.getCards(), localDB.getDecks()]);
+  const currentCards = new Map(cards.map((row: any) => [row.id, row]));
+  const currentDecks = new Map(decks.map((row: any) => [row.id, row]));
+  return compacted.map((item) => {
+    const id = String(item.mutation.payload.id || '');
+    const local = item.mutation.table === 'cards' ? currentCards.get(id)
+      : item.mutation.table === 'decks' ? currentDecks.get(id) : undefined;
+    if (item.mutation.table !== 'cards' && item.mutation.table !== 'decks') return item;
+    return {
+      ...item,
+      mutation: local
+        ? { ...item.mutation, action: 'insert', payload: local }
+        : { ...item.mutation, action: 'delete', payload: { id } },
+    };
+  });
+}
+
 async function discardLocalOnlyMutations(queued: QueuedMutation[]): Promise<void> {
   const localOnly = queued.filter((mutation) => !belongsInCloud(mutation));
   await Promise.all(localOnly.map((mutation) => offlineQueue.remove(mutation.id)));
@@ -83,7 +103,7 @@ async function runSync(): Promise<void> {
   while (navigator.onLine) {
     const queued = await offlineQueue.getAll();
     await discardLocalOnlyMutations(queued);
-    const mutations = compactMutations(queued);
+    const mutations = await resolveCurrentLocalState(queued);
     if (mutations.length === 0) break;
     announceSyncState();
     let removedThisRound = 0;
@@ -147,7 +167,11 @@ async function runSync(): Promise<void> {
 export async function syncOfflineQueue(): Promise<void> {
   if (syncPromise) return syncPromise;
 
-  syncPromise = runSync().finally(() => {
+  lastSyncError = null;
+  syncPromise = runSync().catch((error) => {
+    lastSyncError = error instanceof Error ? error.message : String((error as any)?.message || error || 'Falha desconhecida');
+    throw error;
+  }).finally(() => {
     syncPromise = null;
     announceSyncState();
   });
@@ -167,6 +191,8 @@ export async function persistMutations(mutations: NewQueuedMutation[]): Promise<
 export async function getPendingMutationCount(): Promise<number> {
   return compactMutations(await offlineQueue.getAll()).length;
 }
+
+export function getLastSyncError(): string | null { return lastSyncError; }
 
 export async function cardHasPendingSync(cardId: string): Promise<boolean> {
   return (await offlineQueue.getAll()).some(mutation => mutation.table === 'cards' && mutation.payload.id === cardId);

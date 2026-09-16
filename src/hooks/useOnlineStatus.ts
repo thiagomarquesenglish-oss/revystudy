@@ -1,11 +1,12 @@
 import { syncDictation } from '@/lib/dictation-sync';
 import { useState, useEffect, useCallback } from 'react';
-import { getPendingMutationCount, syncOfflineQueue, SYNC_STATE_EVENT } from '@/lib/sync';
+import { getLastSyncError, getPendingMutationCount, syncOfflineQueue, SYNC_STATE_EVENT } from '@/lib/sync';
 
 export function useOnlineStatus() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isSyncing, setIsSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [syncError, setSyncError] = useState<string|null>(null);
 
   const refreshPendingCount = useCallback(async () => {
     setPendingCount(await getPendingMutationCount());
@@ -13,11 +14,13 @@ export function useOnlineStatus() {
 
   const handleSync = useCallback(async () => {
     setIsSyncing(true);
+    setSyncError(null);
     try {
       await syncOfflineQueue();
       await syncDictation();
     } catch (e) {
       console.error('Sync failed:', e);
+      setSyncError(getLastSyncError() || 'Não foi possível enviar os cartões.');
     } finally {
       await refreshPendingCount();
       setIsSyncing(false);
@@ -51,5 +54,5 @@ export function useOnlineStatus() {
     };
   }, [handleSync, refreshPendingCount]);
 
-  return { isOnline, isSyncing, pendingCount, syncNow: handleSync };
+  return { isOnline, isSyncing, pendingCount, syncError, syncNow: handleSync };
 }

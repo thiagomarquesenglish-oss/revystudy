@@ -11,9 +11,6 @@ import { cacheDeckMedia, offlineMediaEnabled } from './offline-media';
 export async function getStreakHistory(): Promise<{date: string; count: number}[]> {
   const userId = await getCachedUserId();
   if (!userId) return [];
-  if (isOnline()) {
-    try { await fetchReviewHistoryFromDB(); } catch { /* Local saved reviews remain usable offline. */ }
-  }
   const counts = new Map<string, number>();
   const rows = await localDB.getReviewHistory();
   for (const row of rows) {
