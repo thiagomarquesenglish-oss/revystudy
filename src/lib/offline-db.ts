@@ -194,15 +194,12 @@ export const localDB = {
       tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('Lote não salvo.'));
     });
   },
-  async commitLearningReview(card: Record<string, unknown>, review: Record<string, unknown>, progress:Record<string,unknown>): Promise<void> {
+  async commitLearningReview(card: Record<string, unknown>, review: Record<string, unknown>): Promise<void> {
     const db=await openDB();
     return new Promise((resolve,reject)=>{
-      const tx=db.transaction(['cards','review_history','queue'],'readwrite');
+      const tx=db.transaction(['cards','review_history'],'readwrite');
       try {
       tx.objectStore('cards').put(card);tx.objectStore('review_history').put(review);
-      [{table:'cards',action:'update',payload:progress},{table:'review_history',action:'insert',payload:review}].forEach((mutation,index)=>{
-        tx.objectStore('queue').put({...mutation,id:crypto.randomUUID(),timestamp:Date.now()+index});
-      });
       } catch(error) { tx.abort();reject(error);return; }
       tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('Revisão não salva.'));
     });

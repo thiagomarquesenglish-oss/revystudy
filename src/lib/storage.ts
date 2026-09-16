@@ -32,7 +32,7 @@ async function withoutDeletedCards(rows: any[]): Promise<any[]> {
   const deleted = new Set([...deletedThisSession, ...pending.filter(m => m.table === 'cards' && m.action === 'delete').map(m => m.payload.id)]);
   return rows.filter(row => !deleted.has(row.id));
 }
-import { assertCompletePackage, cardIdsToFetch, changedContent, contentDelta, CARD_CONTENT_FIELDS, AUDIO_CONTENT_FIELDS, DeckManifestSnapshot, mergeDownloadedCardRows, PROGRESS_FIELDS } from './deck-sync';
+import { assertCompletePackage, cardIdsToFetch, changedContent, contentDelta, CARD_CONTENT_FIELDS, AUDIO_CONTENT_FIELDS, DeckManifestSnapshot, mergeDownloadedCardRows } from './deck-sync';
 
 export interface DeckAudio {
   id: string;
@@ -619,7 +619,7 @@ export async function downloadDeckPackage(
     const local = localById.get(remote.id);
     return local && !changedContent(remote, local, CARD_CONTENT_FIELDS) ? local : remote;
   });
-  const { rows, localProgressRows } = mergeDownloadedCardRows(contentRows, localRows);
+  const { rows } = mergeDownloadedCardRows(contentRows, localRows);
   const hasCardChanges = cardChanges.added + cardChanges.edited + cardChanges.removed > 0;
 
   await Promise.all([
@@ -663,16 +663,6 @@ export async function downloadDeckPackage(
   });
   await ensureInstalledDecks();
   installedDecks.add(update.deckId);
-  if (localProgressRows.length > 0) {
-    await persistMutations(localProgressRows.map((row) => ({
-      table: 'cards' as const,
-      action: 'update' as const,
-      payload: {
-        id: row.id,
-        ...Object.fromEntries(PROGRESS_FIELDS.map((field) => [field, row[field]])),
-      },
-    })));
-  }
   if (offlineMediaEnabled()) {
     try {
       await cacheDeckMedia(rows, audios, onProgress);
@@ -1014,7 +1004,6 @@ export async function addReviewHistory(cardId: string, rating: string, adaptive?
   invalidateCache('reviewHistory');
 
   await localDB.saveReview(row);
-  await persistMutations([{ table: 'review_history', action: 'insert', payload: row }]);
 }
 
 /** A reviewed AI batch and its outbox are all-or-nothing on this device. */
@@ -1035,45 +1024,16 @@ export async function saveLearningReview(card:Flashcard,rating:Rating,mode?:Exer
   const updated={...card,...processReview(card,rating),updatedAt:now,progressUpdatedAt:now};
   const review={id:crypto.randomUUID(),card_id:card.id,user_id:userId,rating,reviewed_at:now,skill:mode?exerciseInfo[mode].skill:null,exercise_mode:mode||null};
   const row=cardToRow(updated,userId);
-  const progress={id:card.id,...Object.fromEntries(PROGRESS_FIELDS.map(field=>[field,row[field]]))};
-  await localDB.commitLearningReview(row,review,progress);
+  await localDB.commitLearningReview(row,review);
   if(cache.cards)cache.cards=cache.cards.map(c=>c.id===card.id?updated:c);
-  invalidateCache('reviewHistory');announceSyncState();
-  if(isOnline())void syncOfflineQueue().catch(console.error);
+  invalidateCache('reviewHistory');
   return updated;
 }
 
 export interface CardReviewRow { id:string;card_id:string;rating:string;user_id:string;reviewed_at:string;skill:string|null;exercise_mode:string|null }
 
 export async function getCardReviewRows(cardId: string): Promise<CardReviewRow[]> {
-  const local = (await localDB.getReviewHistory() as CardReviewRow[]).filter(row => row.card_id === cardId);
-  if (!isOnline()) return local;
-  const { data, error } = await supabase.from('review_history').select('*').eq('card_id', cardId).order('reviewed_at', { ascending: true });
-  if (error) return local;
-  await Promise.all((data || []).map(row => localDB.saveReview(row)));
-  return data || local;
-}
-
-async function fetchReviewHistoryFromDB(): Promise<{ date: string; count: number }[]> {
-  const userId=await getCachedUserId();
-  const fetched:CardReviewRow[]=[];
-  for(let from=0;;from+=1000){
-    const {data,error}=await supabase.from('review_history').select('*').eq('user_id',userId).order('reviewed_at').order('id').range(from,from+999);
-    if(error)throw error;fetched.push(...(data||[]));if(!data||data.length<1000)break;
-  }
-  const pending=(await offlineQueue.getAll()).filter(m=>m.table==='review_history'&&m.action==='insert'&&m.payload.user_id===userId).map(m=>m.payload as CardReviewRow);
-  const data=[...new Map([...fetched,...pending].map(row=>[row.id,row])).values()];
-  // Never clear the store while a new local review may be committing.
-  await Promise.all(data.map(row=>localDB.saveReview(row)));
-  const countMap: Record<string, number> = {};
-  (data || []).forEach((r: any) => {
-    const date = r.reviewed_at.slice(0, 10);
-    countMap[date] = (countMap[date] || 0) + 1;
-  });
-  const result = Object.entries(countMap).map(([date, count]) => ({ date, count }));
-  cache.reviewHistory = result;
-  touch('reviewHistory');
-  return result;
+  return (await localDB.getReviewHistory() as CardReviewRow[]).filter(row => row.card_id === cardId);
 }
 
 function aggregateReviewHistory(rows: any[]): { date: string; count: number }[] {
@@ -1086,25 +1046,17 @@ function aggregateReviewHistory(rows: any[]): { date: string; count: number }[] 
 }
 
 export async function getReviewHistory(): Promise<{ date: string; count: number }[]> {
-  if (cache.reviewHistory !== null) {
-    if (!isFresh('reviewHistory') && isOnline()) fetchReviewHistoryFromDB().catch(console.error);
-    return cache.reviewHistory;
-  }
-  // Always try local first for instant rendering
+  if (cache.reviewHistory !== null) return cache.reviewHistory;
   try {
     const local = await localDB.getReviewHistory();
-    if (local.length > 0) {
-      const result = aggregateReviewHistory(local);
-      cache.reviewHistory = result;
-      touch('reviewHistory');
-      if (isOnline()) fetchReviewHistoryFromDB().catch(console.error);
-      return result;
-    }
+    const result = aggregateReviewHistory(local);
+    cache.reviewHistory = result;
+    touch('reviewHistory');
+    return result;
   } catch (e) {
     console.error('Failed to read local review history:', e);
+    return [];
   }
-  if (!isOnline()) return [];
-  return fetchReviewHistoryFromDB();
 }
 
 export function getCachedReviewHistory(): { date: string; count: number }[] | null {
@@ -1113,15 +1065,6 @@ export function getCachedReviewHistory(): { date: string; count: number }[] | nu
 
 export async function getReviewHistoryToday(): Promise<number> {
   const today = new Date().toISOString().slice(0, 10);
-  if (isOnline()) {
-    const { count, error } = await supabase
-      .from('review_history')
-      .select('*', { count: 'exact', head: true })
-      .gte('reviewed_at', today + 'T00:00:00')
-      .lt('reviewed_at', today + 'T23:59:59.999');
-    if (error) throw error;
-    return count || 0;
-  }
   const local = await localDB.getReviewHistory();
   return local.filter((r: any) => (r.reviewed_at || '').startsWith(today)).length;
 }
@@ -1198,9 +1141,4 @@ export async function resetDeck(deckId: string): Promise<void> {
   const localRows = await localDB.getCardsByDeck(deckId);
   const updatedRows = localRows.map((row) => ({ ...row, ...resetFields }));
   await localDB.replaceCardsForDeck(deckId, updatedRows);
-  await persistMutations(updatedRows.map((row) => ({
-    table: 'cards' as const,
-    action: 'update' as const,
-    payload: { id: row.id, ...resetFields },
-  })));
 }

@@ -29,3 +29,13 @@ it('does not let one invalid old mutation block newer cards from reaching the cl
   await expect(syncOfflineQueue()).rejects.toThrow('invalid row');
   expect(state.queue.map(item=>item.payload.id)).toEqual(['bad']);
 });
+
+it('discards queued review history and schedule updates before syncing',async()=>{
+  state.queue=[
+    {id:'q1',table:'review_history',action:'insert',payload:{id:'review'}},
+    {id:'q2',table:'cards',action:'update',payload:{id:'card',review_count:4,due_date:'tomorrow'}},
+    {id:'q3',table:'cards',action:'update',payload:{id:'card',front:'New sentence'}},
+  ];
+  await syncOfflineQueue();
+  expect(state.queue).toEqual([]);
+});

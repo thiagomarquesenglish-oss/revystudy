@@ -8,6 +8,26 @@ export const SYNC_STATE_EVENT = 'revystudy:sync-state';
 
 let syncPromise: Promise<void> | null = null;
 
+const CLOUD_CARD_UPDATE_FIELDS = new Set([
+  'front', 'back', 'audio_id', 'card_type', 'dictation_answer', 'deck_id', 'flagged',
+]);
+
+function belongsInCloud(mutation: NewQueuedMutation): boolean {
+  if (mutation.table === 'review_history') return false;
+  if (mutation.table === 'cards' && mutation.action === 'update') {
+    return Object.keys(mutation.payload).some((field) => CLOUD_CARD_UPDATE_FIELDS.has(field));
+  }
+  return true;
+}
+
+async function discardLocalOnlyMutations(): Promise<void> {
+  const queued = await offlineQueue.getAll();
+  const localOnly = queued.filter((mutation) => !belongsInCloud(mutation));
+  if (!localOnly.length) return;
+  await Promise.all(localOnly.map((mutation) => offlineQueue.remove(mutation.id)));
+  announceSyncState();
+}
+
 export function announceSyncState() {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(SYNC_STATE_EVENT));
 }
@@ -29,6 +49,7 @@ async function replayMutation(m: QueuedMutation): Promise<void> {
 }
 
 async function runSync(): Promise<void> {
+  await discardLocalOnlyMutations();
   const failures: unknown[] = [];
   const failedEntities = new Set<string>();
   while (navigator.onLine) {
@@ -106,7 +127,7 @@ export async function syncOfflineQueue(): Promise<void> {
  * A failed online request remains queued and is retried automatically.
  */
 export async function persistMutations(mutations: NewQueuedMutation[]): Promise<void> {
-  for (const mutation of mutations) await offlineQueue.add(mutation);
+  for (const mutation of mutations.filter(belongsInCloud)) await offlineQueue.add(mutation);
   announceSyncState();
   if (navigator.onLine) await syncOfflineQueue();
 }

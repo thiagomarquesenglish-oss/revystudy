@@ -29,22 +29,21 @@ describe('dictation history integrity',()=>{
     expect(getDictationEvents('user')).toHaveLength(1);expect(deriveDictationHistory(getDictationEvents('user'),'deck').card).toEqual(legacy);
     expect(dictationSummary(getDictationEvents('user')).accuracy).toBe(60);
   });
-  it('keeps offline answers durable and retries cloud failures',async()=>{
-    recordDictationReview('user','deck','card','Hello','good');await syncDictation();expect(pendingDictationCount('user')).toBe(1);
-    vi.spyOn(navigator,'onLine','get').mockReturnValue(true);cloud.failure=true;
-    await expect(syncDictation()).rejects.toThrow('offline');expect(pendingDictationCount('user')).toBe(1);
-    cloud.failure=false;await syncDictation();await syncDictation();
-    expect(pendingDictationCount('user')).toBe(0);expect(cloud.events).toHaveLength(1);expect(getDictationEvents('user')).toHaveLength(1);
+  it('keeps writing answers on this device without sending them to the cloud',async()=>{
+    recordDictationReview('user','deck','card','Hello','good');await syncDictation();
+    expect(pendingDictationCount('user')).toBe(0);
+    expect(cloud.events).toHaveLength(0);
+    expect(getDictationEvents('user')).toHaveLength(1);
   });
-  it('pulls another device and preserves the local attempt',async()=>{
+  it('does not mix writing history from another device into local practice',async()=>{
     recordDictationReview('user','deck','card','Hello','good');await syncDictation();cloud.events=[event('remote','hard',1)];
     vi.spyOn(navigator,'onLine','get').mockReturnValue(true);await syncDictation();
-    expect(readDictationHistory('user','deck').card.reviews).toBe(2);
+    expect(readDictationHistory('user','deck').card.reviews).toBe(1);
   });
-  it('does not resurrect a deleted card from legacy storage',async()=>{
+  it('leaves legacy writing history local',async()=>{
     saveDictationHistory('user','deck',{card:{answer:'Hello',interval:1,due:10,reviews:1,mistakes:0}});cloud.cards=[];
     vi.spyOn(navigator,'onLine','get').mockReturnValue(true);await syncDictation();await syncDictation();
-    expect(pendingDictationCount('user')).toBe(0);expect(readDictationHistory('user','deck')).toEqual({});
+    expect(pendingDictationCount('user')).toBe(0);expect(readDictationHistory('user','deck').card.reviews).toBe(1);
   });
   it('merges a backup idempotently and replaces obsolete local history',()=>{
     restoreDictationEvents('user',[event('a','good',1)],false);restoreDictationEvents('user',[event('a','good',1)],false);
