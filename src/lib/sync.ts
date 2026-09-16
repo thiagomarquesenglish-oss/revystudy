@@ -77,6 +77,22 @@ async function discardLocalOnlyMutations(queued: QueuedMutation[]): Promise<void
   if (localOnly.length) announceSyncState();
 }
 
+async function ensureCardDecksExist(mutations: CompactedMutation[]): Promise<void> {
+  const deckIds = new Set(
+    mutations
+      .filter(({ mutation }) => mutation.table === 'cards' && mutation.action !== 'delete')
+      .map(({ mutation }) => String(mutation.payload.deck_id || ''))
+      .filter(Boolean),
+  );
+  if (!deckIds.size) return;
+  const localDecks = (await localDB.getDecks()).filter((deck: any) => deckIds.has(deck.id));
+  if (localDecks.length !== deckIds.size) {
+    throw new Error('O baralho destes cartões não existe mais neste aparelho.');
+  }
+  const { error } = await supabase.from('decks').upsert(localDecks as any);
+  if (error) throw error;
+}
+
 export function announceSyncState() {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(SYNC_STATE_EVENT));
 }
@@ -105,6 +121,7 @@ async function runSync(): Promise<void> {
     await discardLocalOnlyMutations(queued);
     const mutations = await resolveCurrentLocalState(queued);
     if (mutations.length === 0) break;
+    await ensureCardDecksExist(mutations);
     announceSyncState();
     let removedThisRound = 0;
 
