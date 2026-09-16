@@ -6,6 +6,7 @@ import BackupSettings from '@/components/BackupSettings';
 import BottomNav from '@/components/BottomNav';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
+import OfflineMediaSettings from '@/components/OfflineMediaSettings';
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
   const navigate=useNavigate();
@@ -19,6 +20,7 @@ export default function SettingsPage() {
           <div className="min-w-0"><p className="text-sm break-all">{user?.email}</p><p className="text-xs text-muted-foreground mt-1">Conta conectada</p></div>
         </div>
       </section>
+      <OfflineMediaSettings />
       <details className="bg-card rounded-2xl p-5"><summary className="font-semibold cursor-pointer">Atualizações</summary><div className="pt-4 flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Novidades dos seus baralhos</p><SyncUpdatesButton onInstalled={() => {}} /></div></details>
       <details className="bg-card rounded-2xl p-5"><summary className="font-semibold cursor-pointer">Backup e restaurar dados</summary><div className="pt-5"><BackupSettings /></div></details>
       <button onClick={()=>navigate('/curriculum/content')} className="w-full flex items-center gap-4 bg-card rounded-2xl p-5 text-left"><BookOpen className="h-6 w-6 text-primary"/><span><span className="block font-semibold">Conteúdo do currículo</span><span className="block text-sm text-muted-foreground mt-1">Preparar e importar conteúdo das etapas</span></span></button>

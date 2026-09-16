@@ -26,10 +26,19 @@ export default defineConfig(() => ({
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
-            // Never cache auth or storage (audio/images) — it filled the
-            // device quota and crashed the installed app.
-            urlPattern: /^https:\/\/.*\.supabase\.co\/(auth|storage)\/.*/i,
+            urlPattern: /^https:\/\/.*\.supabase\.co\/auth\/.*/i,
             handler: 'NetworkOnly',
+          },
+          {
+            // Files downloaded from Settings live in this bounded cache.
+            urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'revystudy-media-v1',
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: { maxEntries: 1200, maxAgeSeconds: 60 * 60 * 24 * 365, purgeOnQuotaError: true },
+              rangeRequests: true,
+            },
           },
           {
             // IndexedDB is the app's single offline data cache. Keeping REST
