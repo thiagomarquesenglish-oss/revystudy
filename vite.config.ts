@@ -4,7 +4,14 @@ import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
-export default defineConfig(() => ({
+export default defineConfig(() => {
+  const release = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7)
+    || process.env.GITHUB_SHA?.slice(0, 7)
+    || 'local';
+  return ({
+  define: {
+    __APP_VERSION__: JSON.stringify(`1.0 · ${release}`),
+  },
   server: {
     host: "::",
     port: 8080,
@@ -84,4 +91,5 @@ export default defineConfig(() => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-}));
+  });
+});

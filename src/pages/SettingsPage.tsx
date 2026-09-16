@@ -65,6 +65,7 @@ export default function SettingsPage() {
       <section className="space-y-3">
         <Button variant="ghost" className="text-destructive hover:text-destructive justify-start px-0" onClick={signOut}><LogOut className="h-4 w-4 mr-2" />Sair da conta</Button>
       </section>
+      <p className="pb-4 text-center text-xs text-muted-foreground" aria-label={`Versão do aplicativo ${__APP_VERSION__}`}>RevyStudy · Versão {__APP_VERSION__}</p>
     </main>
     <BottomNav active="settings" />
   </div>;
