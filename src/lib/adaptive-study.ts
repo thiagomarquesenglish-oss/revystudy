@@ -16,7 +16,6 @@ export const exerciseInfo: Record<ExerciseMode,{label:string;skill:LearningSkill
 };
 
 export const coreSituationModes:ExerciseMode[]=[
-  'image-production',
   'audio-comprehension',
   'text-comprehension',
   'translation-production',
@@ -79,7 +78,6 @@ export function chooseRotatingMode(available:ExerciseMode[],events:AdaptiveEvent
 
 export function availableSituationModes(input:{hasImage:boolean;hasAudio:boolean;hasEnglish:boolean;hasPortuguese:boolean}):ExerciseMode[]{
   const modes:ExerciseMode[]=[];
-  if(input.hasImage&&input.hasEnglish)modes.push('image-production');
   if(input.hasAudio)modes.push('audio-comprehension');
   if(input.hasEnglish)modes.push('text-comprehension');
   if(input.hasImage&&input.hasAudio)modes.push('image-audio');

@@ -216,7 +216,6 @@ export default function CustomStudyPage() {
     }
     const list:ExerciseMode[]=[];
     if(useAudio&&audioSrc)list.push('audio-comprehension');
-    if(useImage&&(front.imagesHtml||back.imagesHtml))list.push('image-production');
     if(useText&&(hasText(front.textHtml)||hasText(back.textHtml)))list.push('text-comprehension');
     return list;
   },[front,back,audioSrc,situation,useAudio,useImage,useText]);

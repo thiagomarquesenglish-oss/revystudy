@@ -2,14 +2,16 @@ import { describe,expect,it } from 'vitest';
 import { availableSituationModes,chooseAdaptiveMode,chooseAlternatingMode,chooseRotatingMode,coreSituationModes,exerciseInfo,parseAdaptiveEvent,type AdaptiveEvent } from '@/lib/adaptive-study';
 
 describe('adaptive multimodal study',()=>{
-  it('creates the six multimodal variations plus dictation from one situation',()=>{
-    expect(availableSituationModes({hasImage:true,hasAudio:true,hasEnglish:true,hasPortuguese:true})).toHaveLength(7);
-    expect(availableSituationModes({hasImage:true,hasAudio:true,hasEnglish:true,hasPortuguese:true})).toContain('image-translation-production');
+  it('creates useful multimodal variations plus dictation without an isolated image prompt',()=>{
+    const modes=availableSituationModes({hasImage:true,hasAudio:true,hasEnglish:true,hasPortuguese:true});
+    expect(modes).toHaveLength(6);
+    expect(modes).not.toContain('image-production');
+    expect(modes).toContain('image-translation-production');
   });
 
-  it('puts exactly the requested six variations into scheduled sessions',()=>{
+  it('does not schedule the ambiguous image-only variation',()=>{
     expect(coreSituationModes).toEqual([
-      'image-production','audio-comprehension','text-comprehension',
+      'audio-comprehension','text-comprehension',
       'translation-production','image-audio','image-translation-production',
     ]);
   });
