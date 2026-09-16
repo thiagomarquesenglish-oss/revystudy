@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import PedagogyFields from './PedagogyFields';
 import { manualPedagogy } from '@/lib/curriculum';
+import { cardHasPendingSync, syncOfflineQueue } from '@/lib/sync';
 
 const MAX_MEDIA_BYTES = 25 * 1024 * 1024;
 function extension(file: File) { return file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || (file.type.startsWith('image/') ? 'jpg' : 'mp3'); }
@@ -49,8 +50,11 @@ export default function SituationAddForm({ deckId }: { deckId: string }) {
         const upload=async(file:File)=>{const path=`${user.id}/situations/${deckId}/${crypto.randomUUID()}.${extension(file)}`;const {error}=await supabase.storage.from('card-media').upload(path,file,{contentType:file.type,upsert:false});if(error)throw error;uploaded.push(path);return supabase.storage.from('card-media').getPublicUrl(path).data.publicUrl};
         const [imagePublic,audioPublic]=await Promise.all([upload(draft.image),draft.audio?upload(draft.audio):Promise.resolve('')]);
         const media=`<img src="${escapeHtml(imagePublic)}" alt="Situação visual">${audioPublic?`<div data-audio="true" data-src="${escapeHtml(audioPublic)}" data-filename="${escapeHtml(draft.audio!.name)}" class="audio-node"><audio src="${escapeHtml(audioPublic)}" class="audio-node-element"></audio></div>`:''}`;
-        const html=buildSituationHtml({english:draft.english,context:draft.hint,portuguese:draft.portuguese,mediaHtml:media,pedagogy:manualPedagogy(draft.stage)});await addCard(deckId,html.front,html.back,draft.audioId==='none'?null:draft.audioId,'standard',draft.english);
-        toast.success('Situação criada!',{description:'Você já pode continuar cadastrando.'});
+        const html=buildSituationHtml({english:draft.english,context:draft.hint,portuguese:draft.portuguese,mediaHtml:media,pedagogy:manualPedagogy(draft.stage)});const created=await addCard(deckId,html.front,html.back,draft.audioId==='none'?null:draft.audioId,'standard',draft.english);
+        await syncOfflineQueue().catch(()=>{});
+        const pendingCloud=await cardHasPendingSync(created.id);
+        if(pendingCloud)toast.error('Situação salva neste navegador, mas ainda não chegou à nuvem. O aplicativo continuará tentando.');
+        else toast.success('Situação criada e enviada para a nuvem!',{description:'Ela já pode aparecer nos outros aparelhos.'});
       }catch(error){if(uploaded.length)void supabase.storage.from('card-media').remove(uploaded);toast.error(error instanceof Error?error.message:'Não foi possível criar a situação.');}finally{setPending(value=>Math.max(0,value-1));}
     })();
   };

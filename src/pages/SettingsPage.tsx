@@ -1,6 +1,6 @@
 import SyncUpdatesButton from '@/components/SyncUpdatesButton';
 import { useAuth } from '@/hooks/useAuth';
-import { LogOut, User, RefreshCw } from 'lucide-react';
+import { Cloud, LogOut, User, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import BackupSettings from '@/components/BackupSettings';
@@ -8,8 +8,10 @@ import BottomNav from '@/components/BottomNav';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import OfflineMediaSettings from '@/components/OfflineMediaSettings';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
+  const {isOnline,isSyncing,pendingCount,syncNow}=useOnlineStatus();
   const [refreshing,setRefreshing]=useState(false);
 
   const refreshApp=async()=>{
@@ -48,6 +50,10 @@ export default function SettingsPage() {
           <User className="h-6 w-6 shrink-0 text-muted-foreground" />
           <div className="min-w-0"><p className="text-sm break-all">{user?.email}</p><p className="text-xs text-muted-foreground mt-1">Conta conectada</p></div>
         </div>
+      </section>
+      <section className="bg-card rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-3"><Cloud className="h-6 w-6 shrink-0 text-primary"/><div><h2 className="font-semibold">Sincronização da nuvem</h2><p className="text-sm text-muted-foreground mt-1">{!isOnline?'Sem internet. Os dados continuam seguros neste aparelho.':pendingCount>0?`${pendingCount} alterações ainda precisam ser enviadas.`:'Tudo foi enviado para a nuvem.'}</p></div></div>
+        <Button variant="secondary" className="shrink-0" onClick={()=>void syncNow()} disabled={!isOnline||isSyncing}>{isSyncing?<RefreshCw className="animate-spin"/>:<Cloud/>}{isSyncing?'Enviando…':'Sincronizar agora'}</Button>
       </section>
       <section className="bg-card rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div><h2 className="font-semibold">Atualizar aplicativo</h2><p className="text-sm text-muted-foreground mt-1">Busca a versão mais recente e recarrega o RevyStudy, como atualizar a página no navegador.</p></div>

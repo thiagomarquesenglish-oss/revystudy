@@ -29,13 +29,18 @@ async function replayMutation(m: QueuedMutation): Promise<void> {
 }
 
 async function runSync(): Promise<void> {
+  const failures: unknown[] = [];
+  const failedEntities = new Set<string>();
   while (navigator.onLine) {
     const mutations = await offlineQueue.getAll();
-    if (mutations.length === 0) return;
+    if (mutations.length === 0) break;
     announceSyncState();
+    let removedThisRound = 0;
 
     for (let index = 0; index < mutations.length;) {
       const mutation = mutations[index];
+      const entityKey = `${mutation.table}:${String(mutation.payload.id || '')}`;
+      if (failedEntities.has(entityKey)) { index += 1; continue; }
       try {
         const batch = [mutation];
         if (mutation.action === 'insert') {
@@ -48,20 +53,42 @@ async function runSync(): Promise<void> {
 
         if (batch.length > 1) {
           const { error } = await supabase.from(mutation.table).upsert(batch.map((item) => item.payload) as any);
-          if (error) throw error;
+          if (error) {
+            // Find the specific invalid row instead of allowing one old item
+            // to block every newer card in the durable outbox.
+            for (const item of batch) {
+              const key = `${item.table}:${String(item.payload.id || '')}`;
+              try {
+                await replayMutation(item);
+                await offlineQueue.remove(item.id);
+                removedThisRound += 1;
+              } catch (itemError) {
+                failedEntities.add(key);
+                failures.push(itemError);
+                console.error(`[Sync] Failed to replay mutation ${item.id}:`, itemError);
+              }
+            }
+            index += batch.length;
+            announceSyncState();
+            continue;
+          }
         } else {
           await replayMutation(mutation);
         }
         await Promise.all(batch.map((item) => offlineQueue.remove(item.id)));
+        removedThisRound += batch.length;
         index += batch.length;
         announceSyncState();
       } catch (err) {
         console.error(`[Sync] Failed to replay mutation ${mutation.id}:`, err);
-        // Stop on first failure to preserve order. The durable row remains queued.
-        return;
+        failedEntities.add(entityKey);
+        failures.push(err);
+        index += 1;
       }
     }
+    if (removedThisRound === 0) break;
   }
+  if (failures.length) throw failures[0];
 }
 
 export async function syncOfflineQueue(): Promise<void> {
@@ -86,4 +113,8 @@ export async function persistMutations(mutations: NewQueuedMutation[]): Promise<
 
 export function getPendingMutationCount(): Promise<number> {
   return offlineQueue.count();
+}
+
+export async function cardHasPendingSync(cardId: string): Promise<boolean> {
+  return (await offlineQueue.getAll()).some(mutation => mutation.table === 'cards' && mutation.payload.id === cardId);
 }

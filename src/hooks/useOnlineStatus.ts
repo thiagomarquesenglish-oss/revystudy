@@ -51,5 +51,5 @@ export function useOnlineStatus() {
     };
   }, [handleSync, refreshPendingCount]);
 
-  return { isOnline, isSyncing, pendingCount };
+  return { isOnline, isSyncing, pendingCount, syncNow: handleSync };
 }
