@@ -33,19 +33,27 @@ export default function SituationAddForm({ deckId }: { deckId: string }) {
   const [stage,setStage]=useState(0),[hint,setHint]=useState('');
   const [english,setEnglish]=useState(''),[portuguese,setPortuguese]=useState('');
   const [image,setImage]=useState<File|null>(null),[audio,setAudio]=useState<File|null>(null),[imageUrl,setImageUrl]=useState(''),[audioUrl,setAudioUrl]=useState('');
-  const [audioId,setAudioId]=useState('none'),[audios,setAudios]=useState<{id:string;name:string}[]>([]),[saving,setSaving]=useState(false); const lock=useRef(false);
+  const [audioId,setAudioId]=useState('none'),[audios,setAudios]=useState<{id:string;name:string}[]>([]),[pending,setPending]=useState(0); const lock=useRef(false);
   useEffect(()=>{void getDeckAudios(deckId).then(rows=>setAudios(rows.map(({id,name})=>({id,name}))));},[deckId]);
   const setPickedImage=(file:File)=>{if(imageUrl)URL.revokeObjectURL(imageUrl);setImage(file);setImageUrl(URL.createObjectURL(file))};
   const setPickedAudio=(file:File)=>{if(audioUrl)URL.revokeObjectURL(audioUrl);setAudio(file);setAudioUrl(URL.createObjectURL(file));setAudioId('none')};
   const ready=!!english.trim()&&!!portuguese.trim()&&!!image&&(!!audio||audioId!=='none');
-  const save=async(e:React.FormEvent)=>{e.preventDefault();if(!ready||lock.current||!image)return;lock.current=true;setSaving(true);const uploaded:string[]=[];
-    try{if(!navigator.onLine)throw new Error('Conecte-se à internet para enviar a imagem e o áudio.');const user=(await supabase.auth.getUser()).data.user;if(!user)throw new Error('Sua sessão expirou.');
-      const upload=async(file:File)=>{const path=`${user.id}/situations/${deckId}/${crypto.randomUUID()}.${extension(file)}`;const {error}=await supabase.storage.from('card-media').upload(path,file,{contentType:file.type,upsert:false});if(error)throw error;uploaded.push(path);return supabase.storage.from('card-media').getPublicUrl(path).data.publicUrl};
-      const imagePublic=await upload(image);const audioPublic=audio?await upload(audio):'';
-      const media=`<img src="${escapeHtml(imagePublic)}" alt="Situação visual">${audioPublic?`<div data-audio="true" data-src="${escapeHtml(audioPublic)}" data-filename="${escapeHtml(audio!.name)}" class="audio-node"><audio src="${escapeHtml(audioPublic)}" class="audio-node-element"></audio></div>`:''}`;
-      const html=buildSituationHtml({english:english.trim(),context:hint.trim(),portuguese:portuguese.trim(),mediaHtml:media,pedagogy:manualPedagogy(stage)});await addCard(deckId,html.front,html.back,audioId==='none'?null:audioId,'standard',english.trim());
-      URL.revokeObjectURL(imageUrl);if(audioUrl)URL.revokeObjectURL(audioUrl);setEnglish('');setPortuguese('');setImage(null);setAudio(null);setImageUrl('');setAudioUrl('');setAudioId('none');toast.success('Situação criada!',{description:'Compreensão, produção e ditado foram configurados automaticamente.'});
-    }catch(error){if(uploaded.length)void supabase.storage.from('card-media').remove(uploaded);toast.error(error instanceof Error?error.message:'Não foi possível criar a situação.');}finally{lock.current=false;setSaving(false)}};
+  const save=(e:React.FormEvent)=>{e.preventDefault();if(!ready||lock.current||!image)return;if(!navigator.onLine){toast.error('Conecte-se à internet para enviar a imagem e o áudio.');return;}lock.current=true;
+    const draft={english:english.trim(),portuguese:portuguese.trim(),hint:hint.trim(),stage,image,audio,audioId};
+    if(imageUrl)URL.revokeObjectURL(imageUrl);if(audioUrl)URL.revokeObjectURL(audioUrl);
+    setEnglish('');setPortuguese('');setHint('');setImage(null);setAudio(null);setImageUrl('');setAudioUrl('');setAudioId('none');setPending(value=>value+1);
+    toast.message('Enviando situação em segundo plano…');
+    queueMicrotask(()=>{lock.current=false;});
+    void (async()=>{const uploaded:string[]=[];
+      try{if(!navigator.onLine)throw new Error('Conecte-se à internet para enviar a imagem e o áudio.');const user=(await supabase.auth.getUser()).data.user;if(!user)throw new Error('Sua sessão expirou.');
+        const upload=async(file:File)=>{const path=`${user.id}/situations/${deckId}/${crypto.randomUUID()}.${extension(file)}`;const {error}=await supabase.storage.from('card-media').upload(path,file,{contentType:file.type,upsert:false});if(error)throw error;uploaded.push(path);return supabase.storage.from('card-media').getPublicUrl(path).data.publicUrl};
+        const [imagePublic,audioPublic]=await Promise.all([upload(draft.image),draft.audio?upload(draft.audio):Promise.resolve('')]);
+        const media=`<img src="${escapeHtml(imagePublic)}" alt="Situação visual">${audioPublic?`<div data-audio="true" data-src="${escapeHtml(audioPublic)}" data-filename="${escapeHtml(draft.audio!.name)}" class="audio-node"><audio src="${escapeHtml(audioPublic)}" class="audio-node-element"></audio></div>`:''}`;
+        const html=buildSituationHtml({english:draft.english,context:draft.hint,portuguese:draft.portuguese,mediaHtml:media,pedagogy:manualPedagogy(draft.stage)});await addCard(deckId,html.front,html.back,draft.audioId==='none'?null:draft.audioId,'standard',draft.english);
+        toast.success('Situação criada!',{description:'Você já pode continuar cadastrando.'});
+      }catch(error){if(uploaded.length)void supabase.storage.from('card-media').remove(uploaded);toast.error(error instanceof Error?error.message:'Não foi possível criar a situação.');}finally{setPending(value=>Math.max(0,value-1));}
+    })();
+  };
   return <form id="situation-form" onSubmit={save} className="space-y-5">
     <PedagogyFields stage={stage} onStage={setStage} hint={hint} onHint={setHint}/>
     <section className="rounded-2xl border border-border bg-card p-4 space-y-4"><div className="flex gap-2"><Upload className="h-5 w-5 text-primary"/><div><h2 className="font-bold">1. Imagem e áudio</h2><p className="text-xs text-muted-foreground">Arraste cada arquivo para seu próprio espaço.</p></div></div><div className="grid gap-4 sm:grid-cols-2"><MediaDropBox kind="image" file={image} preview={imageUrl} onFile={setPickedImage} onClear={()=>{if(imageUrl)URL.revokeObjectURL(imageUrl);setImage(null);setImageUrl('')}}/><MediaDropBox kind="audio" file={audio} preview={audioUrl} onFile={setPickedAudio} onClear={()=>{if(audioUrl)URL.revokeObjectURL(audioUrl);setAudio(null);setAudioUrl('')}}/></div>
@@ -53,6 +61,6 @@ export default function SituationAddForm({ deckId }: { deckId: string }) {
     </section>
     <section className="rounded-2xl border border-border bg-card p-4 space-y-4"><div className="flex gap-2"><MessageSquareText className="h-5 w-5 text-primary"/><h2 className="font-bold">2. Frases</h2></div><div><Label htmlFor="english">Frase em inglês</Label><Input id="english" lang="en" value={english} onChange={e=>setEnglish(e.target.value)} placeholder="The kitchen is over here."/><p className="mt-1 text-xs text-muted-foreground">Esta mesma frase será usada para corrigir o ditado.</p></div><div><Label htmlFor="portuguese">Frase em português</Label><Input id="portuguese" value={portuguese} onChange={e=>setPortuguese(e.target.value)} placeholder="A cozinha fica aqui."/><p className="mt-1 text-xs text-muted-foreground">Serve como apoio quando você precisar consultar o significado.</p></div></section>
     <section className="rounded-2xl border border-primary/30 bg-primary/5 p-4"><h2 className="font-bold mb-3">Três exercícios automáticos</h2>{[['Compreensão','Áudio ou inglês → entender'],['Produção','Imagem + contexto → falar em inglês'],['Ditado','Áudio → escrever a frase em inglês']].map(([a,b])=><div key={a} className="flex gap-2 py-1.5 text-sm"><CheckCircle2 className="h-4 w-4 text-primary mt-0.5"/><span><strong>{a}:</strong> {b}</span></div>)}</section>
-    <Button className="w-full h-12" disabled={!ready||saving}>{saving?'Enviando e criando…':'Criar situação'}</Button>{!ready&&<p className="text-xs text-center text-muted-foreground">Complete a imagem, o áudio e as duas frases.</p>}
+    <Button className="w-full h-12" disabled={!ready}>Criar situação</Button>{pending>0&&<p role="status" className="text-xs text-center text-primary">{pending} {pending===1?'situação sendo enviada':'situações sendo enviadas'} em segundo plano. Você já pode cadastrar outra.</p>}{!ready&&pending===0&&<p className="text-xs text-center text-muted-foreground">Complete a imagem, o áudio e as duas frases.</p>}
   </form>;
 }
