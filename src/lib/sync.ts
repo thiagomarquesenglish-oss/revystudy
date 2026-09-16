@@ -89,7 +89,16 @@ async function ensureCardDecksExist(mutations: CompactedMutation[]): Promise<voi
   if (localDecks.length !== deckIds.size) {
     throw new Error('O baralho destes cartões não existe mais neste aparelho.');
   }
-  const { error } = await supabase.from('decks').upsert(localDecks as any);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Sua sessão expirou. Entre novamente.');
+  const parents = localDecks.map((deck: any) => ({
+    id: deck.id,
+    user_id: user.id,
+    name: deck.name || 'Baralho',
+    description: deck.description || '',
+    created_at: deck.created_at || new Date().toISOString(),
+  }));
+  const { error } = await supabase.from('decks').upsert(parents as any);
   if (error) throw error;
 }
 

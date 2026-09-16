@@ -10,7 +10,7 @@ vi.mock('@/lib/offline-db',()=>({
     add:vi.fn(),
   },
 }));
-vi.mock('@/integrations/supabase/client',()=>({supabase:{from:(table:string)=>({
+vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getUser:async()=>({data:{user:{id:'user'}}})},from:(table:string)=>({
   upsert:async(payload:any)=>{state.tables.push(table);return {error:table==='cards'&&(Array.isArray(payload)||payload.id==='bad')?new Error('invalid row'):null}},
   update:()=>({eq:async()=>({error:null})}),
   delete:()=>({eq:async(_field:string,id:string)=>{state.deleted.push(id);return {error:null}}}),

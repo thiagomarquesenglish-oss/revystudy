@@ -114,22 +114,14 @@ function safeLocalStorageJson(key: string): unknown {
 
 export async function createFullBackup(): Promise<Blob> {
   if (!navigator.onLine) throw new Error('Conecte-se à internet para criar um backup completo e conferido.');
-  await syncOfflineQueue();
-  if (await offlineQueue.count()) {
-    throw new Error('Ainda existem alterações aguardando envio para a nuvem. Aguarde e tente novamente.');
-  }
-
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Sua sessão expirou. Entre novamente.');
-  await syncDictation();
-  if (pendingDictationCount(user.id)) throw new Error('Existem revisões de escrita aguardando sincronização. Tente novamente.');
-
-  const [decks, cardsInput, reviewHistory, audioInput] = await Promise.all([
-    fetchAllRows('decks'),
-    fetchAllRows('cards'),
-    fetchAllRows('review_history'),
-    fetchAllRows('deck_audios'),
+  const [decks, cardsInput, reviewHistory] = await Promise.all([
+    localDB.getDecks(),
+    localDB.getCards(),
+    localDB.getReviewHistory(),
   ]);
+  const audioInput = (await Promise.all(decks.map((deck: any) => localDB.getDeckAudios(deck.id)))).flat();
 
   const zip = new JSZip();
   const cards = cardsInput.map((row) => ({ ...row }));
