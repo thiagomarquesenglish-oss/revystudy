@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getCardReviewRows, getDeckAudios } from '@/lib/storage';
 import StudyMedia from './StudyMedia';
 import { readSituation, translationSupportLevel } from '@/lib/situation';
-import { Play, Pause, Check, X } from 'lucide-react';
+import { Play, Pause, Check, X, Loader2 } from 'lucide-react';
 import { availableSituationModes, chooseAdaptiveMode, exerciseInfo, parseAdaptiveEvent, type ExerciseMode } from '@/lib/adaptive-study';
 import { compareDictation } from '@/lib/dictation';
 import SkillBadge from './SkillBadge';
@@ -63,27 +63,43 @@ function extractAudioSrc(html: string): string | null {
 function AudioPlayButton({ src, centered, autoPlay = true }: { src: string; centered?: boolean; autoPlay?: boolean }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const el = audioRef.current;
     if (!el) return;
     const handleEnded = () => setPlaying(false);
     const handlePause = () => setPlaying(false);
+    const handleWaiting = () => setLoading(true);
+    const handleReady = () => setLoading(false);
     el.addEventListener('ended', handleEnded);
     el.addEventListener('pause', handlePause);
+    el.addEventListener('waiting', handleWaiting);
+    el.addEventListener('stalled', handleWaiting);
+    el.addEventListener('canplay', handleReady);
+    el.addEventListener('playing', handleReady);
     return () => {
       el.removeEventListener('ended', handleEnded);
       el.removeEventListener('pause', handlePause);
+      el.removeEventListener('waiting', handleWaiting);
+      el.removeEventListener('stalled', handleWaiting);
+      el.removeEventListener('canplay', handleReady);
+      el.removeEventListener('playing', handleReady);
     };
   }, []);
 
-  // Auto-play on mount
+  // Mobile browsers often defer media downloads. Start warming both the media
+  // element and the HTTP cache as soon as the card is shown.
   useEffect(() => {
     const el = audioRef.current;
-    if (el && autoPlay) {
-      el.play().catch(() => {});
-    }
-    return () => { el?.pause(); };
+    if (!el) return;
+    const controller = new AbortController();
+    setPlaying(false);
+    setLoading(el.readyState < HTMLMediaElement.HAVE_FUTURE_DATA);
+    el.load();
+    void fetch(src, { cache: 'force-cache', signal: controller.signal }).catch(() => {});
+    if (autoPlay) void el.play().catch(() => setLoading(false));
+    return () => { controller.abort(); el.pause(); };
   }, [src, autoPlay]);
 
   const toggle = useCallback(() => {
@@ -93,7 +109,9 @@ function AudioPlayButton({ src, centered, autoPlay = true }: { src: string; cent
       el.pause();
       el.currentTime = 0;
     } else {
-      el.play().catch(() => {});
+      setLoading(true);
+      if (el.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) el.load();
+      void el.play().catch(() => setLoading(false));
     }
   }, [playing]);
 
@@ -104,12 +122,14 @@ function AudioPlayButton({ src, centered, autoPlay = true }: { src: string; cent
         className={`shrink-0 w-20 h-20 rounded-full bg-primary/15 hover:bg-primary/25 flex items-center justify-center transition-colors active:scale-95 ${centered ? 'self-center' : 'self-start mt-1'}`}
         aria-label={playing ? 'Pausar áudio' : 'Reproduzir áudio'}
       >
-        {playing
+        {loading && !playing
+          ? <Loader2 className="w-9 h-9 text-primary animate-spin" />
+          : playing
           ? <Pause className="w-9 h-9 text-primary" />
           : <Play className="w-9 h-9 text-primary ml-1" />
         }
       </button>
-      <audio ref={audioRef} src={src} preload="auto" onPlaying={() => setPlaying(true)} onError={() => setPlaying(false)} />
+      <audio ref={audioRef} src={src} preload="auto" playsInline onPlaying={() => { setPlaying(true); setLoading(false); }} onError={() => { setPlaying(false); setLoading(false); }} />
     </>
   );
 }
