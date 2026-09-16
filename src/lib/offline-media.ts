@@ -3,6 +3,7 @@ import { localDB } from './offline-db';
 
 export const OFFLINE_MEDIA_CACHE = 'revystudy-media-v1';
 const PREF_KEY = 'revystudy:offline-media-enabled';
+const localObjectUrls = new Map<string, Promise<string>>();
 
 type CardRow = { front?: string; back?: string };
 type AudioRow = { file_path?: string };
@@ -68,6 +69,19 @@ export async function cacheDeckMedia(cards: CardRow[], audios: AudioRow[], onPro
   return cacheMediaUrls(collectMediaUrls(cards, audios), onProgress);
 }
 
+/** Return a blob URL backed by the downloaded file, bypassing mobile network/range requests. */
+export function resolveOfflineMediaUrl(url: string): Promise<string> {
+  if (!offlineMediaEnabled() || !('caches' in window) || !/^https:\/\//i.test(url)) return Promise.resolve(url);
+  const existing = localObjectUrls.get(url);
+  if (existing) return existing;
+  const resolved = caches.open(OFFLINE_MEDIA_CACHE)
+    .then(cache => cache.match(url, { ignoreSearch: true }))
+    .then(async response => response ? URL.createObjectURL(await response.blob()) : url)
+    .catch(() => url);
+  localObjectUrls.set(url, resolved);
+  return resolved;
+}
+
 export async function cacheAllLocalMedia(onProgress?: (progress: MediaDownloadProgress) => void): Promise<number> {
   const cards = await localDB.getCards();
   const decks = await localDB.getDecks();
@@ -81,5 +95,10 @@ export async function offlineMediaCount(): Promise<number> {
 }
 
 export async function clearOfflineMedia(): Promise<void> {
+  for (const pending of localObjectUrls.values()) {
+    const value = await pending.catch(() => '');
+    if (value.startsWith('blob:')) URL.revokeObjectURL(value);
+  }
+  localObjectUrls.clear();
   if ('caches' in window) await caches.delete(OFFLINE_MEDIA_CACHE);
 }

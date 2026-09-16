@@ -9,6 +9,7 @@ import { availableSituationModes, chooseAdaptiveMode, exerciseInfo, parseAdaptiv
 import { compareDictation } from '@/lib/dictation';
 import SkillBadge from './SkillBadge';
 import UnderstandHelp from './UnderstandHelp';
+import { resolveOfflineMediaUrl } from '@/lib/offline-media';
 
 /** Normalize text for typing comparison: lowercase, strip accents, remove punctuation, collapse spaces */
 function normalizeForCompare(s: string): string {
@@ -64,10 +65,20 @@ function AudioPlayButton({ src, centered, autoPlay = true }: { src: string; cent
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [playbackSrc, setPlaybackSrc] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    setPlaying(false);
+    setLoading(true);
+    setPlaybackSrc('');
+    void resolveOfflineMediaUrl(src).then(value => { if (active) setPlaybackSrc(value); });
+    return () => { active = false; };
+  }, [src]);
 
   useEffect(() => {
     const el = audioRef.current;
-    if (!el) return;
+    if (!el || !playbackSrc) return;
     const handleEnded = () => setPlaying(false);
     const handlePause = () => setPlaying(false);
     const handleWaiting = () => setLoading(true);
@@ -97,14 +108,14 @@ function AudioPlayButton({ src, centered, autoPlay = true }: { src: string; cent
     setPlaying(false);
     setLoading(el.readyState < HTMLMediaElement.HAVE_FUTURE_DATA);
     el.load();
-    void fetch(src, { cache: 'force-cache', signal: controller.signal }).catch(() => {});
+    if (/^https:\/\//i.test(playbackSrc)) void fetch(playbackSrc, { cache: 'force-cache', signal: controller.signal }).catch(() => {});
     if (autoPlay) void el.play().catch(() => setLoading(false));
     return () => { controller.abort(); el.pause(); };
-  }, [src, autoPlay]);
+  }, [playbackSrc, autoPlay]);
 
   const toggle = useCallback(() => {
     const el = audioRef.current;
-    if (!el) return;
+    if (!el || !playbackSrc) return;
     if (playing) {
       el.pause();
       el.currentTime = 0;
@@ -113,7 +124,7 @@ function AudioPlayButton({ src, centered, autoPlay = true }: { src: string; cent
       if (el.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) el.load();
       void el.play().catch(() => setLoading(false));
     }
-  }, [playing]);
+  }, [playing, playbackSrc]);
 
   return (
     <>
@@ -129,7 +140,7 @@ function AudioPlayButton({ src, centered, autoPlay = true }: { src: string; cent
           : <Play className="w-9 h-9 text-primary ml-1" />
         }
       </button>
-      <audio ref={audioRef} src={src} preload="auto" playsInline onPlaying={() => { setPlaying(true); setLoading(false); }} onError={() => { setPlaying(false); setLoading(false); }} />
+      <audio ref={audioRef} src={playbackSrc || undefined} preload="auto" playsInline onPlaying={() => { setPlaying(true); setLoading(false); }} onError={() => { setPlaying(false); setLoading(false); }} />
     </>
   );
 }
