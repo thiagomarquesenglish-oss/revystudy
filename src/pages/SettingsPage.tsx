@@ -1,7 +1,6 @@
 import SyncUpdatesButton from '@/components/SyncUpdatesButton';
 import { useAuth } from '@/hooks/useAuth';
-import { LogOut, User, BookOpen, RefreshCw } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { LogOut, User, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import BackupSettings from '@/components/BackupSettings';
@@ -11,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import OfflineMediaSettings from '@/components/OfflineMediaSettings';
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
-  const navigate=useNavigate();
   const [refreshing,setRefreshing]=useState(false);
 
   const refreshApp=async()=>{
@@ -58,7 +56,6 @@ export default function SettingsPage() {
       <OfflineMediaSettings />
       <details className="bg-card rounded-2xl p-5"><summary className="font-semibold cursor-pointer">Atualizações</summary><div className="pt-4 flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Novidades dos seus baralhos</p><SyncUpdatesButton onInstalled={() => {}} /></div></details>
       <details className="bg-card rounded-2xl p-5"><summary className="font-semibold cursor-pointer">Backup e restaurar dados</summary><div className="pt-5"><BackupSettings /></div></details>
-      <button onClick={()=>navigate('/curriculum/content')} className="w-full flex items-center gap-4 bg-card rounded-2xl p-5 text-left"><BookOpen className="h-6 w-6 text-primary"/><span><span className="block font-semibold">Conteúdo do currículo</span><span className="block text-sm text-muted-foreground mt-1">Preparar e importar conteúdo das etapas</span></span></button>
       <section className="space-y-3">
         <Button variant="ghost" className="text-destructive hover:text-destructive justify-start px-0" onClick={signOut}><LogOut className="h-4 w-4 mr-2" />Sair da conta</Button>
       </section>
