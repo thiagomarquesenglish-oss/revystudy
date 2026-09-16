@@ -1,7 +1,9 @@
 import SyncUpdatesButton from '@/components/SyncUpdatesButton';
 import { useAuth } from '@/hooks/useAuth';
-import { LogOut, User, BookOpen } from 'lucide-react';
+import { LogOut, User, BookOpen, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { toast } from 'sonner';
 import BackupSettings from '@/components/BackupSettings';
 import BottomNav from '@/components/BottomNav';
 import PageHeader from '@/components/PageHeader';
@@ -10,6 +12,35 @@ import OfflineMediaSettings from '@/components/OfflineMediaSettings';
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
   const navigate=useNavigate();
+  const [refreshing,setRefreshing]=useState(false);
+
+  const refreshApp=async()=>{
+    if(refreshing)return;
+    if(!navigator.onLine){toast.error('Conecte-se à internet para procurar uma atualização.');return;}
+    setRefreshing(true);
+    try{
+      if('serviceWorker' in navigator){
+        const registrations=await navigator.serviceWorker.getRegistrations();
+        const registration=registrations.find(item=>(item.active?.scriptURL||item.waiting?.scriptURL||'').endsWith('/sw.js'));
+        if(registration){
+          await registration.update();
+          const waiting=registration.waiting;
+          if(waiting){
+            const changed=new Promise<void>(resolve=>{
+              const timer=window.setTimeout(resolve,4000);
+              navigator.serviceWorker.addEventListener('controllerchange',()=>{window.clearTimeout(timer);resolve();},{once:true});
+            });
+            waiting.postMessage({type:'SKIP_WAITING'});
+            await changed;
+          }
+        }
+      }
+      window.location.reload();
+    }catch{
+      setRefreshing(false);
+      toast.error('Não foi possível atualizar agora. Tente novamente.');
+    }
+  };
   return <div className="min-h-screen bg-background safe-bottom">
     <PageHeader title="Configurações" />
     <main className="max-w-3xl mx-auto px-4 pb-8 space-y-8" style={{ paddingTop: 'calc(var(--app-header-height) + 1.5rem)' }}>
@@ -19,6 +50,10 @@ export default function SettingsPage() {
           <User className="h-6 w-6 shrink-0 text-muted-foreground" />
           <div className="min-w-0"><p className="text-sm break-all">{user?.email}</p><p className="text-xs text-muted-foreground mt-1">Conta conectada</p></div>
         </div>
+      </section>
+      <section className="bg-card rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div><h2 className="font-semibold">Atualizar aplicativo</h2><p className="text-sm text-muted-foreground mt-1">Busca a versão mais recente e recarrega o RevyStudy, como atualizar a página no navegador.</p></div>
+        <Button variant="secondary" className="shrink-0" onClick={()=>void refreshApp()} disabled={refreshing}><RefreshCw className={refreshing?'animate-spin':''}/>{refreshing?'Atualizando…':'Atualizar agora'}</Button>
       </section>
       <OfflineMediaSettings />
       <details className="bg-card rounded-2xl p-5"><summary className="font-semibold cursor-pointer">Atualizações</summary><div className="pt-4 flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Novidades dos seus baralhos</p><SyncUpdatesButton onInstalled={() => {}} /></div></details>
