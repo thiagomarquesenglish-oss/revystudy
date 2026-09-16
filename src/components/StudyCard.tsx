@@ -65,13 +65,15 @@ function AudioPlayButton({ src, centered, autoPlay = true }: { src: string; cent
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [playbackSrc, setPlaybackSrc] = useState('');
+  const [playbackSrc, setPlaybackSrc] = useState(src);
 
   useEffect(() => {
     let active = true;
     setPlaying(false);
-    setLoading(true);
-    setPlaybackSrc('');
+    setLoading(false);
+    // The button must remain usable while the local cache is being resolved.
+    // Start with the original URL, then swap to the device copy when ready.
+    setPlaybackSrc(src);
     void resolveOfflineMediaUrl(src).then(value => { if (active) setPlaybackSrc(value); });
     return () => { active = false; };
   }, [src]);
@@ -140,7 +142,11 @@ function AudioPlayButton({ src, centered, autoPlay = true }: { src: string; cent
           : <Play className="w-9 h-9 text-primary ml-1" />
         }
       </button>
-      <audio ref={audioRef} src={playbackSrc || undefined} preload="auto" playsInline onPlaying={() => { setPlaying(true); setLoading(false); }} onError={() => { setPlaying(false); setLoading(false); }} />
+      <audio ref={audioRef} src={playbackSrc} preload="auto" playsInline onPlaying={() => { setPlaying(true); setLoading(false); }} onError={() => {
+        setPlaying(false);
+        setLoading(false);
+        if (playbackSrc !== src) setPlaybackSrc(src);
+      }} />
     </>
   );
 }
