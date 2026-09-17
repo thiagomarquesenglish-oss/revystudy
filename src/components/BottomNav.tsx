@@ -32,7 +32,7 @@ export default function BottomNav({ active }: BottomNavProps) {
               active === key ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <span aria-hidden="true" className="h-5 w-5 bg-current [mask-position:center] [mask-repeat:no-repeat] [mask-size:contain]" style={{ maskImage: `url(${icon})` }} /><span className="truncate w-full text-center">{label}</span>
+            <img src={icon} alt="" aria-hidden="true" className="sf-symbol-icon h-5 w-5 object-contain" /><span className="truncate w-full text-center">{label}</span>
           </button>
         ))}
       </div>

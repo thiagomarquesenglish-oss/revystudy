@@ -278,6 +278,9 @@ body:has(.safe-area-bottom-nav) {
   z-index: 20;
 }
 
+/* Exported SF Symbol SVGs use a black fill. Invert them for the dark UI. */
+.sf-symbol-icon { filter: invert(1); }
+
 .safe-page {
   padding-bottom: calc(5rem + env(safe-area-inset-bottom));
 }
