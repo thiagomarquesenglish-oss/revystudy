@@ -264,7 +264,10 @@ body:has(.safe-area-bottom-nav) {
 
 .safe-area-bottom-nav {
   background-color: #1B1B1C;
-  padding-bottom: env(safe-area-inset-bottom);
+  /* The viewport layer already paints behind the home indicator. Keeping a
+     fixed small inset avoids iOS standalone's stale/overreported env value
+     making the bar open with a large empty lower section. */
+  padding-bottom: 8px;
 }
 
 .bottom-nav-viewport {
