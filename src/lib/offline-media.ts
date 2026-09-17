@@ -20,7 +20,7 @@ export function setOfflineMediaEnabled(enabled: boolean): void {
 function urlsFromHtml(html = ''): string[] {
   const root = document.createElement('div');
   root.innerHTML = html;
-  return Array.from(root.querySelectorAll('img[src],audio[src],[data-audio][data-src]'))
+  return Array.from(root.querySelectorAll('img[src],audio[src],audio source[src],[data-audio][data-src]'))
     .map(node => node.getAttribute('src') || node.getAttribute('data-src') || '')
     .filter(url => /^https:\/\//i.test(url));
 }
@@ -44,6 +44,24 @@ async function ensureCapacity(): Promise<void> {
   }
 }
 
+async function readableMedia(response?: Response): Promise<Blob | null> {
+  if (!response || response.status !== 200 || response.type === 'opaque') return null;
+  const blob = await response.blob();
+  if (!blob.size || /text\/html|application\/json/i.test(blob.type)) return null;
+  return blob;
+}
+
+async function downloadMedia(url: string): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+    const blob = await readableMedia(response);
+    if (!blob) throw new Error('O arquivo baixado está vazio ou incompleto. Baixe as mídias novamente.');
+    return new Response(blob, { status: 200, headers: { 'Content-Type': blob.type || 'application/octet-stream' } });
+  } finally { clearTimeout(timer); }
+}
+
 export async function cacheMediaUrls(urls: string[], onProgress?: (progress: MediaDownloadProgress) => void): Promise<number> {
   if (!('caches' in window)) throw new Error('Este navegador não permite armazenamento offline de mídias.');
   await navigator.storage?.persist?.().catch(() => false);
@@ -53,10 +71,8 @@ export async function cacheMediaUrls(urls: string[], onProgress?: (progress: Med
   let completed = 0;
   for (const url of unique) {
     onProgress?.({ completed, total: unique.length, label: `Salvando mídias no aparelho (${completed}/${unique.length})` });
-    if (!(await cache.match(url))) {
-      const response = await fetch(url, { cache: 'no-store' });
-      if (!response.ok && response.type !== 'opaque') throw new Error('Não foi possível baixar uma das mídias. Tente novamente com uma conexão estável.');
-      await cache.put(url, response);
+    if (!(await readableMedia(await cache.match(url)))) {
+      await cache.put(url, await downloadMedia(url));
     }
     completed += 1;
     if (completed % 10 === 0) await ensureCapacity();
@@ -71,22 +87,22 @@ export async function cacheDeckMedia(cards: CardRow[], audios: AudioRow[], onPro
 
 /** Return a blob URL backed by the downloaded file, bypassing mobile network/range requests. */
 export function resolveOfflineMediaUrl(url: string): Promise<string> {
-  if (!offlineMediaEnabled() || !('caches' in window) || !/^https:\/\//i.test(url)) return Promise.resolve(url);
+  if (!/^https:\/\//i.test(url)) return Promise.resolve(url);
+  if (!('caches' in window)) return Promise.reject(new Error('O armazenamento local de áudio está indisponível neste navegador.'));
   const existing = localObjectUrls.get(url);
   if (existing) return existing;
   const resolved = caches.open(OFFLINE_MEDIA_CACHE)
     .then(async cache => {
-      let response = await cache.match(url, { ignoreSearch: true });
-      if (!response) {
-        const downloaded = await fetch(url, { cache: 'no-store' });
-        if (!downloaded.ok && downloaded.type !== 'opaque') return url;
+      let blob = await readableMedia(await cache.match(url));
+      if (!blob) {
+        if (!navigator.onLine) throw new Error('Este áudio não está salvo neste aparelho. Conecte-se e baixe as mídias nos Ajustes.');
+        const downloaded = await downloadMedia(url);
         await cache.put(url, downloaded.clone());
-        response = downloaded;
+        blob = await downloaded.blob();
       }
-      const blob = await response.blob();
-      return blob.size > 0 ? URL.createObjectURL(blob) : url;
+      return URL.createObjectURL(blob);
     })
-    .catch(() => url);
+    .catch(error => { localObjectUrls.delete(url); throw error; });
   localObjectUrls.set(url, resolved);
   return resolved;
 }

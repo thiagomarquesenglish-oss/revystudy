@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } fr
 import { useNavigate, useParams } from 'react-router-dom';
 import { addReviewHistory, getCardReviewRows, getDecks, getCardsByDeck, getDeckAudios } from '@/lib/storage';
 import { prepareHtml, prepareAudio } from '@/lib/study-media';
+import LocalAudioPlayer from '@/components/LocalAudioPlayer';
 import StudyMedia from '@/components/StudyMedia';
 import { Deck, Flashcard } from '@/lib/types';
 import PageHeader from '@/components/PageHeader';
@@ -60,55 +61,7 @@ function hasText(html: string) {
   return (d.textContent || '').trim().length > 0;
 }
 
-function AudioButton({ src, big }: { src: string; big?: boolean }) {
-  const ref = useRef<HTMLAudioElement>(null);
-  const [playing, setPlaying] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const off = () => setPlaying(false);
-    el.addEventListener('ended', off);
-    el.addEventListener('pause', off);
-    return () => {
-      el.removeEventListener('ended', off);
-      el.removeEventListener('pause', off);
-    };
-  }, []);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (el) el.play().catch(() => {});
-    return () => { el?.pause(); };
-  }, [src]);
-
-  const toggle = () => {
-    const el = ref.current;
-    if (!el) return;
-    if (playing) {
-      el.pause();
-      el.currentTime = 0;
-    } else {
-      el.play().catch(() => {});
-    }
-  };
-
-  const size = big ? 'w-24 h-24' : 'w-20 h-20';
-  const icon = big ? 'w-10 h-10' : 'w-9 h-9';
-
-  return (
-    <>
-      <button
-        onClick={toggle}
-        className={`${size} shrink-0 self-center rounded-full bg-primary/15 hover:bg-primary/25 flex items-center justify-center transition-all active:scale-95`}
-        aria-label={playing ? 'Pausar áudio' : 'Reproduzir áudio'}
-      >
-        {playing ? <Pause className={`${icon} text-primary`} /> : <Play className={`${icon} text-primary ml-0.5`} />}
-      </button>
-      <audio ref={ref} src={src} preload="auto" onPlaying={() => setPlaying(true)} onError={() => setPlaying(false)} />
-    </>
-  );
-}
+function AudioButton({ src, big }: { src: string; big?: boolean }) { return <LocalAudioPlayer src={src} centered />; }
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];

@@ -1,6 +1,6 @@
+import { resolveOfflineMediaUrl } from './offline-media';
 // Small, session-only lookahead cache. Never download the whole deck at once.
 const images = new Map<string, { ready: boolean; promise: Promise<void> }>();
-const audios = new Map<string, HTMLAudioElement>();
 
 export function imageSources(html: string): string[] {
   const doc = document.createElement('div');
@@ -46,15 +46,7 @@ export function prepareHtml(html: string): Promise<void> {
 }
 
 export function prepareAudio(src: string): void {
-  if (audios.has(src)) return;
-  const audio = new Audio();
-  audio.preload = 'auto';
-  audio.src = src;
-  audios.set(src, audio);
-  if (audios.size > 12) {
-    const key = audios.keys().next().value!;
-    audios.get(key)!.removeAttribute('src');
-    audios.get(key)!.load();
-    audios.delete(key);
-  }
+  // Prepare the same local file that the visible player will use. Hidden
+  // network-backed audio elements compete with playback on mobile Safari.
+  void resolveOfflineMediaUrl(src).catch(() => {});
 }

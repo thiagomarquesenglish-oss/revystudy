@@ -9,7 +9,7 @@ import { availableSituationModes, chooseAdaptiveMode, exerciseInfo, parseAdaptiv
 import { compareDictation } from '@/lib/dictation';
 import SkillBadge from './SkillBadge';
 import UnderstandHelp from './UnderstandHelp';
-import { resolveOfflineMediaUrl } from '@/lib/offline-media';
+import AudioPlayButton from './LocalAudioPlayer';
 
 /** Normalize text for typing comparison: lowercase, strip accents, remove punctuation, collapse spaces */
 function normalizeForCompare(s: string): string {
@@ -61,108 +61,6 @@ function extractAudioSrc(html: string): string | null {
   return null;
 }
 
-function AudioPlayButton({ src, centered, autoPlay = true }: { src: string; centered?: boolean; autoPlay?: boolean }) {
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [playing, setPlaying] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [playbackSrc, setPlaybackSrc] = useState('');
-  const requestedPlay = useRef(autoPlay);
-
-  useEffect(() => {
-    let active = true;
-    setPlaying(false);
-    setLoading(false);
-    requestedPlay.current = autoPlay;
-    setPlaybackSrc('');
-    void resolveOfflineMediaUrl(src).then(value => { if (active) setPlaybackSrc(value); });
-    return () => { active = false; };
-  }, [src]);
-
-  useEffect(() => {
-    const el = audioRef.current;
-    if (!el || !playbackSrc) return;
-    const handleEnded = () => setPlaying(false);
-    const handlePause = () => setPlaying(false);
-    const handleWaiting = () => setLoading(true);
-    const handleReady = () => setLoading(false);
-    el.addEventListener('ended', handleEnded);
-    el.addEventListener('pause', handlePause);
-    el.addEventListener('waiting', handleWaiting);
-    el.addEventListener('stalled', handleWaiting);
-    el.addEventListener('canplay', handleReady);
-    el.addEventListener('playing', handleReady);
-    return () => {
-      el.removeEventListener('ended', handleEnded);
-      el.removeEventListener('pause', handlePause);
-      el.removeEventListener('waiting', handleWaiting);
-      el.removeEventListener('stalled', handleWaiting);
-      el.removeEventListener('canplay', handleReady);
-      el.removeEventListener('playing', handleReady);
-    };
-  }, [playbackSrc]);
-
-  // Mobile browsers often defer media downloads. Start warming both the media
-  // element and the HTTP cache as soon as the card is shown.
-  useEffect(() => {
-    const el = audioRef.current;
-    if (!el || !playbackSrc) return;
-    const controller = new AbortController();
-    setPlaying(false);
-    setLoading(el.readyState < HTMLMediaElement.HAVE_FUTURE_DATA);
-    el.load();
-    if (/^https:\/\//i.test(playbackSrc)) void fetch(playbackSrc, { cache: 'force-cache', signal: controller.signal }).catch(() => {});
-    if (requestedPlay.current) void el.play().catch(() => setLoading(false));
-    return () => { controller.abort(); el.pause(); };
-  }, [playbackSrc, autoPlay]);
-
-  const toggle = useCallback(() => {
-    const el = audioRef.current;
-    if (!el) return;
-    if (!playbackSrc) {
-      requestedPlay.current = true;
-      setLoading(true);
-      return;
-    }
-    if (playing) {
-      requestedPlay.current = false;
-      el.pause();
-      el.currentTime = 0;
-    } else {
-      requestedPlay.current = true;
-      setLoading(true);
-      if (!playbackSrc) return;
-      if (el.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) el.load();
-      void el.play().catch(() => setLoading(false));
-    }
-  }, [playing, playbackSrc]);
-
-  return (
-    <>
-      <button
-        onClick={toggle}
-        className={`shrink-0 w-20 h-20 rounded-full bg-primary/15 hover:bg-primary/25 flex items-center justify-center transition-colors active:scale-95 ${centered ? 'self-center' : 'self-start mt-1'}`}
-        aria-label={playing ? 'Pausar áudio' : 'Reproduzir áudio'}
-      >
-        {loading && !playing
-          ? <Loader2 className="w-9 h-9 text-primary animate-spin" />
-          : playing
-          ? <Pause className="w-9 h-9 text-primary" />
-          : <Play className="w-9 h-9 text-primary ml-1" />
-        }
-      </button>
-      <audio ref={audioRef} src={playbackSrc} preload="auto" playsInline onPlaying={() => { setPlaying(true); setLoading(false); }} onError={() => {
-        setPlaying(false);
-        setLoading(false);
-        if (playbackSrc !== src) {
-          requestedPlay.current = true;
-          setPlaybackSrc(src);
-        } else {
-          requestedPlay.current = false;
-        }
-      }} />
-    </>
-  );
-}
 
 function CardContent({ html, audioSrc, autoPlay = true }: { html: string; audioSrc: string | null; autoPlay?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
