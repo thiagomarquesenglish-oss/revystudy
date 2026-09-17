@@ -5,7 +5,7 @@ import { getDecks, getCardsByDeck, addDeck, deleteDeck, saveDecks, resetDeck } f
 import { exportDeckAsZip, importDeckFromZip } from '@/lib/deck-io';
 import { supabase } from '@/integrations/supabase/client';
 import { Deck } from '@/lib/types';
-import { Layers, Plus, Trash2, Pencil, Download, Upload, Volume2, RotateCcw } from 'lucide-react';
+import { Layers, Plus, Trash2, Pencil, Download, Upload, Import, Volume2, RotateCcw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -245,7 +245,7 @@ export default function LibraryManagePage({ embedded = false, targetDeckId, onCh
 
   return (
     <div className={embedded ? "" : "min-h-screen bg-background safe-bottom"}>
-      {embedded && (targetDeckId ? <Button variant="ghost" size="sm" onClick={() => setActionDeck(decks.find(d => d.id === targetDeckId) || null)}>Opções</Button> : <div className="flex gap-2"><Button size="sm" onClick={() => setShowCreateDeck(true)}><Plus className="h-4 w-4 mr-1" />Criar</Button><Button size="sm" variant="secondary" onClick={() => importInputRef.current?.click()} disabled={importing}>Importar</Button></div>)}
+      {embedded && (targetDeckId ? <Button variant="ghost" size="sm" onClick={() => setActionDeck(decks.find(d => d.id === targetDeckId) || null)}>Opções</Button> : <div className="flex gap-2"><Button size="icon" className="h-10 w-10 rounded-full shrink-0" aria-label="Criar baralho" title="Criar baralho" onClick={() => setShowCreateDeck(true)}><Plus className="h-5 w-5" /></Button><Button size="icon" className="h-10 w-10 rounded-full shrink-0" variant="secondary" aria-label="Importar baralho" title="Importar baralho" onClick={() => importInputRef.current?.click()} disabled={importing}><Import className="h-5 w-5" /></Button></div>)}
       {!embedded && <><PageHeader title="Baralhos e áudios" onBack={() => navigate('/decks')} />
       <PageTransition>
         <main className="max-w-3xl mx-auto px-3 py-4 space-y-6 pb-36" style={{ paddingTop: 'calc(var(--app-header-height) + 1rem)' }}>

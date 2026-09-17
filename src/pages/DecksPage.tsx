@@ -185,9 +185,9 @@ export default function DecksPage() {
   const filteredDeckName = deckFromParam ? decks.find(d => d.id === deckFromParam)?.name : null;
 
   if (!deckFromParam) return <div className="min-h-screen bg-background safe-bottom">
-    <PageHeader title="Biblioteca" />
+    <PageHeader title="Biblioteca" rightContent={<LibraryManagePage embedded onChanged={loadData} />} />
     <main className="max-w-3xl mx-auto px-4 space-y-5 pb-8" style={{ paddingTop: 'calc(var(--app-header-height) + 1.5rem)' }}>
-      <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">Baralhos</h1><LibraryManagePage embedded onChanged={loadData} /></div>
+      <h1 className="text-2xl font-semibold">Baralhos</h1>
       <div className="native-list">{decks.map(deck => <button key={deck.id} className="native-row" onClick={() => navigate('/decks?deck=' + deck.id)}><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl font-semibold" style={{ backgroundColor: ['#283b38','#3d3247','#403628'][Array.from(deck.id).reduce((a,c)=>a+c.charCodeAt(0),0)%3] }}>{deck.name.slice(0,1).toUpperCase()}</span><span className="min-w-0 flex-1"><span className="block font-semibold truncate">{deck.name}</span><span className="block text-sm text-muted-foreground mt-1">{cards.filter(card => card.deckId === deck.id).length} cartões · Áudios do baralho</span></span><ChevronDown className="h-5 w-5 -rotate-90 text-muted-foreground" /></button>)}</div>
       {decks.length === 0 && <div className="space-y-4"><p className="text-muted-foreground">Crie ou importe seu primeiro baralho.</p><Button onClick={() => navigate('/library/manage')}>Adicionar baralho</Button></div>}
     </main><BottomNav active="decks" />
