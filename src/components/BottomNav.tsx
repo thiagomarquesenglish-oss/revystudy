@@ -32,7 +32,7 @@ export default function BottomNav({ active }: BottomNavProps) {
               active === key ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <img src={icon} alt="" aria-hidden="true" className="sf-symbol-icon h-5 w-5 object-contain" /><span className="truncate w-full text-center">{label}</span>
+            <img src={icon} alt={label} aria-hidden="true" className="sf-symbol-icon h-7 w-7 object-contain" />
           </button>
         ))}
       </div>
