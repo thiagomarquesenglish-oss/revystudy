@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { deleteDeck } from '@/lib/storage';
+import { Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getDecks, getCardsByDeck, getNewCards, getLearningCards, getReviewCards, invalidateDeckAudios, forceSyncDeckCards, checkDeckUpdates, downloadDeckPackage } from '@/lib/storage';
 import { Deck, Flashcard } from '@/lib/types';
@@ -27,6 +29,25 @@ export default function DeckPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!deckId || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteDeck(deckId);
+      try {
+        if (localStorage.getItem('revystudy:last-deck') === deckId) localStorage.removeItem('revystudy:last-deck');
+      } catch { /* optional preference */ }
+      toast.success('Baralho excluído');
+      navigate('/', { replace: true });
+    } catch {
+      toast.error('Não foi possível excluir o baralho. Tente novamente.');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleForceSync = async () => {
     if (!deckId || syncing) return;
@@ -253,11 +274,30 @@ export default function DeckPage() {
               <Plus className="w-4 h-4 text-muted-foreground" />
               Adicionar áudio
             </button>
+            <button
+              disabled={syncing}
+              onClick={() => { setMenuOpen(false); setDeleteOpen(true); }}
+              className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border text-sm text-destructive disabled:opacity-50"
+            >
+              <Trash2 className="w-4 h-4" /> Excluir baralho
+            </button>
           </div>
         </DrawerContent>
       </Drawer>
 
       {/* Bulk add drawer */}
+      <Drawer open={deleteOpen} onOpenChange={(open) => { if (!deleting) setDeleteOpen(open); }} dismissible={!deleting}>
+        <DrawerContent>
+          <DrawerHeader><DrawerTitle>Excluir baralho</DrawerTitle></DrawerHeader>
+          <div className="px-4 pb-6 space-y-4">
+            <p className="text-sm text-muted-foreground">Excluir “{deck.name}” e todos os seus cartões? Esta ação não pode ser desfeita.</p>
+            <button disabled={deleting} onClick={handleDelete} className="w-full rounded-xl bg-destructive text-destructive-foreground p-3 font-semibold disabled:opacity-50">
+              {deleting ? 'Excluindo…' : 'Confirmar exclusão'}
+            </button>
+            <button disabled={deleting} onClick={() => setDeleteOpen(false)} className="w-full rounded-xl border border-border p-3 disabled:opacity-50">Cancelar</button>
+          </div>
+        </DrawerContent>
+      </Drawer>
       <BulkAddCardsDrawer
         open={bulkAddOpen}
         onOpenChange={setBulkAddOpen}
