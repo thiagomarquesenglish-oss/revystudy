@@ -33,6 +33,11 @@ export default defineConfig(() => {
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
+            // Verified downloads must never be intercepted by the media cache.
+            urlPattern: ({ url }) => url.searchParams.has('revystudy_download'),
+            handler: 'NetworkOnly',
+          },
+          {
             urlPattern: /^https:\/\/.*\.supabase\.co\/auth\/.*/i,
             handler: 'NetworkOnly',
           },
@@ -42,7 +47,7 @@ export default defineConfig(() => {
             handler: 'CacheFirst',
             options: {
               cacheName: 'revystudy-media-v1',
-              cacheableResponse: { statuses: [0, 200] },
+              cacheableResponse: { statuses: [200] },
               expiration: { maxEntries: 1200, maxAgeSeconds: 60 * 60 * 24 * 365, purgeOnQuotaError: true },
               rangeRequests: true,
             },

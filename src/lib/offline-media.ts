@@ -55,7 +55,11 @@ async function downloadMedia(url: string): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
   try {
-    const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+    // no-store bypasses HTTP cache, NOT a CacheFirst service worker. A unique
+    // URL also avoids opaque entries while an older worker still controls iOS.
+    const downloadUrl = new URL(url);
+    downloadUrl.searchParams.set('revystudy_download', crypto.randomUUID());
+    const response = await fetch(downloadUrl.href, { mode: 'cors', credentials: 'omit', cache: 'no-store', signal: controller.signal });
     const blob = await readableMedia(response);
     if (!blob) throw new Error('O arquivo baixado está vazio ou incompleto. Baixe as mídias novamente.');
     return new Response(blob, { status: 200, headers: { 'Content-Type': blob.type || 'application/octet-stream' } });
