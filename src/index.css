@@ -267,7 +267,8 @@ body:has(.safe-area-bottom-nav) {
   /* The viewport layer already paints behind the home indicator. Keeping a
      fixed small inset avoids iOS standalone's stale/overreported env value
      making the bar open with a large empty lower section. */
-  padding-bottom: 8px;
+  padding-bottom: 0;
+  height: 64px;
 }
 
 .bottom-nav-viewport {
@@ -275,8 +276,9 @@ body:has(.safe-area-bottom-nav) {
   top: 0;
   left: 0;
   right: 0;
-  height: 100vh;
-  height: 100dvh;
+  /* svh is stable while the standalone PWA is opening; dvh changes after
+     the first gesture on iOS and makes a bottom bar jump vertically. */
+  height: 100svh;
   pointer-events: none;
   z-index: 20;
 }

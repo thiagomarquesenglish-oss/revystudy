@@ -22,7 +22,7 @@ export default function BottomNav({ active }: BottomNavProps) {
   return createPortal(
     <div className="bottom-nav-viewport">
     <nav aria-label="Navegação principal" className="absolute bottom-0 left-0 right-0 pointer-events-auto bg-card/95 backdrop-blur-xl border-t border-border px-2 pt-1 safe-area-bottom-nav">
-      <div className="flex max-w-3xl mx-auto">
+      <div className="flex h-full max-w-3xl mx-auto">
         {navItems.map(({ key, label, icon, path }) => (
           <button
             key={key}
