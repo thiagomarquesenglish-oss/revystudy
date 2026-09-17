@@ -1,6 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Home, Library, TrendingUp, Settings, User } from 'lucide-react';
+import homeSymbol from '@/assets/sf-symbols/house.fill.svg';
+import librarySymbol from '@/assets/sf-symbols/books.vertical.fill.svg';
+import progressSymbol from '@/assets/sf-symbols/chart.line.uptrend.xyaxis.svg';
+import settingsSymbol from '@/assets/sf-symbols/gearshape.fill.svg';
 
 interface BottomNavProps {
   active: 'home' | 'decks' | 'stats' | 'settings' | 'profile';
@@ -10,17 +13,17 @@ export default function BottomNav({ active }: BottomNavProps) {
   const navigate = useNavigate();
 
   const navItems = [
-    { key: 'home' as const, label: 'Início', icon: Home, path: '/' },
-    { key: 'decks' as const, label: 'Biblioteca', icon: Library, path: '/decks' },
-    { key: 'stats' as const, label: 'Progresso', icon: TrendingUp, path: '/stats' },
-    { key: 'settings' as const, label: 'Ajustes', icon: Settings, path: '/settings' },
+    { key: 'home' as const, label: 'Início', icon: homeSymbol, path: '/' },
+    { key: 'decks' as const, label: 'Biblioteca', icon: librarySymbol, path: '/decks' },
+    { key: 'stats' as const, label: 'Progresso', icon: progressSymbol, path: '/stats' },
+    { key: 'settings' as const, label: 'Ajustes', icon: settingsSymbol, path: '/settings' },
   ];
 
   return createPortal(
     <div className="bottom-nav-viewport">
     <nav aria-label="Navegação principal" className="absolute bottom-0 left-0 right-0 pointer-events-auto bg-card/95 backdrop-blur-xl border-t border-border px-2 pt-1 safe-area-bottom-nav">
       <div className="flex max-w-3xl mx-auto">
-        {navItems.map(({ key, label, icon: Icon, path }) => (
+        {navItems.map(({ key, label, icon, path }) => (
           <button
             key={key}
             onClick={() => navigate(path)}
@@ -29,7 +32,7 @@ export default function BottomNav({ active }: BottomNavProps) {
               active === key ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Icon size={20} /><span className="truncate w-full text-center">{label}</span>
+            <span aria-hidden="true" className="h-5 w-5 bg-current [mask-position:center] [mask-repeat:no-repeat] [mask-size:contain]" style={{ maskImage: `url(${icon})` }} /><span className="truncate w-full text-center">{label}</span>
           </button>
         ))}
       </div>
