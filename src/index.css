@@ -24,7 +24,12 @@ input, textarea, [contenteditable="true"] {
 }
 
 html {
-  background-color: hsl(var(--background));
+  background-color: #1B1B1C;
+}
+
+/* Paint the exposed iPhone viewport/safe area without changing page surfaces. */
+body:has(.safe-area-bottom-nav) {
+  background-color: #1B1B1C;
 }
 
 @layer base {
@@ -258,6 +263,7 @@ html {
 }
 
 .safe-area-bottom-nav {
+  background-color: #1B1B1C;
   padding-bottom: env(safe-area-inset-bottom);
 }
 

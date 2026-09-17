@@ -7,7 +7,7 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig(() => {
   return ({
   define: {
-    __APP_VERSION__: JSON.stringify('1.1.3'),
+    __APP_VERSION__: JSON.stringify('1.1.4'),
   },
   server: {
     host: "::",
@@ -61,8 +61,8 @@ export default defineConfig(() => {
         name: "RevyStudy",
         short_name: "RevyStudy",
         description: "Aplicativo de flashcards com repetição espaçada",
-        theme_color: "#000000",
-        background_color: "#000000",
+        theme_color: "#1B1B1C",
+        background_color: "#1B1B1C",
         display: "standalone",
         orientation: "portrait",
         start_url: "/",
