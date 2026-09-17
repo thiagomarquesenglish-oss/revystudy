@@ -267,10 +267,15 @@ body:has(.safe-area-bottom-nav) {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-@media all and (display-mode: standalone) {
-  .safe-area-bottom-nav {
-    padding-bottom: calc(env(safe-area-inset-bottom) * 0.5);
-  }
+.bottom-nav-viewport {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  height: 100dvh;
+  pointer-events: none;
+  z-index: 20;
 }
 
 .safe-page {
