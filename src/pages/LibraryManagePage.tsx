@@ -5,7 +5,7 @@ import { getDecks, getCardsByDeck, addDeck, deleteDeck, saveDecks, resetDeck } f
 import { exportDeckAsZip, importDeckFromZip } from '@/lib/deck-io';
 import { supabase } from '@/integrations/supabase/client';
 import { Deck } from '@/lib/types';
-import { Layers, Plus, Trash2, Pencil, Download, Upload, Import, Volume2, RotateCcw } from 'lucide-react';
+import { Layers, Plus, Trash2, Pencil, Download, Upload, Import, MoreVertical, Volume2, RotateCcw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -57,6 +57,7 @@ export default function LibraryManagePage({ embedded = false, targetDeckId, onCh
   const [decks, setDecks] = useState<Deck[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDeck, setShowCreateDeck] = useState(false);
+  const [libraryMenuOpen, setLibraryMenuOpen] = useState(false);
   const [deckName, setDeckName] = useState('');
   const [deckDesc, setDeckDesc] = useState('');
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -245,7 +246,20 @@ export default function LibraryManagePage({ embedded = false, targetDeckId, onCh
 
   return (
     <div className={embedded ? "" : "min-h-screen bg-background safe-bottom"}>
-      {embedded && (targetDeckId ? <Button variant="ghost" size="sm" onClick={() => setActionDeck(decks.find(d => d.id === targetDeckId) || null)}>Opções</Button> : <div className="flex gap-2"><Button size="icon" className="h-10 w-10 rounded-full shrink-0" aria-label="Criar baralho" title="Criar baralho" onClick={() => setShowCreateDeck(true)}><Plus className="h-5 w-5" /></Button><Button size="icon" className="h-10 w-10 rounded-full shrink-0" variant="secondary" aria-label="Importar baralho" title="Importar baralho" onClick={() => importInputRef.current?.click()} disabled={importing}><Import className="h-5 w-5" /></Button></div>)}
+      {embedded && (targetDeckId ? <Button variant="ghost" size="sm" onClick={() => setActionDeck(decks.find(d => d.id === targetDeckId) || null)}>Opções</Button> : <button type="button" onClick={() => setLibraryMenuOpen(true)} aria-label="Abrir opções da biblioteca" className="text-muted-foreground hover:text-foreground transition-colors p-1"><MoreVertical className="w-5 h-5" /></button>)}
+      <Drawer open={libraryMenuOpen} onOpenChange={setLibraryMenuOpen}>
+        <DrawerContent>
+          <DrawerHeader><DrawerTitle className="font-display">Opções</DrawerTitle></DrawerHeader>
+          <div className="px-4 pb-6 space-y-2">
+            <button type="button" onClick={() => { setLibraryMenuOpen(false); setTimeout(() => setShowCreateDeck(true), 200); }} className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border text-sm">
+              <Plus className="w-4 h-4" /> Criar baralho
+            </button>
+            <button type="button" disabled={importing} onClick={() => { setLibraryMenuOpen(false); importInputRef.current?.click(); }} className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border text-sm disabled:opacity-50">
+              <Import className="w-4 h-4" /> {importing ? 'Importando…' : 'Importar baralho'}
+            </button>
+          </div>
+        </DrawerContent>
+      </Drawer>
       {!embedded && <><PageHeader title="Baralhos e áudios" onBack={() => navigate('/decks')} />
       <PageTransition>
         <main className="max-w-3xl mx-auto px-3 py-4 space-y-6 pb-36" style={{ paddingTop: 'calc(var(--app-header-height) + 1rem)' }}>
