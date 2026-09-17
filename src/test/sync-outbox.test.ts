@@ -30,6 +30,16 @@ beforeEach(()=>{
   vi.spyOn(navigator,'onLine','get').mockReturnValue(true);
 });
 
+it('never converts an explicit deck deletion into an upload of a stale local deck', async () => {
+  state.queue = [{ id: 'delete-deck', table: 'decks', action: 'delete', payload: { id: 'deck' } }];
+  state.decks = [{ id: 'deck', name: 'Stale local copy' }];
+  state.cards = [];
+  await syncOfflineQueue();
+  expect(state.deleted).toEqual(['deck']);
+  expect(state.tables).toEqual([]);
+  expect(state.queue).toEqual([]);
+});
+
 it('uploads the parent deck before its current cards',async()=>{
   state.queue=[{id:'q1',table:'cards',action:'insert',payload:{id:'card',deck_id:'deck'}}];
   state.cards=[{id:'card',deck_id:'deck',front:'Current'}];

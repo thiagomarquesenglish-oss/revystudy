@@ -58,6 +58,8 @@ async function resolveCurrentLocalState(queued: QueuedMutation[]): Promise<Compa
   const currentCards = new Map(cards.map((row: any) => [row.id, row]));
   const currentDecks = new Map(decks.map((row: any) => [row.id, row]));
   return compacted.map((item) => {
+    // Explicit deletion is authoritative even if a stale local row remains.
+    if (item.mutation.action === 'delete') return item;
     const id = String(item.mutation.payload.id || '');
     const local = item.mutation.table === 'cards' ? currentCards.get(id)
       : item.mutation.table === 'decks' ? currentDecks.get(id) : undefined;

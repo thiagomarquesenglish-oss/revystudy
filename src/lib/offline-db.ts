@@ -183,6 +183,26 @@ async function replaceAllByDeck(storeName: string, deckId: string, items: any[])
 // ── Local cache (mirrors Supabase data locally) ──
 
 export const localDB = {
+  async commitDeckDeletion(deckId: string): Promise<void> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(['decks', 'cards', 'deck_audios', 'deck_sync_state', 'queue'], 'readwrite');
+      tx.objectStore('decks').delete(deckId);
+      tx.objectStore('deck_sync_state').delete(deckId);
+      for (const name of ['cards', 'deck_audios']) {
+        const store = tx.objectStore(name);
+        const request = store.index('deck_id').openKeyCursor(IDBKeyRange.only(deckId));
+        request.onsuccess = () => {
+          const cursor = request.result;
+          if (cursor) { store.delete(cursor.primaryKey); cursor.continue(); }
+        };
+      }
+      tx.objectStore('queue').put({ id: crypto.randomUUID(), table: 'decks', action: 'delete', payload: { id: deckId }, timestamp: Date.now() });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error('Não foi possível excluir o baralho neste aparelho'));
+    });
+  },
   async commitLearningBatch(rows: Record<string, unknown>[]): Promise<void> {
     const db=await openDB();
     return new Promise((resolve,reject)=>{

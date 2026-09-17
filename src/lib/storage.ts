@@ -23,6 +23,12 @@ export async function getStreakHistory(): Promise<{date: string; count: number}[
   return [...counts].map(([date,count]) => ({date,count}));
 }
 const deletedThisSession = new Set<string>();
+const deletedDecksThisSession = new Set<string>();
+async function withoutDeletedDecks(rows: any[]): Promise<any[]> {
+  const pending = await offlineQueue.getAll();
+  const deleted = new Set([...deletedDecksThisSession, ...pending.filter(m => m.table === 'decks' && m.action === 'delete').map(m => m.payload.id)]);
+  return rows.filter(row => !deleted.has(row.id));
+}
 
 async function withoutDeletedCards(rows: any[]): Promise<any[]> {
   const pending = await offlineQueue.getAll();
@@ -296,7 +302,7 @@ async function fetchDecksFromDB(): Promise<Deck[]> {
     15_000
   );
   if (result.error) throw result.error;
-  const data = result.data || [];
+  const data = await withoutDeletedDecks(result.data || []);
   const decks = data.map(rowToDeck);
   cache.decks = decks;
   touch('decks');
@@ -307,11 +313,11 @@ async function fetchDecksFromDB(): Promise<Deck[]> {
 export async function getDecks(): Promise<Deck[]> {
   if (cache.decks !== null) {
     if (!isFresh('decks') && isOnline() && !(await hasInstalledDecks())) fetchDecksFromDB().catch(console.error);
-    return cache.decks;
+    return (await withoutDeletedDecks(cache.decks)) as Deck[];
   }
   let localDecks: any[] = [];
   try {
-    localDecks = await localDB.getDecks();
+    localDecks = await withoutDeletedDecks(await localDB.getDecks());
   } catch (e) {
     console.error('Failed to read local decks:', e);
   }
@@ -373,16 +379,21 @@ export async function saveDecks(id: string, updates: { name?: string; descriptio
 }
 
 export async function deleteDeck(deckId: string): Promise<void> {
-  // Update cache immediately
+  // Commit removal and durable retry together BEFORE the sync engine reads local state.
+  await localDB.commitDeckDeletion(deckId);
+  deletedDecksThisSession.add(deckId);
+  try {
+    if (localStorage.getItem('revystudy:last-deck') === deckId) localStorage.removeItem('revystudy:last-deck');
+  } catch { /* optional preference */ }
   if (cache.decks) cache.decks = cache.decks.filter(d => d.id !== deckId);
   if (cache.cards) cache.cards = cache.cards.filter(c => c.deckId !== deckId);
-
-  await persistMutations([{ table: 'decks', action: 'delete', payload: { id: deckId } }]);
-  await localDB.replaceCardsForDeck(deckId, []);
-  await localDB.replaceDeckAudios(deckId, []);
-  await localDB.deleteDeck(deckId);
-  await localDB.deleteDeckSyncState(deckId);
+  delete cache.deckAudios[deckId];
   installedDecks.delete(deckId);
+  announceSyncState();
+  if (navigator.onLine) {
+    try { await syncOfflineQueue(); }
+    catch { throw new Error('Excluído deste aparelho. A exclusão na nuvem está pendente; tente sincronizar novamente nos Ajustes.'); }
+  }
 }
 
 
@@ -491,7 +502,7 @@ export async function checkDeckUpdates(): Promise<DeckUpdate[]> {
 
   const states = await localDB.getDeckSyncStates();
   const syncedStates = new Map(states.map((state) => [state.deckId, state]));
-  const changed = (result.data || [])
+  const changed = (await withoutDeletedDecks(result.data || []))
     .filter((row) => {
       const state = syncedStates.get(row.id);
       return !state ||

@@ -65,6 +65,7 @@ export default function LibraryManagePage({ embedded = false, targetDeckId, onCh
   const [editDescription, setEditDescription] = useState('');
   const [deleteDeckId, setDeleteDeckId] = useState<string | null>(null);
   const [deleteDeckName, setDeleteDeckName] = useState('');
+  const [deletingDeck, setDeletingDeck] = useState(false);
   const [actionDeck, setActionDeck] = useState<Deck | null>(null);
   const [audios, setAudios] = useState<DeckAudio[]>([]);
   const [actionAudio, setActionAudio] = useState<DeckAudio | null>(null);
@@ -117,11 +118,18 @@ export default function LibraryManagePage({ embedded = false, targetDeckId, onCh
   };
 
   const handleDeleteDeck = async () => {
-    if (!deleteDeckId) return;
-    await deleteDeck(deleteDeckId);
+    if (!deleteDeckId || deletingDeck) return;
+    setDeletingDeck(true);
+    try {
+      await deleteDeck(deleteDeckId);
+      toast.success(navigator.onLine ? 'Baralho excluído!' : 'Excluído do aparelho. A exclusão na nuvem será enviada quando conectar.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível excluir o baralho.');
+    }
     setDeleteDeckId(null);
+    setDeletingDeck(false);
     loadData();
-    onChanged?.(); if (targetDeckId) navigate('/decks'); toast.success('Baralho excluído!');
+    onChanged?.(); if (targetDeckId) navigate('/decks');
   };
 
   const handleExport = async (deck: Deck) => {
@@ -507,7 +515,7 @@ export default function LibraryManagePage({ embedded = false, targetDeckId, onCh
               <p className="text-sm text-muted-foreground">Tem certeza que deseja excluir "{deleteDeckName}"? Todos os cartões serão removidos. Esta ação não pode ser desfeita.</p>
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => setDeleteDeckId(null)}>Cancelar</Button>
-                <Button variant="destructive" className="flex-1" onClick={handleDeleteDeck}>Excluir</Button>
+                <Button variant="destructive" className="flex-1" disabled={deletingDeck} onClick={handleDeleteDeck}>{deletingDeck ? 'Excluindo…' : 'Excluir'}</Button>
               </div>
             </div>
           </DrawerContent>
@@ -521,7 +529,7 @@ export default function LibraryManagePage({ embedded = false, targetDeckId, onCh
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteDeck}>Excluir</AlertDialogAction>
+              <AlertDialogAction disabled={deletingDeck} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={(event) => { event.preventDefault(); void handleDeleteDeck(); }}>{deletingDeck ? 'Excluindo…' : 'Excluir'}</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
