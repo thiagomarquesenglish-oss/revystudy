@@ -188,10 +188,10 @@ function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remaining
       </div>
       <div className="study-flip-face study-flip-back">
         <StudyMedia html={showImageAnswer?media:''}><div className="w-full flex flex-col items-center gap-3">{showEnglishAnswer&&<div className="text-2xl text-white text-center font-semibold" lang="en">{situation.english}</div>}{showImageAnswer&&renderedImage}{!['translation-production','image-translation-production'].includes(mode)&&(showPortuguese?<div className="text-base text-muted-foreground text-center" lang="pt">{situation.portuguese}</div>:<button className="text-sm text-primary py-2" onClick={()=>setShowPortuguese(true)}>Mostrar significado</button>)}{!['audio-comprehension','audio-dictation','image-audio'].includes(mode)&&audioSrc&&<AudioPlayButton src={audioSrc} centered autoPlay/>}</div></StudyMedia>
-        <div className="flex justify-center mt-4"><UnderstandHelp sentence={situation.english} portuguese={situation.portuguese} deckId={card.deckId} level={situation.pedagogy?.stage?`etapa ${situation.pedagogy.stage}`:'iniciante'}/></div>
       </div>
       </div>
     </div>
+    {reveal&&<div className="flex justify-center mt-3"><UnderstandHelp sentence={situation.english} portuguese={situation.portuguese} deckId={card.deckId} level={situation.pedagogy?.stage?`etapa ${situation.pedagogy.stage}`:'iniciante'}/></div>}
     <div className="flex-1"/>
     <div className="fixed bottom-0 left-0 right-0 px-4 pt-3 bg-background/95 backdrop-blur-xl sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[480px] z-10" style={{paddingBottom:'max(env(safe-area-inset-bottom), 16px)'}}><div className="flex flex-col gap-2">{!reveal ? null : isDictation?<button onClick={()=>finish(dictation?.correct?'good':'again')} className={`w-full rounded-full py-3 font-bold text-white ${dictation?.correct?'bg-green-700':'bg-red-600'}`}>Continuar</button>:<div className="grid grid-cols-4 gap-2">{ratingConfig.map(item=><button key={item.rating} onClick={()=>finish(item.rating)} className={`rounded-full py-3 text-sm font-bold text-white ${item.rating==='again'?'bg-red-600':item.rating==='hard'?'bg-orange-500':item.rating==='good'?'bg-blue-600':'bg-green-700'}`}>{item.label}</button>)}</div>}</div></div>
   </div>;
