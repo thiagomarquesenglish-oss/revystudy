@@ -8,7 +8,6 @@ import StudyCard from '@/components/StudyCard';
 import { prepareHtml } from '@/lib/study-media';
 import { toast } from 'sonner';
 import { Brain, MoreVertical, Pencil, Trash2, Flag } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -216,8 +215,6 @@ export default function StudyPage() {
   const remainingLearning = queue.filter(c => c.status === 'learning' || c.status === 'relearning').length;
   const remainingReview = queue.filter(c => c.status === 'review').length;
 
-  const progressValue = queue.length > 0 ? (cardsStudied / (cardsStudied + queue.length)) * 100 : 0;
-
   if (loading) {
     return (
       <div className="min-h-screen bg-background safe-page overflow-hidden">
@@ -256,11 +253,6 @@ export default function StudyPage() {
           ) : undefined
         }
         onBack={() => navigate(backPath)}
-        bottomContent={
-          !finished && queue.length > 0 ? (
-            <Progress value={progressValue} className="h-1 bg-secondary rounded-none" />
-          ) : undefined
-        }
       />
       <main className="max-w-3xl mx-auto px-3 space-y-6" style={{ paddingTop: 'calc(var(--app-header-height, 48px) + 1rem)' }}>
         {finished ? (
