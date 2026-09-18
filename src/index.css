@@ -263,24 +263,22 @@ body:has(.safe-area-bottom-nav) {
 }
 
 .safe-area-bottom-nav {
-  background-color: #1B1B1C;
-  /* The viewport layer already paints behind the home indicator. Keeping a
-     fixed small inset avoids iOS standalone's stale/overreported env value
-     making the bar open with a large empty lower section. */
-  padding-bottom: 0;
-  height: 64px;
-}
-
-.bottom-nav-viewport {
   position: fixed;
-  top: 0;
+  bottom: 0;
   left: 0;
   right: 0;
-  /* svh is stable while the standalone PWA is opening; dvh changes after
-     the first gesture on iOS and makes a bottom bar jump vertically. */
-  height: 100svh;
-  pointer-events: none;
   z-index: 20;
+  background-color: #1B1B1C;
+  /* Keep the touch row independent of the home-indicator inset. The same
+     surface paints both, with no viewport-height wrapper or extra offset. */
+  padding: 0 max(8px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(8px, env(safe-area-inset-left, 0px));
+}
+
+/* Prevent the root rubber-band gesture from exposing a strip below the
+   fixed navigation. Normal page scrolling and drawer scrolling remain. */
+html:has(.safe-area-bottom-nav),
+body:has(.safe-area-bottom-nav) {
+  overscroll-behavior-y: none;
 }
 
 /* Exported SF Symbol SVGs use a black fill. Invert them for the dark UI. */

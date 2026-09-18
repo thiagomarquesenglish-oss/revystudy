@@ -20,12 +20,12 @@ export default function BottomNav({ active }: BottomNavProps) {
   ];
 
   return createPortal(
-    <div className="bottom-nav-viewport">
-    <nav aria-label="Navegação principal" className="absolute bottom-0 left-0 right-0 pointer-events-auto bg-card/95 backdrop-blur-xl border-t border-border px-2 pt-1 safe-area-bottom-nav">
-      <div className="flex h-full max-w-3xl mx-auto">
+    <nav aria-label="Navegação principal" className="border-t border-border safe-area-bottom-nav">
+      <div className="flex h-14 max-w-3xl mx-auto">
         {navItems.map(({ key, label, icon, path }) => (
           <button
             key={key}
+            aria-label={label}
             onClick={() => navigate(path)}
             aria-current={(active === key || (active === 'profile' && key === 'settings')) ? 'page' : undefined}
             className={`flex-1 min-w-0 min-h-11 flex flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium transition-colors active:opacity-70 ${
@@ -36,7 +36,6 @@ export default function BottomNav({ active }: BottomNavProps) {
           </button>
         ))}
       </div>
-    </nav>
-    </div>, document.body,
+    </nav>, document.body,
   );
 }
