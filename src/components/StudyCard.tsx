@@ -201,8 +201,11 @@ function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remaining
 
 function WritingErrorExplanation({ sentence, portuguese, typed }: { sentence: string; portuguese: string; typed: string }) {
   const [text, setText] = useState('');
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
+  const [loading, setLoading] = useState(false);
+  const [requested, setRequested] = useState(false);
+  const explain = async () => {
+    setRequested(true);
+    setLoading(true);
     let active = true;
     (async () => {
       try {
@@ -214,9 +217,8 @@ function WritingErrorExplanation({ sentence, portuguese, typed }: { sentence: st
       } catch { /* A correção do cartão continua disponível mesmo sem a IA. */ }
       finally { if (active) setLoading(false); }
     })();
-    return () => { active = false; };
-  }, [sentence, portuguese, typed]);
-  return <div className="w-full mt-2 rounded-xl bg-secondary/60 p-3 text-left text-sm"><span className="font-medium">Explicação</span>{loading ? <span className="ml-2 text-muted-foreground">Gerando…</span> : text ? <p className="mt-1 whitespace-pre-line text-muted-foreground">{text}</p> : <p className="mt-1 text-muted-foreground">Não foi possível gerar uma explicação agora.</p>}</div>;
+  };
+  return <div className="w-full mt-2 rounded-xl bg-secondary/60 p-3 text-left text-sm">{!requested ? <button type="button" onClick={explain} className="w-full rounded-lg bg-card py-2 font-medium text-primary">Explicar meu erro</button> : <><span className="font-medium">Explicação</span>{loading ? <span className="ml-2 text-muted-foreground">Gerando…</span> : text ? <p className="mt-1 whitespace-pre-line text-muted-foreground">{text}</p> : <p className="mt-1 text-muted-foreground">Não foi possível gerar uma explicação agora.</p>}</>}</div>;
 }
 
 function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remainingLearning, remainingReview, frontAudioSrc, backAudioSrc, typed, setTyped, typingResult, setTypingResult }: StudyCardProps & { flipped: boolean; setFlipped: (v: boolean) => void; frontAudioSrc: string | null; backAudioSrc: string | null; typed: string; setTyped: (v: string) => void; typingResult: null | 'correct' | 'incorrect'; setTypingResult: (v: null | 'correct' | 'incorrect') => void }) {
