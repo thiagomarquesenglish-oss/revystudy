@@ -44,7 +44,7 @@ export default function Index() {
             <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-bold">Seus baralhos</h2><Button variant="ghost" size="sm" onClick={() => navigate('/decks')}>Ver biblioteca<ArrowRight /></Button></div>
             <div className="native-list">{decks.map(deck => <button key={deck.id} onClick={() => navigate(`/deck/${deck.id}`)} className="native-row">
               <span className="rounded-xl bg-secondary p-2"><BookOpen className="h-5 w-5 text-primary" /></span>
-              <span className="min-w-0 flex-1"><span className="block font-semibold truncate">{deck.name}</span><span className="block text-sm text-muted-foreground mt-1">{counts[deck.id] > 0 ? `${counts[deck.id]} para estudar agora` : 'Revisões em dia · prática livre disponível'}</span></span><ArrowRight className="h-5 w-5 text-muted-foreground shrink-0" />
+              <span className="min-w-0 flex-1"><span className="block font-semibold truncate">{deck.name}</span><span className="block text-sm text-muted-foreground mt-1">Continuar estudo</span></span><ArrowRight className="h-5 w-5 text-muted-foreground shrink-0" />
             </button>)}</div>
           </section>
 

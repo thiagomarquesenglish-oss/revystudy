@@ -157,29 +157,13 @@ export default function DeckPage() {
             <p className="text-muted-foreground text-sm">Você pode continuar no treino livre.</p>
           </div>
         ) : (
-          <>
-            <div className="flex justify-around py-6 border-b border-border/60">
-              <div className="flex flex-col items-center">
-                <span className="text-3xl font-semibold tabular-nums text-col-new">{newCount}</span>
-                <span className="text-sm text-foreground">Novo</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="text-3xl font-semibold tabular-nums text-col-learning">{learningCount}</span>
-                <span className="text-sm text-foreground">Aprendendo</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="text-3xl font-semibold tabular-nums text-col-review">{reviewCount}</span>
-                <span className="text-sm text-foreground">Revisar</span>
-              </div>
-            </div>
-            
-          </>
+          <div className="h-4" />
         )}
 
         <div className="native-list">
           <button type="button" disabled={!studyCount} onClick={() => navigate('/study/' + deckId)} className="native-row disabled:opacity-50">
             <Play className="h-6 w-6 shrink-0 text-primary" />
-            <span className="min-w-0 flex-1"><span className="block font-bold">Estudar cards disponíveis</span><span className="block text-sm text-muted-foreground">{studyCount ? studyCount + ' cards para estudar agora' : 'Nenhum card agendado para agora'}</span></span>
+            <span className="min-w-0 flex-1"><span className="block font-bold">Estudar cards disponíveis</span><span className="block text-sm text-muted-foreground">Começar estudo</span></span>
             <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </button>
           <button type="button" disabled={!cards.length} onClick={() => navigate('/practice/' + deckId)} className="native-row disabled:opacity-50">
