@@ -15,8 +15,9 @@ import bulb from '@/assets/sf-symbols/lightbulb.fill.svg';
 import flag from '@/assets/sf-symbols/flag.fill.svg';
 import xmark from '@/assets/sf-symbols/xmark.svg';
 import check from '@/assets/sf-symbols/checkmark.svg';
+import books from '@/assets/sf-symbols/books.vertical.fill.svg';
 
-const symbols = { play, plus, ellipsis, back, refresh, trash, pencil, speaker, pause, cloud, person, logout, bulb, flag, xmark, check };
+const symbols = { play, plus, ellipsis, back, refresh, trash, pencil, speaker, pause, cloud, person, logout, bulb, flag, xmark, check, books };
 export type SfIconName = keyof typeof symbols;
 export default function SfIcon({ name, className = '', style }: { name: SfIconName; className?: string; style?: CSSProperties }) {
   return <img src={symbols[name]} alt="" aria-hidden="true" className={`sf-symbol-icon object-contain ${className}`} style={style} />;

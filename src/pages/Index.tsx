@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, ArrowRight, Plus } from 'lucide-react';
+import { BookOpen, ArrowRight } from 'lucide-react';
+import SfIcon from '@/components/SfIcon';
 import { getDecks, getNewCards, getLearningCards, getReviewCards } from '@/lib/storage';
 import type { Deck } from '@/lib/types';
 import { useTabVisible } from '@/hooks/useTabVisible';
@@ -35,9 +36,9 @@ export default function Index() {
       {loading ? <p role="status" className="text-muted-foreground">Preparando seu estudo...</p>
         : error ? <div role="alert" className="space-y-3"><p>Não foi possível carregar seus baralhos.</p><Button onClick={loadData}>Tentar novamente</Button></div>
         : !decks.length ? <section className="rounded-3xl border border-border bg-card p-7 space-y-4">
-          <BookOpen className="h-10 w-10 text-primary" /><h1 className="text-2xl font-bold">Seu inglês começa aqui</h1>
+          <SfIcon name="books" className="h-10 w-10" /><h1 className="text-2xl font-bold">Seu inglês começa aqui</h1>
           <p className="text-muted-foreground">Reúna frases, imagens e áudios em um baralho para começar a praticar.</p>
-          <Button onClick={() => navigate('/library/manage')}><Plus />Criar meu primeiro baralho</Button>
+          <Button onClick={() => navigate('/library/manage')}><SfIcon name="plus" className="h-5 w-5" />Criar meu primeiro baralho</Button>
         </section> : <>
           <section className="space-y-3">
             <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-bold">Seus baralhos</h2><Button variant="ghost" size="sm" onClick={() => navigate('/decks')}>Ver biblioteca<ArrowRight /></Button></div>
