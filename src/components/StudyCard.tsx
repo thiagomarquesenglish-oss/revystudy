@@ -177,7 +177,7 @@ function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remaining
       {dictation&&<p className={dictation.correct?'text-green-500':'text-red-500'}>{dictation.correct?'Correto!':'Compare com a resposta.'}</p>}
     </div>
       </div>
-      <div className="study-flip-face study-flip-back" onClick={event => event.stopPropagation()}>
+      <div className="study-flip-face study-flip-back">
         <StudyMedia html={showImageAnswer?media:''}><div className="w-full flex flex-col items-center gap-3">{showEnglishAnswer&&<div className="text-2xl text-white text-center font-semibold" lang="en">{situation.english}</div>}{showImageAnswer&&renderedImage}{!['translation-production','image-translation-production'].includes(mode)&&(showPortuguese?<div className="text-base text-muted-foreground text-center" lang="pt">{situation.portuguese}</div>:<button className="text-sm text-primary py-2" onClick={()=>setShowPortuguese(true)}>Mostrar significado</button>)}{!['audio-comprehension','audio-dictation','image-audio'].includes(mode)&&audioSrc&&<AudioPlayButton src={audioSrc} centered autoPlay/>}</div></StudyMedia>
         <div className="flex justify-center mt-4"><UnderstandHelp sentence={situation.english} portuguese={situation.portuguese} deckId={card.deckId} level={situation.pedagogy?.stage?`etapa ${situation.pedagogy.stage}`:'iniciante'}/></div>
       </div>
