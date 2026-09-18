@@ -158,6 +158,7 @@ function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remaining
   useEffect(()=>{if(forcedMode){setMode(forcedMode);return;}let active=true;void getCardReviewRows(card.id).then(rows=>{if(!active)return;const events=rows.map(parseAdaptiveEvent).filter((event):event is NonNullable<typeof event>=>!!event);const modes=availableSituationModes({hasImage:!!media,hasAudio:!!audioSrc,hasEnglish:!!situation.english,hasPortuguese:!!situation.portuguese});setMode(chooseAdaptiveMode(modes,events,events.at(-1)?.mode));});return()=>{active=false};},[card.id,media,audioSrc,situation.english,situation.portuguese,forcedMode]);
   const finish=(rating:Rating)=>onRate(rating,mode);
   const isDictation=mode==='audio-dictation';
+  const canPlayFrontAudio=['audio-comprehension','audio-dictation','image-audio'].includes(mode);
   const reveal=flipped||!!dictation;
   const showEnglishAnswer=mode!=='text-comprehension';
   const showImageAnswer=['audio-comprehension','text-comprehension'].includes(mode);
@@ -169,9 +170,9 @@ function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remaining
       <div className="study-flip-face study-flip-front">
       <div className="w-full flex flex-col items-center gap-4">
       {mode==='image-production'&&<StudyMedia html={media}>{renderedImage}</StudyMedia>}
-      {mode==='image-audio'&&<StudyMedia html={media}><>{renderedImage}{audioSrc&&<AudioPlayButton src={audioSrc} centered/>}</></StudyMedia>}
+      {mode==='image-audio'&&<StudyMedia html={media}><>{renderedImage}{canPlayFrontAudio&&audioSrc&&<AudioPlayButton src={audioSrc} centered/>}</></StudyMedia>}
       {mode==='image-translation-production'&&<StudyMedia html={media}><>{renderedImage}<div className="text-xl text-white text-center" lang="pt">{situation.portuguese}</div></></StudyMedia>}
-      {['audio-comprehension','audio-dictation'].includes(mode)&&audioSrc&&<AudioPlayButton src={audioSrc} centered/>}
+      {canPlayFrontAudio&&['audio-comprehension','audio-dictation'].includes(mode)&&audioSrc&&<AudioPlayButton src={audioSrc} centered/>}
       {mode==='text-comprehension'&&<div className="text-2xl text-white text-center" lang="en">{situation.english}</div>}
       {mode==='translation-production'&&<div className="text-2xl text-white text-center" lang="pt">{situation.portuguese}</div>}
       {isDictation&&!dictation&&<div className="w-full px-2 space-y-3"><textarea value={typed} onChange={e=>setTyped(e.target.value)} rows={3} autoFocus lang="en" spellCheck={false} placeholder="Escreva em inglês..." className="w-full bg-card text-foreground text-lg rounded-lg p-3 border border-border resize-none"/><button disabled={!typed.trim()} onClick={()=>setDictation(compareDictation(situation.english,typed))} className="w-full bg-primary text-primary-foreground rounded-full py-3 disabled:opacity-40">Verificar</button></div>}
