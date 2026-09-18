@@ -79,6 +79,25 @@ export default function StudyPage() {
     });
   }, [queue, currentCard]);
 
+  // Pick the next card from the queue and set it as current
+  const advanceToNext = useCallback((q: SessionCard[]) => {
+    if (q.length === 0) {
+      setCurrentCard(null);
+      setFinished(true);
+      return;
+    }
+
+    const idx = pickQueueIndex(q,queuePositionRef.current,retryAtRef.current);
+    if (idx >= 0) {
+      const next=ensureRotatingSkill(q[idx],recentModesRef.current);
+      if(next.sessionMode)recentModesRef.current.push(next.sessionMode);
+      setCurrentCard(next);
+    } else {
+      setCurrentCard(null);
+      setFinished(true);
+    }
+  }, []);
+
   // Cards created while studying join this session immediately.
   useEffect(() => {
     if (!deckId) return;
@@ -101,25 +120,6 @@ export default function StudyPage() {
     window.addEventListener('revystudy:cards-updated', refreshAddedCards);
     return () => window.removeEventListener('revystudy:cards-updated', refreshAddedCards);
   }, [deckId, queue, finished, advanceToNext]);
-
-  // Pick the next card from the queue and set it as current
-  const advanceToNext = useCallback((q: SessionCard[]) => {
-    if (q.length === 0) {
-      setCurrentCard(null);
-      setFinished(true);
-      return;
-    }
-
-    const idx = pickQueueIndex(q,queuePositionRef.current,retryAtRef.current);
-    if (idx >= 0) {
-      const next=ensureRotatingSkill(q[idx],recentModesRef.current);
-      if(next.sessionMode)recentModesRef.current.push(next.sessionMode);
-      setCurrentCard(next);
-    } else {
-      setCurrentCard(null);
-      setFinished(true);
-    }
-  }, []);
 
   useEffect(() => {
     async function load() {
