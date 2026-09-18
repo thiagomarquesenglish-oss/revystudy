@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useRef, useLayoutEffect } from 'react';
-import { ChevronLeft } from 'lucide-react';
+import SfIcon from '@/components/SfIcon';
 
 interface PageHeaderProps {
   title: string;
@@ -38,7 +38,7 @@ export default function PageHeader({ title, rightContent, bottomContent, onBack 
         <div className="flex items-center gap-1 min-w-0">
           {onBack && (
             <button onClick={goBack} aria-label="Voltar" className="-ml-2 h-11 w-11 flex items-center justify-center text-primary">
-              <ChevronLeft className="w-7 h-7" />
+              <SfIcon name="back" className="w-7 h-7" />
             </button>
           )}
           <h2 className="font-display font-semibold text-lg truncate">{title}</h2>
