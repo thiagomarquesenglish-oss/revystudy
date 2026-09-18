@@ -1037,6 +1037,7 @@ export async function saveLearningReview(card:Flashcard,rating:Rating,mode?:Exer
   await localDB.commitLearningReview(row,review);
   if(cache.cards)cache.cards=cache.cards.map(c=>c.id===card.id?updated:c);
   invalidateCache('reviewHistory');
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('revystudy:learning-updated'));
   return updated;
 }
 

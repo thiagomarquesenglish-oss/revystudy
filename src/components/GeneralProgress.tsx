@@ -17,6 +17,11 @@ export default function GeneralProgress(){
   const [error,setError]=useState(false);
   const load=useCallback(async()=>{try{setError(false);const data=await loadLearningData();setCards(data.cards);setEvents(data.events);}catch{setError(true);}finally{setLoading(false);}},[]);
   useEffect(()=>{void load();},[load]);
+  useEffect(() => {
+    const refresh = () => { void load(); };
+    window.addEventListener('revystudy:learning-updated', refresh);
+    return () => window.removeEventListener('revystudy:learning-updated', refresh);
+  }, [load]);
   useTabVisible('/stats',load);
 
   const summary=useMemo(()=>{
