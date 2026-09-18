@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { updateCard, deleteCard, saveLearningReview } from '@/lib/storage';
+import { updateCard, deleteCard, saveLearningReview, getCardsByDeck } from '@/lib/storage';
 import { loadLearningData } from '@/lib/learning-data';
 import { mixedCurriculumQueue, type LearningEvent } from '@/lib/learning-progress';
 import { Rating, StudyStats, Flashcard, Deck } from '@/lib/types';
@@ -78,6 +78,29 @@ export default function StudyPage() {
       if (card) { void prepareHtml(card.front); void prepareHtml(card.back); }
     });
   }, [queue, currentCard]);
+
+  // Cards created while studying join this session immediately.
+  useEffect(() => {
+    if (!deckId) return;
+    const refreshAddedCards = async (event: Event) => {
+      const detail = (event as CustomEvent<{ deckId?: string }>).detail;
+      if (detail?.deckId && detail.deckId !== deckId) return;
+      const cards = await getCardsByDeck(deckId);
+      const currentIds = new Set(queue.map(card => card.id));
+      const added = cards.filter(card => !currentIds.has(card.id) &&
+        (card.status === 'new' || Date.parse(card.dueDate) <= Date.now()));
+      if (!added.length) return;
+      const additions = buildSessionQueue(added, []);
+      setQueue(previous => [...previous, ...additions]);
+      setTotalCards(previous => previous + additions.length);
+      if (finished) {
+        setFinished(false);
+        advanceToNext(additions);
+      }
+    };
+    window.addEventListener('revystudy:cards-updated', refreshAddedCards);
+    return () => window.removeEventListener('revystudy:cards-updated', refreshAddedCards);
+  }, [deckId, queue, finished, advanceToNext]);
 
   // Pick the next card from the queue and set it as current
   const advanceToNext = useCallback((q: SessionCard[]) => {

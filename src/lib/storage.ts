@@ -847,6 +847,7 @@ export async function addCard(deckId: string, front: string, back: string, audio
   touch('cards');
   touchDeckCards(deckId);
   announceSyncState();
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('revystudy:cards-updated', { detail: { deckId } }));
   if (isOnline()) void syncOfflineQueue().catch(console.error);
 
   return card;
@@ -873,6 +874,7 @@ export async function addCardsBulk(
   touchDeckCards(deckId);
   await Promise.all(rows.map((row) => localDB.saveCard(row)));
   await persistMutations(rows.map((row) => ({ table: 'cards' as const, action: 'insert' as const, payload: row })));
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('revystudy:cards-updated', { detail: { deckId } }));
   return cards;
 }
 
