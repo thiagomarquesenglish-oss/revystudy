@@ -236,7 +236,7 @@ export default function StudyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background safe-page overflow-hidden">
+    <div className="min-h-screen h-[100svh] bg-background safe-page overflow-hidden">
       <PageHeader
         title={deck.name}
         rightContent={

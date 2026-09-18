@@ -294,8 +294,9 @@ body:has(.safe-area-bottom-nav) {
 }
 
 /* The fixed study controls need one reserved space, not a second full page. */
-.study-exercise {
+  .study-exercise {
     padding-bottom: calc(130px + env(safe-area-inset-bottom));
+    overflow: hidden;
   }
 
   .study-flip-card {
@@ -322,7 +323,7 @@ body:has(.safe-area-bottom-nav) {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    overflow: auto;
+    overflow: hidden;
     padding: 1.25rem;
     border: 1px solid hsl(var(--border) / .8);
     border-radius: 1.25rem;
