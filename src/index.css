@@ -343,6 +343,12 @@ body:has(.safe-area-bottom-nav) {
     border: 1px solid hsl(var(--border) / .8);
     border-radius: 1.25rem;
     background: hsl(var(--card) / .96);
+    animation: study-generic-flip-in 420ms cubic-bezier(.2,.75,.25,1);
+  }
+
+  @keyframes study-generic-flip-in {
+    from { transform: rotateY(90deg); opacity: .35; }
+    to { transform: rotateY(0deg); opacity: 1; }
   }
 .safe-page:has(.study-exercise) {
   padding-bottom: 0;

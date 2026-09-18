@@ -255,7 +255,7 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
   return (
     <div className="flex flex-col items-center w-full max-w-lg mx-auto">
       <div className="pb-3"><SkillBadge skill={isTyping ? 'writing' : 'comprehension'} /></div>
-      <div className="study-exercise study-generic-flip-card flex flex-col w-full" onClick={event => { if (!isTyping && !(event.target as HTMLElement).closest('button, textarea, input, audio, a')) setFlipped(!flipped); }} role="button" tabIndex={0} aria-label={flipped ? 'Mostrar frente do cartão' : 'Mostrar verso do cartão'} >
+      <div className={`study-exercise study-generic-flip-card flex flex-col w-full ${flipped ? 'is-flipped' : ''}`} onClick={event => { if (!isTyping && !(event.target as HTMLElement).closest('button, textarea, input, audio, a')) setFlipped(!flipped); }} role="button" tabIndex={0} onKeyDown={event => { if (!isTyping && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setFlipped(!flipped); } }} aria-label={flipped ? 'Mostrar frente do cartão' : 'Mostrar verso do cartão'} >
       {/* Content */}
       {!flipped && <StudyMedia html={card.front} key={`front-${card.id}`}>
         <CardContent html={card.front} audioSrc={null} />
