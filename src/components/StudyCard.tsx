@@ -251,7 +251,7 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
   };
 
   return (
-    <div className="study-exercise flex flex-col w-full max-w-lg mx-auto" >
+    <div className="study-exercise study-generic-flip-card flex flex-col w-full max-w-lg mx-auto" onClick={event => { if (!isTyping && !(event.target as HTMLElement).closest('button, textarea, input, audio, a')) setFlipped(!flipped); }} role="button" tabIndex={0} aria-label={flipped ? 'Mostrar frente do cartão' : 'Mostrar verso do cartão'} >
       {/* Content */}
       <StudyMedia html={card.front} key={`front-${card.id}`}>
         <CardContent html={card.front} audioSrc={frontAudioSrc} />
@@ -316,14 +316,7 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
                     <button onClick={handleCheck} disabled={!typed.trim()} className="w-full bg-primary text-primary-foreground rounded-full py-3 text-sm font-medium transition-all active:scale-95 active:opacity-70 disabled:opacity-40">Verificar</button>
                     <button onClick={() => onRate('again')} className="w-full rounded-full py-2 text-sm text-muted-foreground">Pular</button>
                   </>
-                ) : (
-                  <button
-                    onClick={() => setFlipped(true)}
-                    className="w-full bg-card/90 backdrop-blur-sm rounded-full py-3 text-sm font-medium text-foreground transition-all active:scale-95 active:opacity-70 hover:bg-card"
-                  >
-                    Mostrar Resposta
-                  </button>
-                )}
+                ) : null}
               </div>
             ) : isTyping ? (
               <button

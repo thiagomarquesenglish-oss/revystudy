@@ -335,6 +335,14 @@ body:has(.safe-area-bottom-nav) {
 
   .study-flip-face img { max-height: 65%; object-fit: contain; border-radius: .75rem; }
   .study-flip-back { transform: rotateY(180deg); }
+
+  .study-generic-flip-card {
+    min-height: min(34rem, calc(100svh - 9rem));
+    padding: 1rem;
+    border: 1px solid hsl(var(--border) / .8);
+    border-radius: 1.25rem;
+    background: hsl(var(--card) / .96);
+  }
 .safe-page:has(.study-exercise) {
   padding-bottom: 0;
 }
