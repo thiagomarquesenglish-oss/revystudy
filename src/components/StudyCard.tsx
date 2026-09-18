@@ -174,7 +174,13 @@ function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remaining
       {mode==='text-comprehension'&&<div className="text-2xl text-white text-center" lang="en">{situation.english}</div>}
       {mode==='translation-production'&&<div className="text-2xl text-white text-center" lang="pt">{situation.portuguese}</div>}
       {isDictation&&!dictation&&<div className="w-full px-2 space-y-3"><textarea value={typed} onChange={e=>setTyped(e.target.value)} rows={3} autoFocus lang="en" spellCheck={false} placeholder="Escreva em inglês..." className="w-full bg-card text-foreground text-lg rounded-lg p-3 border border-border resize-none"/><button disabled={!typed.trim()} onClick={()=>setDictation(compareDictation(situation.english,typed))} className="w-full bg-primary text-primary-foreground rounded-full py-3 disabled:opacity-40">Verificar</button></div>}
-      {dictation&&<p className={dictation.correct?'text-green-500':'text-red-500'}>{dictation.correct?'Correto!':'Compare com a resposta.'}</p>}
+      {dictation&&<div className="w-full px-2 space-y-2 text-center">
+        <p className={dictation.correct?'text-green-500':'text-red-500'}>{dictation.correct?'Correto!':'Compare com a resposta.'}</p>
+        {!dictation.correct&&<>
+          <div className="text-sm text-muted-foreground"><span className="block text-xs">Sua resposta</span><span className="text-foreground line-through">{typed || '—'}</span></div>
+          <div className="text-sm text-muted-foreground"><span className="block text-xs">Resposta correta</span><span className="text-foreground font-semibold" lang="en">{situation.english}</span></div>
+        </>}
+      </div>}
     </div>
       </div>
       <div className="study-flip-face study-flip-back">
