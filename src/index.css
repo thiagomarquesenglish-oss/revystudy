@@ -337,6 +337,7 @@ body:has(.safe-area-bottom-nav) {
   .study-flip-back { transform: rotateY(180deg); }
 
   .study-generic-flip-card {
+    justify-content: center;
     min-height: min(34rem, calc(100svh - 9rem));
     padding: 1rem;
     border: 1px solid hsl(var(--border) / .8);

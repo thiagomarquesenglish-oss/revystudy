@@ -255,11 +255,9 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
   return (
     <div className="study-exercise study-generic-flip-card flex flex-col w-full max-w-lg mx-auto" onClick={event => { if (!isTyping && !(event.target as HTMLElement).closest('button, textarea, input, audio, a')) setFlipped(!flipped); }} role="button" tabIndex={0} aria-label={flipped ? 'Mostrar frente do cartão' : 'Mostrar verso do cartão'} >
       {/* Content */}
-      <StudyMedia html={card.front} key={`front-${card.id}`}>
+      {!flipped && <StudyMedia html={card.front} key={`front-${card.id}`}>
         <CardContent html={card.front} audioSrc={frontAudioSrc} />
-      </StudyMedia>
-
-      {flipped && <hr className="w-full border-0 h-px bg-muted-foreground/20 mt-8" />}
+      </StudyMedia>}
 
       {isTyping && !flipped && (
         <div className="w-full px-2 mt-8">
