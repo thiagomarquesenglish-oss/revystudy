@@ -75,7 +75,7 @@ function CardContent({ html, audioSrc, autoPlay = true }: { html: string; audioS
   }, [html]);
 
   return (
-    <div className="w-full pt-8 flex flex-col items-center gap-3">
+    <div className="w-full flex flex-col items-center justify-center gap-3">
         <div
           ref={ref}
           className="rich-text-render text-2xl text-white text-center leading-relaxed break-words max-w-full"
@@ -253,8 +253,9 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
   };
 
   return (
-    <div className="study-exercise study-generic-flip-card flex flex-col w-full max-w-lg mx-auto" onClick={event => { if (!isTyping && !(event.target as HTMLElement).closest('button, textarea, input, audio, a')) setFlipped(!flipped); }} role="button" tabIndex={0} aria-label={flipped ? 'Mostrar frente do cartão' : 'Mostrar verso do cartão'} >
-      <div className="flex justify-center pb-3"><SkillBadge skill={isTyping ? 'writing' : 'comprehension'} /></div>
+    <div className="flex flex-col items-center w-full max-w-lg mx-auto">
+      <div className="pb-3"><SkillBadge skill={isTyping ? 'writing' : 'comprehension'} /></div>
+      <div className="study-exercise study-generic-flip-card flex flex-col w-full" onClick={event => { if (!isTyping && !(event.target as HTMLElement).closest('button, textarea, input, audio, a')) setFlipped(!flipped); }} role="button" tabIndex={0} aria-label={flipped ? 'Mostrar frente do cartão' : 'Mostrar verso do cartão'} >
       {/* Content */}
       {!flipped && <StudyMedia html={card.front} key={`front-${card.id}`}>
         <CardContent html={card.front} audioSrc={null} />
@@ -308,7 +309,6 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
       {/* Footer */}
       <div className="fixed bottom-0 left-0 right-0 px-4 pt-3 bg-background/95 backdrop-blur-xl sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[480px] z-10" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}>
         <div className="flex flex-col" style={{ height: '100px' }}>
-          <div className="w-full h-px bg-muted-foreground/15" />
           <div className="flex-1 flex flex-col justify-end">
             {!flipped ? (
               <div className="flex flex-col items-center gap-3">
@@ -356,6 +356,7 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }
