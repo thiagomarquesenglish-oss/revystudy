@@ -184,7 +184,7 @@ function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remaining
       </div>
     </div>
     <div className="flex-1"/>
-    <div className="fixed bottom-0 left-0 right-0 px-4 pt-3 bg-background/95 backdrop-blur-xl sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[480px] z-10" style={{paddingBottom:'max(env(safe-area-inset-bottom), 16px)'}}><div className="flex flex-col gap-2">{!reveal ? (isDictation ? <button disabled className="w-full bg-card rounded-full py-3 opacity-40">Digite a frase acima</button> : null) : isDictation?<button onClick={()=>finish(dictation?.correct?'good':'again')} className={`w-full rounded-full py-3 font-bold text-white ${dictation?.correct?'bg-green-700':'bg-red-600'}`}>Continuar</button>:<div className="grid grid-cols-4 gap-2">{ratingConfig.map(item=><button key={item.rating} onClick={()=>finish(item.rating)} className={`rounded-full py-3 text-sm font-bold text-white ${item.rating==='again'?'bg-red-600':item.rating==='hard'?'bg-orange-500':item.rating==='good'?'bg-blue-600':'bg-green-700'}`}>{item.label}</button>)}</div>}</div></div>
+    <div className="fixed bottom-0 left-0 right-0 px-4 pt-3 bg-background/95 backdrop-blur-xl sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[480px] z-10" style={{paddingBottom:'max(env(safe-area-inset-bottom), 16px)'}}><div className="flex flex-col gap-2">{!reveal ? (isDictation ? <><button disabled className="w-full bg-card rounded-full py-3 opacity-40">Digite a frase acima</button><button onClick={()=>finish('again')} className="w-full rounded-full py-2 text-sm text-muted-foreground">Pular</button></> : null) : isDictation?<button onClick={()=>finish(dictation?.correct?'good':'again')} className={`w-full rounded-full py-3 font-bold text-white ${dictation?.correct?'bg-green-700':'bg-red-600'}`}>Continuar</button>:<div className="grid grid-cols-4 gap-2">{ratingConfig.map(item=><button key={item.rating} onClick={()=>finish(item.rating)} className={`rounded-full py-3 text-sm font-bold text-white ${item.rating==='again'?'bg-red-600':item.rating==='hard'?'bg-orange-500':item.rating==='good'?'bg-blue-600':'bg-green-700'}`}>{item.label}</button>)}</div>}</div></div>
   </div>;
 }
 
@@ -283,13 +283,10 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
             {!flipped ? (
               <div className="flex flex-col items-center gap-3">
                 {isTyping ? (
-                  <button
-                    onClick={handleCheck}
-                    disabled={!typed.trim()}
-                    className="w-full bg-primary text-primary-foreground rounded-full py-3 text-sm font-medium transition-all active:scale-95 active:opacity-70 disabled:opacity-40"
-                  >
-                    Verificar
-                  </button>
+                  <>
+                    <button onClick={handleCheck} disabled={!typed.trim()} className="w-full bg-primary text-primary-foreground rounded-full py-3 text-sm font-medium transition-all active:scale-95 active:opacity-70 disabled:opacity-40">Verificar</button>
+                    <button onClick={() => onRate('again')} className="w-full rounded-full py-2 text-sm text-muted-foreground">Pular</button>
+                  </>
                 ) : (
                   <button
                     onClick={() => setFlipped(true)}
