@@ -124,8 +124,10 @@ export default function StudyCard({ card, onRate, forcedMode, remainingNew, rema
 
   // If card has audioId but no embedded audio, show deck audio on front
   // If embedded audio exists, prefer that
-  const frontAudioSrc = frontEmbeddedAudio || (!backEmbeddedAudio && deckAudioUrl ? deckAudioUrl : null);
-  const backAudioSrc = backEmbeddedAudio || (backEmbeddedAudio === null && frontEmbeddedAudio === null && deckAudioUrl && !frontAudioSrc ? deckAudioUrl : null);
+  // An audio attached to the card belongs to its answer/back by default.
+  // Only an audio node explicitly embedded in the front may play before flip.
+  const frontAudioSrc = frontEmbeddedAudio;
+  const backAudioSrc = backEmbeddedAudio || (!frontEmbeddedAudio && deckAudioUrl ? deckAudioUrl : null);
 
   const situation=readSituation(card.front,card.back);
   if(situation)return <SituationStudyCard card={card} situation={situation} audioSrc={frontAudioSrc||backAudioSrc} onRate={onRate} forcedMode={forcedMode} remainingNew={remainingNew} remainingLearning={remainingLearning} remainingReview={remainingReview}/>;
