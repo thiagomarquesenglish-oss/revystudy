@@ -10,6 +10,7 @@ import { compareDictation } from '@/lib/dictation';
 import SkillBadge from './SkillBadge';
 import UnderstandHelp from './UnderstandHelp';
 import AudioPlayButton from './LocalAudioPlayer';
+import { findExplanations, requestExplanation, saveExplanation } from '@/lib/learning-help';
 
 /** Normalize text for typing comparison: lowercase, strip accents, remove punctuation, collapse spaces */
 function normalizeForCompare(s: string): string {
@@ -180,6 +181,7 @@ function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remaining
           <div className="text-sm text-muted-foreground"><span className="block text-xs">Sua resposta</span><span className="text-foreground line-through">{typed || '—'}</span></div>
           <div className="text-sm text-muted-foreground"><span className="block text-xs">Resposta correta</span><span className="text-foreground font-semibold" lang="en">{situation.english}</span></div>
         </>}
+        {!dictation.correct&&<WritingErrorExplanation sentence={situation.english} portuguese={situation.portuguese} typed={typed}/>} 
       </div>}
     </div>
       </div>
@@ -192,6 +194,26 @@ function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remaining
     <div className="flex-1"/>
     <div className="fixed bottom-0 left-0 right-0 px-4 pt-3 bg-background/95 backdrop-blur-xl sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[480px] z-10" style={{paddingBottom:'max(env(safe-area-inset-bottom), 16px)'}}><div className="flex flex-col gap-2">{!reveal ? (isDictation ? <><button disabled className="w-full bg-card rounded-full py-3 opacity-40">Digite a frase acima</button><button onClick={()=>finish('again')} className="w-full rounded-full py-2 text-sm text-muted-foreground">Pular</button></> : null) : isDictation?<button onClick={()=>finish(dictation?.correct?'good':'again')} className={`w-full rounded-full py-3 font-bold text-white ${dictation?.correct?'bg-green-700':'bg-red-600'}`}>Continuar</button>:<div className="grid grid-cols-4 gap-2">{ratingConfig.map(item=><button key={item.rating} onClick={()=>finish(item.rating)} className={`rounded-full py-3 text-sm font-bold text-white ${item.rating==='again'?'bg-red-600':item.rating==='hard'?'bg-orange-500':item.rating==='good'?'bg-blue-600':'bg-green-700'}`}>{item.label}</button>)}</div>}</div></div>
   </div>;
+}
+
+function WritingErrorExplanation({ sentence, portuguese, typed }: { sentence: string; portuguese: string; typed: string }) {
+  const [text, setText] = useState('');
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const cached = await findExplanations('writing-error', sentence);
+        if (cached.exact) { if (active) setText(cached.exact.explanation); return; }
+        const generated = await requestExplanation({ sentence, selectedText: 'writing-error', portuguese, question: `O aluno escreveu: "${typed}". Explique brevemente em português por que a resposta está errada e como lembrar da forma correta.`, level: 'iniciante' });
+        const saved = await saveExplanation({ conceptKey: generated.conceptKey, selectedText: 'writing-error', sentence, title: generated.title, explanation: generated.explanation, quickMeaning: generated.quickMeaning, cardFront: generated.cardFront, cardBack: generated.cardBack });
+        if (active) setText(saved.explanation);
+      } catch { /* A correção do cartão continua disponível mesmo sem a IA. */ }
+      finally { if (active) setLoading(false); }
+    })();
+    return () => { active = false; };
+  }, [sentence, portuguese, typed]);
+  return <div className="w-full mt-2 rounded-xl bg-secondary/60 p-3 text-left text-sm"><span className="font-medium">Explicação</span>{loading ? <span className="ml-2 text-muted-foreground">Gerando…</span> : text ? <p className="mt-1 whitespace-pre-line text-muted-foreground">{text}</p> : <p className="mt-1 text-muted-foreground">Não foi possível gerar uma explicação agora.</p>}</div>;
 }
 
 function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remainingLearning, remainingReview, frontAudioSrc, backAudioSrc, typed, setTyped, typingResult, setTypingResult }: StudyCardProps & { flipped: boolean; setFlipped: (v: boolean) => void; frontAudioSrc: string | null; backAudioSrc: string | null; typed: string; setTyped: (v: string) => void; typingResult: null | 'correct' | 'incorrect'; setTypingResult: (v: null | 'correct' | 'incorrect') => void }) {
