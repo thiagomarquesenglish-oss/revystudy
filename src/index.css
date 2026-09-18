@@ -301,7 +301,8 @@ body:has(.safe-area-bottom-nav) {
 
   .study-flip-card {
     width: min(100%, 24rem);
-    aspect-ratio: 3 / 4;
+    aspect-ratio: 2 / 3;
+    min-height: 34rem;
     perspective: 1200px;
     cursor: pointer;
   }
