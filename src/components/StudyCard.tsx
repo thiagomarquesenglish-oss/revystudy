@@ -133,7 +133,6 @@ export default function StudyCard({ card, onRate, forcedMode, remainingNew, rema
   if(situation)return <SituationStudyCard card={card} situation={situation} audioSrc={frontAudioSrc||backAudioSrc} onRate={onRate} forcedMode={forcedMode} remainingNew={remainingNew} remainingLearning={remainingLearning} remainingReview={remainingReview}/>;
 
   return (
-    <StudyMedia html={flipped ? card.back : card.front}>
     <StudyCardInner
       card={card}
       onRate={onRate}
@@ -149,7 +148,6 @@ export default function StudyCard({ card, onRate, forcedMode, remainingNew, rema
       typingResult={typingResult}
       setTypingResult={setTypingResult}
     />
-    </StudyMedia>
   );
 }
 
@@ -259,7 +257,7 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
       <div className="flex justify-center pb-3"><SkillBadge skill={isTyping ? 'writing' : 'comprehension'} /></div>
       {/* Content */}
       {!flipped && <StudyMedia html={card.front} key={`front-${card.id}`}>
-        <CardContent html={card.front} audioSrc={frontAudioSrc} />
+        <CardContent html={card.front} audioSrc={null} />
       </StudyMedia>}
 
       {isTyping && !flipped && (
