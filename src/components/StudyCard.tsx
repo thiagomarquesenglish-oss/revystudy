@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import FlipCardFrame from './FlipCardFrame';
 import { Flashcard, Rating } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 import { getCardReviewRows, getDeckAudios } from '@/lib/storage';
@@ -131,6 +132,7 @@ export default function StudyCard({ card, onRate, forcedMode, remainingNew, rema
 
   const situation=readSituation(card.front,card.back);
   if(situation)return <SituationStudyCard card={card} situation={situation} audioSrc={frontAudioSrc||backAudioSrc} onRate={onRate} forcedMode={forcedMode} remainingNew={remainingNew} remainingLearning={remainingLearning} remainingReview={remainingReview}/>;
+  if (card.cardType !== 'typing') return <SimpleFlipCard card={card} onRate={onRate} backAudioSrc={backAudioSrc} />;
 
   return (
     <StudyCardInner
@@ -151,6 +153,19 @@ export default function StudyCard({ card, onRate, forcedMode, remainingNew, rema
   );
 }
 
+function SimpleFlipCard({ card, onRate, backAudioSrc }: { card: Flashcard; onRate: (rating: Rating, mode?: ExerciseMode) => void; backAudioSrc: string | null }) {
+  const [flipped, setFlipped] = useState(false);
+  useEffect(() => setFlipped(false), [card.id]);
+  return <div className="flex flex-col items-center w-full max-w-lg mx-auto">
+    <div className="pt-5 flex justify-center"><SkillBadge skill="comprehension" /></div>
+    <FlipCardFrame flipped={flipped} onFlip={() => setFlipped(value => !value)}>
+      <div className="study-flip-face study-flip-front" aria-hidden={flipped}>{!flipped && <StudyMedia html={card.front}><CardContent html={card.front} audioSrc={null} autoPlay={false} /></StudyMedia>}</div>
+      <div className="study-flip-face study-flip-back" aria-hidden={!flipped}>{flipped && <StudyMedia html={card.back}><CardContent html={card.back} audioSrc={backAudioSrc} autoPlay={false} /></StudyMedia>}</div>
+    </FlipCardFrame>
+    {flipped && <div className="fixed bottom-0 left-0 right-0 z-10 bg-background/95 px-4 pt-3 backdrop-blur-xl sm:left-1/2 sm:right-auto sm:w-[480px] sm:-translate-x-1/2" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}><div className="grid grid-cols-4 gap-2">{ratingConfig.map(item => <button key={item.rating} onClick={() => { setFlipped(false); onRate(item.rating); }} className={`rounded-full py-3 text-sm font-bold text-white ${item.rating === 'again' ? 'bg-red-600' : item.rating === 'hard' ? 'bg-orange-500' : item.rating === 'good' ? 'bg-blue-600' : 'bg-green-700'}`}>{item.label}</button>)}</div></div>}
+  </div>;
+}
+
 function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remainingNew,remainingLearning,remainingReview}:{card:Flashcard;situation:NonNullable<ReturnType<typeof readSituation>>;audioSrc:string|null;onRate:(rating:Rating,mode?:ExerciseMode)=>void;forcedMode?:ExerciseMode;remainingNew:number;remainingLearning:number;remainingReview:number}){
   const [mode,setMode]=useState<ExerciseMode>(forcedMode||'text-comprehension');
   const [flipped,setFlipped]=useState(false),[typed,setTyped]=useState(''),[dictation,setDictation]=useState<ReturnType<typeof compareDictation>|null>(null),[showPortuguese,setShowPortuguese]=useState(false);
@@ -165,8 +180,7 @@ function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remaining
   const renderedImage=<div className="rich-text-render max-w-full" dangerouslySetInnerHTML={{__html:media}}/>;
   return <div className="study-exercise flex flex-col w-full max-w-lg mx-auto pb-36" >
     <div className="pt-5 flex justify-center"><SkillBadge skill={exerciseInfo[mode].skill}/></div>
-    <div className={`study-flip-card mt-5 ${reveal ? 'is-flipped' : ''}`} onClick={event => { if (!isDictation && !(event.target as HTMLElement).closest('button, textarea, input, audio, a')) setFlipped(!flipped); }} role="button" tabIndex={0} onKeyDown={event => { if (!isDictation && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setFlipped(!flipped); } }} aria-label={reveal ? 'Mostrar frente do cartão' : 'Mostrar verso do cartão'}>
-      <div className="study-flip-inner">
+    <FlipCardFrame flipped={reveal} disabled={isDictation} onFlip={() => setFlipped(value => !value)}>
       <div className="study-flip-face study-flip-front">
       <div className="w-full flex flex-col items-center gap-4">
       {mode==='image-production'&&<StudyMedia html={media}>{renderedImage}</StudyMedia>}
@@ -189,8 +203,7 @@ function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remaining
       <div className="study-flip-face study-flip-back">
         <StudyMedia html={showImageAnswer?media:''}><div className="w-full flex flex-col items-center gap-3">{showEnglishAnswer&&<div className="text-2xl text-white text-center font-semibold" lang="en">{situation.english}</div>}{showImageAnswer&&renderedImage}{!['translation-production','image-translation-production'].includes(mode)&&(showPortuguese?<div className="text-base text-muted-foreground text-center" lang="pt">{situation.portuguese}</div>:<button className="text-sm text-primary py-2" onClick={()=>setShowPortuguese(true)}>Mostrar significado</button>)}{!['audio-comprehension','audio-dictation','image-audio'].includes(mode)&&audioSrc&&<AudioPlayButton src={audioSrc} centered autoPlay={exerciseInfo[mode].skill !== 'production'}/>}</div></StudyMedia>
       </div>
-      </div>
-    </div>
+    </FlipCardFrame>
     {reveal&&<div className="flex justify-center mt-3"><UnderstandHelp sentence={situation.english} portuguese={situation.portuguese} deckId={card.deckId} level={situation.pedagogy?.stage?`etapa ${situation.pedagogy.stage}`:'iniciante'}/></div>}
     <div className="flex-1"/>
     <div className="fixed bottom-0 left-0 right-0 px-4 pt-3 bg-background/95 backdrop-blur-xl sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[480px] z-10" style={{paddingBottom:'max(env(safe-area-inset-bottom), 16px)'}}><div className="flex flex-col gap-2">{!reveal ? null : isDictation?<button onClick={()=>finish(dictation?.correct?'good':'again')} className={`w-full rounded-full py-3 font-bold text-white ${dictation?.correct?'bg-green-700':'bg-red-600'}`}>Continuar</button>:<div className="grid grid-cols-4 gap-2">{ratingConfig.map(item=><button key={item.rating} onClick={()=>finish(item.rating)} className={`rounded-full py-3 text-sm font-bold text-white ${item.rating==='again'?'bg-red-600':item.rating==='hard'?'bg-orange-500':item.rating==='good'?'bg-blue-600':'bg-green-700'}`}>{item.label}</button>)}</div>}</div></div>
