@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { buildSessionQueue } from './StudyPage';
 import { loadLearningData } from '@/lib/learning-data';
 import { readSituation } from '@/lib/situation';
 import { availableSituationModes, chooseRotatingMode, exerciseInfo, type ExerciseMode } from '@/lib/adaptive-study';
@@ -9,7 +10,7 @@ import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 
 type PracticeKind = 'random' | 'listening' | 'production' | 'dictation';
-type Exercise = { card: Flashcard; mode: ExerciseMode };
+type Exercise = { card: Flashcard; mode?: ExerciseMode };
 
 export function practiceOptions(card: Flashcard, kind: PracticeKind): ExerciseMode[] {
   const situation = readSituation(card.front, card.back);
@@ -40,6 +41,8 @@ export function buildPractice(cards: Flashcard[], kind: PracticeKind, limit: num
 export default function FreePracticePage() {
   const { deckId } = useParams();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const markedOnly = params.get('marked') === '1';
   const [cards, setCards] = useState<Flashcard[] | null>(null);
   const [error, setError] = useState('');
   const [kind, setKind] = useState<PracticeKind>('random');
@@ -50,10 +53,19 @@ export default function FreePracticePage() {
   const answered = useRef(-1);
   useEffect(() => {
     let active = true;
-    loadLearningData().then(data => { if (active) setCards(data.cards.filter(c => !deckId || c.deckId === deckId)); })
+    loadLearningData().then(data => {
+      if (!active) return;
+      const selected = data.cards.filter(c => (!deckId || c.deckId === deckId) && (!markedOnly || c.flagged));
+      setCards(selected);
+      if (markedOnly) {
+        answered.current = -1;
+        setPosition(0); setResults([]);
+        setSession(buildSessionQueue(selected, data.events).map(card => ({ card, mode: card.sessionMode })));
+      }
+    })
       .catch(() => { if (active) setError('Não foi possível carregar os conteúdos. Volte e tente novamente.'); });
     return () => { active = false; };
-  }, [deckId]);
+  }, [deckId, markedOnly]);
   const eligible = cards?.filter(card => practiceOptions(card, kind).length).length || 0;
   const current = session?.[position];
   const rate = (rating: Rating) => {
@@ -63,9 +75,9 @@ export default function FreePracticePage() {
     setPosition(old => old + 1);
   };
   return <div className="min-h-screen bg-background safe-page">
-    <PageHeader title="Treino livre" onBack={() => navigate(deckId ? `/deck/${deckId}` : '/stats')} />
+    <PageHeader title={markedOnly ? 'Cartões marcados' : 'Treino livre'} onBack={() => navigate(deckId ? `/deck/${deckId}` : '/stats')} />
     <main className="max-w-3xl mx-auto px-4 space-y-5" style={{ paddingTop: 'calc(var(--app-header-height, 48px) + 1rem)' }}>
-      {!session ? <>
+      {markedOnly && !session ? <p role="status">{error || 'Carregando cartões marcados…'}</p> : markedOnly && session?.length === 0 ? <div className="text-center space-y-4 py-8"><h2 className="text-xl font-bold">Nenhum cartão marcado</h2><p>Use a opção Marcar cartão para escolher o que praticar aqui.</p><Button onClick={() => navigate(`/deck/${deckId}`)}>Voltar ao baralho</Button></div> : markedOnly && session && !current ? <div className="text-center space-y-4 py-8"><h2 className="text-2xl font-bold">Treino concluído</h2><Button onClick={() => { answered.current = -1; setPosition(0); setResults([]); }}>Treinar novamente</Button><Button variant="outline" onClick={() => navigate(`/deck/${deckId}`)}>Voltar ao baralho</Button></div> : !session ? <>
         <p className="text-sm text-muted-foreground">Pratique quando quiser. Este treino não muda as revisões agendadas nem libera etapas.</p>
         {error ? <p role="alert">{error}</p> : cards === null ? <p role="status">Carregando conteúdos…</p> : <>
           <label className="block space-y-2">O que treinar<select className="block w-full rounded-xl border bg-background p-3" value={kind} onChange={e => setKind(e.target.value as PracticeKind)}><option value="random">Aleatório</option><option value="listening">Escuta</option><option value="production">Produção em inglês</option><option value="dictation">Ditado — ouvir e escrever</option></select></label>
@@ -76,7 +88,7 @@ export default function FreePracticePage() {
           <Button disabled={!eligible} onClick={() => { answered.current = -1; setPosition(0); setResults([]); setSession(buildPractice(cards,kind,limit)); }}>Começar treino</Button>
         </>}
       </> : current ? <>
-        <p className="text-center text-sm text-muted-foreground">Treino livre · {position + 1} de {session.length}</p>
+        {!markedOnly && <p className="text-center text-sm text-muted-foreground">Treino livre · {position + 1} de {session.length}</p>}
         <StudyCard key={`${current.card.id}-${position}`} card={current.card} forcedMode={current.mode} onRate={rate} remainingNew={0} remainingLearning={0} remainingReview={session.length-position} />
       </> : <div className="text-center space-y-4 py-8"><h2 className="text-2xl font-bold">Treino concluído</h2><p>{results.length} exercícios · {results.filter(r => r === 'good' || r === 'easy').length} respostas avaliadas como boas ou fáceis.</p><p className="text-sm text-muted-foreground">Suas revisões agendadas e o progresso do currículo continuam iguais.</p><Button onClick={() => setSession(null)}>Escolher outro treino</Button></div>}
     </main>

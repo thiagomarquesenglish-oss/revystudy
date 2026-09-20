@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getDecks, getCardsByDeck, getNewCards, getLearningCards, getReviewCards, invalidateDeckAudios, forceSyncDeckCards, checkDeckUpdates, downloadDeckPackage } from '@/lib/storage';
 import { Deck, Flashcard } from '@/lib/types';
-import { Play, Plus, Layers, MoreVertical, Music, RefreshCw, LayoutGrid, ListPlus, CloudDownload, Sparkles, ChevronRight } from 'lucide-react';
+import { Flag, Play, Plus, Layers, MoreVertical, Music, RefreshCw, LayoutGrid, ListPlus, CloudDownload, Sparkles, ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageHeader from '@/components/PageHeader';
 import BulkAddCardsDrawer from '@/components/BulkAddCardsDrawer';
@@ -169,6 +169,11 @@ export default function DeckPage() {
           <button type="button" disabled={!cards.length} onClick={() => navigate('/practice/' + deckId)} className="native-row disabled:opacity-50">
             <Sparkles className="h-6 w-6 shrink-0 text-primary" />
             <span className="min-w-0 flex-1"><span className="block font-bold">Treino livre</span><span className="block text-sm text-muted-foreground">Escolha escuta, produção, ditado ou aleatório</span></span>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </button>
+          <button type="button" onClick={() => navigate('/practice/' + deckId + '?marked=1')} className="native-row">
+            <Flag className="h-6 w-6 shrink-0 text-primary" />
+            <span className="min-w-0 flex-1"><span className="block font-bold">Estudar cartões marcados</span><span className="block text-sm text-muted-foreground">Pratique todos os cartões que você marcou</span></span>
             <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
