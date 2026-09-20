@@ -43,7 +43,21 @@ Tradução de referência: ${JSON.stringify(portuguese)}
 Trecho selecionado: ${JSON.stringify(selectedText)}
 Pergunta adicional: ${JSON.stringify(question || 'Explique o significado, o uso e por que esse trecho aparece nesta frase.')}
 
-Identifique o conceito e o sentido específico no contexto. Use no máximo 120 palavras na explicação, exemplos curtos e linguagem simples. Não use Markdown. Crie também um cartão de conceito curto, autocontido e próprio para memorização; não transforme a frase original em seis exercícios.
+Identifique o conceito e o sentido específico no contexto. Use linguagem simples e no máximo 160 palavras na explicação.
+Para explicar o trecho selecionado, siga este estilo:
+Try = tentar ou experimentar.
+
+• I’ll try. → Eu vou tentar.
+• Try again. → Tente novamente.
+• Try this food. → Experimente esta comida.
+• I tried. → Eu tentei.
+
+👉 try = tentar / experimentar (forma base; presente em frases como "I try")
+tried = tentei / tentou / tentaram, conforme o sujeito (passado).
+
+Adapte o conteúdo ao trecho real, sem repetir o exemplo de Try quando não for pertinente. Comece com "termo = significado"; depois dê de 2 a 4 exemplos naturais em inglês, cada um com tradução após →; termine com uma observação breve de uso ou conjugação, quando relevante. Não invente tempos verbais para palavras que não sejam verbos. Priorize o sentido da frase enviada e diferencie outros sentidos somente se ajudarem. Use quebras de linha, • e 👉 como texto simples; não use títulos Markdown, negrito ou HTML.
+Se a pergunta adicional for sobre um erro de escrita, compare a resposta do aluno com a frase correta e explique brevemente a diferença, sem inventar erros.
+O cartão deve reproduzir a explicação: cardFront deve ser exatamente o trecho selecionado; cardBack deve ser exatamente o mesmo texto de explanation, incluindo exemplos, traduções e quebras de linha. Não resuma nem converta em outra pergunta.
 Responda APENAS JSON válido neste formato:
 {"conceptKey":"categoria:conceito_sentido","title":"título curto","quickMeaning":"significado em poucas palavras","explanation":"explicação curta com exemplos em linhas separadas","cardFront":"pergunta curta para revisão","cardBack":"resposta curta com regra e exemplos"}`;
 
@@ -63,7 +77,11 @@ Responda APENAS JSON válido neste formato:
     }
     const payload = await gemini.json();
     const text = payload?.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('') || '';
-    return response.status(200).json(parseJson(text));
+    const result = parseJson(text);
+    result.cardFront = selectedText;
+    result.cardBack = result.explanation;
+    result.conceptKey = `examples-v2:${result.conceptKey.replace(/^examples-v2:/, '')}`;
+    return response.status(200).json(result);
   } catch (error) {
     console.error(error);
     return response.status(500).json({ error: error instanceof Error ? error.message : 'Não foi possível gerar a explicação.' });

@@ -26,7 +26,8 @@ export async function findExplanations(selectedText: string, sentence: string) {
   const { data, error } = await supabase.from('learning_explanations' as any).select('*')
     .eq('user_id', user.id).ilike('selected_text', selectedText.trim()).order('updated_at', { ascending: false });
   if (error) throw error;
-  const rows = (data || []).map(mapRow);
+  // Regenerate older explanations on demand in the requested examples style.
+  const rows = (data || []).map(mapRow).filter(item => item.conceptKey.startsWith('examples-v2:'));
   const exact = rows.find(item => item.sentence.toLocaleLowerCase() === sentence.trim().toLocaleLowerCase());
   return { exact, related: rows.filter(item => item.id !== exact?.id) };
 }

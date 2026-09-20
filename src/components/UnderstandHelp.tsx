@@ -65,7 +65,7 @@ export default function UnderstandHelp({ sentence, portuguese, deckId, level = '
     if (!current || created) return;
     setLoading(true);
     try {
-      await addCard(deckId, `<p><strong>${escapeHtml(current.cardFront)}</strong></p>`, `<p>${escapeHtml(current.cardBack).replace(/\n/g, '<br>')}</p>`);
+      await addCard(deckId, `<p><strong>${escapeHtml(current.selectedText)}</strong></p>`, `<p>${escapeHtml(current.explanation).replace(/\n/g, '<br>')}</p>`);
       setCreated(true); toast.success('Cartão de conceito criado.');
     } catch { toast.error('Não foi possível criar o cartão de conceito.'); }
     finally { setLoading(false); }
