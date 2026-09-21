@@ -1,7 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { useEffect } from 'react';
-import { captureNavigationGeometry } from '@/lib/navigation-diagnostics';
 import homeSymbol from '@/assets/sf-symbols/house.fill.svg';
 import librarySymbol from '@/assets/sf-symbols/books.vertical.fill.svg';
 import progressSymbol from '@/assets/sf-symbols/chart.line.uptrend.xyaxis.svg';
@@ -14,24 +12,6 @@ interface BottomNavProps {
 
 export default function BottomNav({ active }: BottomNavProps) {
   const navigate = useNavigate();
-  useEffect(() => {
-    captureNavigationGeometry('tab-mounted');
-    const timers = [100, 500, 1500].map(delay => window.setTimeout(() => captureNavigationGeometry(`settled-${delay}`), delay));
-    return () => timers.forEach(clearTimeout);
-  }, [active]);
-  useEffect(() => {
-    const record = (event: Event) => captureNavigationGeometry(event.type);
-    window.addEventListener('pageshow', record);
-    window.addEventListener('resize', record);
-    window.visualViewport?.addEventListener('resize', record);
-    document.addEventListener('visibilitychange', record);
-    return () => {
-      window.removeEventListener('pageshow', record);
-      window.removeEventListener('resize', record);
-      window.visualViewport?.removeEventListener('resize', record);
-      document.removeEventListener('visibilitychange', record);
-    };
-  }, []);
 
   const navItems = [
     { key: 'home' as const, label: 'Início', icon: homeSymbol, path: '/' },
