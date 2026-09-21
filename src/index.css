@@ -27,11 +27,6 @@ html {
   background-color: #0a0a0a;
 }
 
-/* The floating capsule no longer paints a full-width footer strip. */
-body:has(.safe-area-bottom-nav) {
-  background-color: #0a0a0a;
-}
-
 @layer base {
   :root {
     /* Dark Anki-inspired theme as default */
@@ -260,77 +255,6 @@ body:has(.safe-area-bottom-nav) {
 
 .safe-bottom {
   padding-bottom: calc(96px + env(safe-area-inset-bottom));
-}
-
-.safe-area-bottom-nav {
-  position: fixed;
-  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-  left: max(16px, env(safe-area-inset-left, 0px));
-  right: max(16px, env(safe-area-inset-right, 0px));
-  max-width: 380px;
-  margin-inline: auto;
-  z-index: 20;
-  padding: 6px;
-  border-radius: 999px;
-  border: 1px solid rgb(255 255 255 / 16%);
-  background: rgb(35 35 38 / 88%);
-  box-shadow: 0 8px 28px rgb(0 0 0 / 35%), inset 0 1px 0 rgb(255 255 255 / 10%);
-}
-
-.floating-nav-items { display: flex; gap: 4px; }
-/* WebKit can initially include absent browser controls in the standalone
-   bottom inset (webkit.org/b/301172). Keep only the home-indicator allowance:
-   0 on home-button iPhones, up to 34 CSS px on gesture-navigation iPhones.
-   Do not compensate by moving the nav below the viewport or changing height. */
-.safe-area-bottom-nav[data-iphone-standalone="true"] {
-  bottom: calc(12px + min(env(safe-area-inset-bottom, 0px), 34px));
-}
-.floating-nav-item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  min-width: 44px;
-  height: 50px;
-  border-radius: 999px;
-  color: #b7bac2;
-  transition: background-color 180ms ease, color 180ms ease;
-  -webkit-tap-highlight-color: transparent;
-}
-.floating-nav-item[aria-current="page"] {
-  color: #79a4ff;
-  background: rgb(255 255 255 / 11%);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%);
-}
-.floating-nav-item:active { background: rgb(255 255 255 / 16%); }
-.floating-nav-item:focus-visible { outline: 2px solid #79a4ff; outline-offset: -2px; }
-.floating-nav-icon {
-  display: block;
-  width: 28px;
-  height: 28px;
-  background-color: currentColor;
-  mask: none center / contain no-repeat;
-  -webkit-mask: none center / contain no-repeat;
-}
-@supports ((backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px))) {
-  .safe-area-bottom-nav {
-    background: rgb(35 35 38 / 72%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    backdrop-filter: blur(20px) saturate(160%);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .floating-nav-item { transition: none; }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .safe-area-bottom-nav { background: #232326; backdrop-filter: none; -webkit-backdrop-filter: none; }
-}
-
-/* Prevent the root rubber-band gesture from exposing a strip below the
-   fixed navigation. Normal page scrolling and drawer scrolling remain. */
-html:has(.safe-area-bottom-nav),
-body:has(.safe-area-bottom-nav) {
-  overscroll-behavior-y: none;
 }
 
 /* Exported SF Symbol SVGs use a black fill. Invert them for the dark UI. */

@@ -4,6 +4,7 @@ import homeSymbol from '@/assets/sf-symbols/house.fill.svg';
 import librarySymbol from '@/assets/sf-symbols/books.vertical.fill.svg';
 import progressSymbol from '@/assets/sf-symbols/chart.line.uptrend.xyaxis.svg';
 import settingsSymbol from '@/assets/sf-symbols/gearshape.fill.svg';
+import './BottomNav.css';
 
 interface BottomNavProps {
   active: 'home' | 'decks' | 'stats' | 'settings' | 'profile';
@@ -11,9 +12,6 @@ interface BottomNavProps {
 
 export default function BottomNav({ active }: BottomNavProps) {
   const navigate = useNavigate();
-  const iphoneStandalone = /iPhone|iPod/.test(navigator.userAgent)
-    && ((navigator as Navigator & { standalone?: boolean }).standalone
-      || window.matchMedia?.('(display-mode: standalone)').matches);
 
   const navItems = [
     { key: 'home' as const, label: 'Início', icon: homeSymbol, path: '/' },
@@ -23,22 +21,22 @@ export default function BottomNav({ active }: BottomNavProps) {
   ];
 
   return createPortal(
-    <nav aria-label="Navegação principal" data-iphone-standalone={iphoneStandalone || undefined} className="safe-area-bottom-nav">
-      <div className="floating-nav-items">
+    <div className="navigation-viewport">
+    <nav aria-label="Navegação principal" className="navigation-capsule">
         {navItems.map(({ key, label, icon, path }) => (
           <button
             key={key}
             aria-label={label}
             onClick={() => navigate(path)}
             aria-current={(active === key || (active === 'profile' && key === 'settings')) ? 'page' : undefined}
-            className="floating-nav-item"
+            className="navigation-tab"
           >
             {/* Vite inlines small SVGs as data URLs containing spaces/quotes.
                 CSS url() must quote these, otherwise the mask becomes invalid. */}
-            <span aria-hidden="true" className="floating-nav-icon" style={{ maskImage: `url(${JSON.stringify(icon)})`, WebkitMaskImage: `url(${JSON.stringify(icon)})` }} />
+            <span aria-hidden="true" className="navigation-icon" style={{ maskImage: `url(${JSON.stringify(icon)})`, WebkitMaskImage: `url(${JSON.stringify(icon)})` }} />
           </button>
         ))}
-      </div>
-    </nav>, document.body,
+    </nav>
+    </div>, document.body,
   );
 }

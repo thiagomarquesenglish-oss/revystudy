@@ -1,5 +1,6 @@
 import LibraryManagePage from './pages/LibraryManagePage';
 import NavigationPosition from './components/NavigationPosition';
+import AppNavigation from './components/AppNavigation';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -45,6 +46,7 @@ const App = () => (
         <BrowserRouter>
           <NavigationPosition />
           <OfflineBanner />
+          <AppNavigation />
           <TabLayout />
           <Routes>
             <Route path="/practice" element={<ProtectedRoute><FreePracticePage /></ProtectedRoute>} />

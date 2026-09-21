@@ -7,7 +7,6 @@ import type { Deck } from '@/lib/types';
 import { useTabVisible } from '@/hooks/useTabVisible';
 import StreakBadge from '@/components/StreakBadge';
 
-import BottomNav from '@/components/BottomNav';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 
@@ -49,6 +48,6 @@ export default function Index() {
           </section>
 
         </>}
-    </main><BottomNav active="home" />
+    </main>
   </div>;
 }

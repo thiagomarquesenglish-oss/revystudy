@@ -7,7 +7,7 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig(() => {
   return ({
   define: {
-    __APP_VERSION__: JSON.stringify('1.3.35'),
+    __APP_VERSION__: JSON.stringify('1.3.36'),
   },
   server: {
     host: "::",

@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import BottomNav from '@/components/BottomNav';
 import PageHeader from '@/components/PageHeader';
 import PageTransition from '@/components/PageTransition';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -239,7 +238,6 @@ export default function LibraryManagePage({ embedded = false, targetDeckId, onCh
         <main className="max-w-3xl mx-auto px-3 py-4 space-y-4" style={{ paddingTop: 'calc(var(--app-header-height) + 1rem)' }}>
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 rounded-lg" />)}
         </main>
-        <BottomNav active="decks" />
       </div>
     );
   }
@@ -578,7 +576,6 @@ export default function LibraryManagePage({ embedded = false, targetDeckId, onCh
         </AlertDialog>
       )}
 
-      {!embedded && <BottomNav active="decks" />}
     </div>
   );
 }

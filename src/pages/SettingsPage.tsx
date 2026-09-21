@@ -4,7 +4,6 @@ import { Cloud, LogOut, User, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import BackupSettings from '@/components/BackupSettings';
-import BottomNav from '@/components/BottomNav';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import OfflineMediaSettings from '@/components/OfflineMediaSettings';
@@ -67,6 +66,5 @@ export default function SettingsPage() {
       </section>
       <p className="pb-4 text-center text-xs text-muted-foreground" aria-label={`Versão do aplicativo ${__APP_VERSION__}`}>RevyStudy · Versão {__APP_VERSION__}</p>
     </main>
-    <BottomNav active="settings" />
   </div>;
 }
