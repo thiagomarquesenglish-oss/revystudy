@@ -274,6 +274,10 @@ body:has(.safe-area-bottom-nav) {
   padding: 0 max(8px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(8px, env(safe-area-inset-left, 0px));
 }
 
+.safe-area-bottom-nav[data-viewport-anchored="true"] {
+  bottom: auto;
+}
+
 /* Prevent the root rubber-band gesture from exposing a strip below the
    fixed navigation. Normal page scrolling and drawer scrolling remain. */
 html:has(.safe-area-bottom-nav),

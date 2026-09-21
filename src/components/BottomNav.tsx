@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
+import { useRef } from 'react';
+import { useStandaloneNavPosition } from '@/hooks/useStandaloneNavPosition';
 import homeSymbol from '@/assets/sf-symbols/house.fill.svg';
 import librarySymbol from '@/assets/sf-symbols/books.vertical.fill.svg';
 import progressSymbol from '@/assets/sf-symbols/chart.line.uptrend.xyaxis.svg';
@@ -11,6 +13,8 @@ interface BottomNavProps {
 
 export default function BottomNav({ active }: BottomNavProps) {
   const navigate = useNavigate();
+  const navRef = useRef<HTMLElement>(null);
+  useStandaloneNavPosition(navRef);
 
   const navItems = [
     { key: 'home' as const, label: 'Início', icon: homeSymbol, path: '/' },
@@ -20,7 +24,7 @@ export default function BottomNav({ active }: BottomNavProps) {
   ];
 
   return createPortal(
-    <nav aria-label="Navegação principal" className="border-t border-border safe-area-bottom-nav">
+    <nav ref={navRef} aria-label="Navegação principal" className="border-t border-border safe-area-bottom-nav">
       <div className="flex h-14 max-w-3xl mx-auto">
         {navItems.map(({ key, label, icon, path }) => (
           <button
