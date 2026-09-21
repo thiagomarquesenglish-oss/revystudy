@@ -1031,7 +1031,10 @@ export async function importLearningCards(deckId:string,items:Array<{front:strin
 /** Persist schedule and the actual modality before moving to another exercise. */
 export async function saveLearningReview(card:Flashcard,rating:Rating,mode?:ExerciseMode):Promise<Flashcard>{
   const userId=await getCachedUserId(),now=new Date().toISOString();
-  const updated={...card,...processReview(card,rating),updatedAt:now,progressUpdatedAt:now};
+  // A card can be marked or edited from its options while the session holds
+  // an older copy. Preserve the current content/mark when saving the review.
+  const latest=(await getCardsByDeck(card.deckId)).find(item=>item.id===card.id)||card;
+  const updated={...card,...latest,...processReview(card,rating),updatedAt:now,progressUpdatedAt:now};
   const review={id:crypto.randomUUID(),card_id:card.id,user_id:userId,rating,reviewed_at:now,skill:mode?exerciseInfo[mode].skill:null,exercise_mode:mode||null};
   const row=cardToRow(updated,userId);
   await localDB.commitLearningReview(row,review);

@@ -7,9 +7,9 @@ import { addCard } from '@/lib/storage';
 import { escapeHtml } from '@/lib/situation';
 import { findExplanations, markExplanationUsed, requestExplanation, saveExplanation, type LearningExplanation } from '@/lib/learning-help';
 
-type Props = { sentence: string; portuguese: string; deckId: string; level?: string };
+type Props = { sentence: string; portuguese: string; deckId: string; level?: string; open?: boolean; onOpenChange?: (open: boolean) => void; hideTrigger?: boolean };
 
-export default function UnderstandHelp({ sentence, portuguese, deckId, level = 'iniciante' }: Props) {
+export default function UnderstandHelp({ sentence, portuguese, deckId, level = 'iniciante', open: controlledOpen, onOpenChange, hideTrigger }: Props) {
   const words = useMemo(() => {
     const unique = new Map<string,string>();
     for (const word of sentence.match(/[\p{L}\p{N}'’-]+/gu) || []) {
@@ -18,7 +18,9 @@ export default function UnderstandHelp({ sentence, portuguese, deckId, level = '
     }
     return [...unique.values()];
   }, [sentence]);
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
   const [selected, setSelected] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [created, setCreated] = useState(false);
@@ -72,9 +74,9 @@ export default function UnderstandHelp({ sentence, portuguese, deckId, level = '
   };
 
   return <>
-    <button type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground py-2">
+    {!hideTrigger && <button type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground py-2">
       <Lightbulb className="h-4 w-4"/> Explicação
-    </button>
+    </button>}
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerContent>
         <DrawerHeader><DrawerTitle>Explicar esta frase</DrawerTitle></DrawerHeader>

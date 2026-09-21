@@ -260,6 +260,12 @@ html {
 /* Exported SF Symbol SVGs use a black fill. Invert them for the dark UI. */
 .sf-symbol-icon { filter: invert(1); }
 
+/* Only the translation on the card is blurred, never English or the drawer. */
+.study-exercise[data-blur-portuguese="true"] .study-flip-face [lang="pt"] {
+  filter: blur(7px);
+  user-select: none;
+}
+
 .safe-page {
   padding-bottom: calc(5rem + env(safe-area-inset-bottom));
 }

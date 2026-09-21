@@ -9,7 +9,8 @@ import { Play, Pause, Check, X, Loader2 } from 'lucide-react';
 import { availableSituationModes, chooseAdaptiveMode, exerciseInfo, parseAdaptiveEvent, type ExerciseMode } from '@/lib/adaptive-study';
 import { compareDictation } from '@/lib/dictation';
 import SkillBadge from './SkillBadge';
-import UnderstandHelp from './UnderstandHelp';
+import CardOptions from './CardOptions';
+import { useBlurPortuguese } from '@/lib/card-display-preferences';
 import AudioPlayButton from './LocalAudioPlayer';
 import { findExplanations, requestExplanation, saveExplanation } from '@/lib/learning-help';
 
@@ -167,6 +168,7 @@ function SimpleFlipCard({ card, onRate, backAudioSrc }: { card: Flashcard; onRat
 }
 
 function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remainingNew,remainingLearning,remainingReview}:{card:Flashcard;situation:NonNullable<ReturnType<typeof readSituation>>;audioSrc:string|null;onRate:(rating:Rating,mode?:ExerciseMode)=>void;forcedMode?:ExerciseMode;remainingNew:number;remainingLearning:number;remainingReview:number}){
+  const blurPortuguese = useBlurPortuguese(card.id);
   const [mode,setMode]=useState<ExerciseMode>(forcedMode||'text-comprehension');
   const [flipped,setFlipped]=useState(false),[typed,setTyped]=useState(''),[dictation,setDictation]=useState<ReturnType<typeof compareDictation>|null>(null),[showPortuguese,setShowPortuguese]=useState(false);
   const media=useMemo(()=>{const root=document.createElement('div');root.innerHTML=situation.mediaHtml;root.querySelectorAll('audio,[data-audio]').forEach(el=>el.remove());return root.innerHTML;},[situation.mediaHtml]);
@@ -178,10 +180,11 @@ function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remaining
   const showEnglishAnswer=mode!=='text-comprehension';
   const showImageAnswer=['audio-comprehension','text-comprehension'].includes(mode);
   const renderedImage=<div className="rich-text-render max-w-full" dangerouslySetInnerHTML={{__html:media}}/>;
-  return <div className="study-exercise flex flex-col w-full max-w-lg mx-auto pb-36" >
+  const options = <div className="absolute bottom-4 inset-x-4 flex justify-center"><CardOptions key={card.id} card={card} sentence={situation.english} portuguese={situation.portuguese} /></div>;
+  return <div className="study-exercise flex flex-col w-full max-w-lg mx-auto pb-36" data-blur-portuguese={blurPortuguese || undefined}>
     <div className="pt-5 flex justify-center"><SkillBadge skill={exerciseInfo[mode].skill}/></div>
     <FlipCardFrame flipped={reveal} disabled={isDictation} onFlip={() => setFlipped(value => !value)}>
-      <div className="study-flip-face study-flip-front">
+      <div className="study-flip-face study-flip-front" style={{ paddingBottom: '5rem' }}>
       <div className="w-full flex flex-col items-center gap-4">
       {mode==='image-production'&&<StudyMedia html={media}>{renderedImage}</StudyMedia>}
       {mode==='image-audio'&&<StudyMedia html={media}><>{renderedImage}{canPlayFrontAudio&&audioSrc&&<AudioPlayButton src={audioSrc} centered/>}</></StudyMedia>}
@@ -199,12 +202,11 @@ function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remaining
         {!dictation.correct&&<WritingErrorExplanation sentence={situation.english} portuguese={situation.portuguese} typed={typed}/>} 
       </div>}
     </div>
+      {!reveal && options}
       </div>
       <div className="study-flip-face study-flip-back" style={{ paddingBottom: '5rem' }}>
-        <StudyMedia html={showImageAnswer?media:''}><div className="w-full flex flex-col items-center gap-3">{showEnglishAnswer&&<div className="text-2xl text-white text-center font-semibold" lang="en">{situation.english}</div>}{showImageAnswer&&renderedImage}{!['translation-production','image-translation-production'].includes(mode)&&(showPortuguese?<div className="text-base text-muted-foreground text-center" lang="pt">{situation.portuguese}</div>:<button className="text-sm text-primary py-2" onClick={()=>setShowPortuguese(true)}>Mostrar significado</button>)}{!['audio-comprehension','audio-dictation','image-audio'].includes(mode)&&audioSrc&&<AudioPlayButton src={audioSrc} centered autoPlay={exerciseInfo[mode].skill !== 'production'}/>}</div></StudyMedia>
-        {reveal && <div className="absolute bottom-4 inset-x-4 flex justify-center [&>button]:min-h-11 [&>button]:px-4" onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
-          <UnderstandHelp sentence={situation.english} portuguese={situation.portuguese} deckId={card.deckId} level={situation.pedagogy?.stage?`etapa ${situation.pedagogy.stage}`:'iniciante'}/>
-        </div>}
+        <StudyMedia html={showImageAnswer?media:''}><div className="w-full flex flex-col items-center gap-3">{showEnglishAnswer&&<div className="text-2xl text-white text-center font-semibold" lang="en">{situation.english}</div>}{showImageAnswer&&renderedImage}{!['translation-production','image-translation-production'].includes(mode)&&((showPortuguese||blurPortuguese)?<div className="text-base text-muted-foreground text-center" lang="pt">{situation.portuguese}</div>:<button className="text-sm text-primary py-2" onClick={()=>setShowPortuguese(true)}>Mostrar significado</button>)}{!['audio-comprehension','audio-dictation','image-audio'].includes(mode)&&audioSrc&&<AudioPlayButton src={audioSrc} centered autoPlay={exerciseInfo[mode].skill !== 'production'}/>}</div></StudyMedia>
+        {reveal && options}
       </div>
     </FlipCardFrame>
     <div className="flex-1"/>
