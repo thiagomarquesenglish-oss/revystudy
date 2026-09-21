@@ -30,7 +30,9 @@ export default function BottomNav({ active }: BottomNavProps) {
             aria-current={(active === key || (active === 'profile' && key === 'settings')) ? 'page' : undefined}
             className="floating-nav-item"
           >
-            <span aria-hidden="true" className="floating-nav-icon" style={{ maskImage: `url(${icon})`, WebkitMaskImage: `url(${icon})` }} />
+            {/* Vite inlines small SVGs as data URLs containing spaces/quotes.
+                CSS url() must quote these, otherwise the mask becomes invalid. */}
+            <span aria-hidden="true" className="floating-nav-icon" style={{ maskImage: `url(${JSON.stringify(icon)})`, WebkitMaskImage: `url(${JSON.stringify(icon)})` }} />
           </button>
         ))}
       </div>

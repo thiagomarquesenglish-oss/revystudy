@@ -32,6 +32,9 @@ it('uses the floating layout on iPhone without inline viewport positioning', () 
   expect(nav.style.top).toBe('');
   expect(nav.querySelectorAll('.floating-nav-item')).toHaveLength(4);
   expect(nav.querySelectorAll('.floating-nav-icon')).toHaveLength(4);
+  for (const icon of nav.querySelectorAll<HTMLElement>('.floating-nav-icon')) {
+    expect(icon.style.maskImage).toMatch(/^url\(".*"\)$/);
+  }
   expect(screen.getByRole('button', { name: 'Ajustes' }).getAttribute('aria-current')).toBe('page');
   expect(nav.textContent).toBe('');
 });
