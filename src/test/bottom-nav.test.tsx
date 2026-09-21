@@ -15,6 +15,7 @@ it('keeps icon-only navigation accessible and navigates from its body portal', (
   );
   const nav = screen.getByRole('navigation', { name: 'Navegação principal' });
   expect(nav.parentElement).toBe(document.body);
+  expect(nav.hasAttribute('data-iphone-standalone')).toBe(false);
   expect(container.contains(nav)).toBe(false);
   expect(screen.getByRole('button', { name: 'Início' }).getAttribute('aria-current')).toBe('page');
   for (const [name, path] of [['Biblioteca', '/decks'], ['Progresso', '/stats'], ['Ajustes', '/settings'], ['Início', '/']]) {
@@ -30,6 +31,7 @@ it('uses the floating layout on iPhone without inline viewport positioning', () 
   const nav = screen.getByRole('navigation');
   window.dispatchEvent(new Event('pageshow'));
   expect(nav.style.top).toBe('');
+  expect(nav.getAttribute('data-iphone-standalone')).toBe('true');
   expect(nav.querySelectorAll('.floating-nav-item')).toHaveLength(4);
   expect(nav.querySelectorAll('.floating-nav-icon')).toHaveLength(4);
   for (const icon of nav.querySelectorAll<HTMLElement>('.floating-nav-icon')) {

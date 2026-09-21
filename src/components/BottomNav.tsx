@@ -11,6 +11,9 @@ interface BottomNavProps {
 
 export default function BottomNav({ active }: BottomNavProps) {
   const navigate = useNavigate();
+  const iphoneStandalone = /iPhone|iPod/.test(navigator.userAgent)
+    && ((navigator as Navigator & { standalone?: boolean }).standalone
+      || window.matchMedia?.('(display-mode: standalone)').matches);
 
   const navItems = [
     { key: 'home' as const, label: 'Início', icon: homeSymbol, path: '/' },
@@ -20,7 +23,7 @@ export default function BottomNav({ active }: BottomNavProps) {
   ];
 
   return createPortal(
-    <nav aria-label="Navegação principal" className="safe-area-bottom-nav">
+    <nav aria-label="Navegação principal" data-iphone-standalone={iphoneStandalone || undefined} className="safe-area-bottom-nav">
       <div className="floating-nav-items">
         {navItems.map(({ key, label, icon, path }) => (
           <button

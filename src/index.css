@@ -278,6 +278,13 @@ body:has(.safe-area-bottom-nav) {
 }
 
 .floating-nav-items { display: flex; gap: 4px; }
+/* WebKit can initially include absent browser controls in the standalone
+   bottom inset (webkit.org/b/301172). Keep only the home-indicator allowance:
+   0 on home-button iPhones, up to 34 CSS px on gesture-navigation iPhones.
+   Do not compensate by moving the nav below the viewport or changing height. */
+.safe-area-bottom-nav[data-iphone-standalone="true"] {
+  bottom: calc(12px + min(env(safe-area-inset-bottom, 0px), 34px));
+}
 .floating-nav-item {
   display: flex;
   align-items: center;
