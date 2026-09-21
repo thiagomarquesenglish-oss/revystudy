@@ -1,7 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { useRef } from 'react';
-import { useStandaloneNavPosition } from '@/hooks/useStandaloneNavPosition';
 import homeSymbol from '@/assets/sf-symbols/house.fill.svg';
 import librarySymbol from '@/assets/sf-symbols/books.vertical.fill.svg';
 import progressSymbol from '@/assets/sf-symbols/chart.line.uptrend.xyaxis.svg';
@@ -13,8 +11,6 @@ interface BottomNavProps {
 
 export default function BottomNav({ active }: BottomNavProps) {
   const navigate = useNavigate();
-  const navRef = useRef<HTMLElement>(null);
-  useStandaloneNavPosition(navRef);
 
   const navItems = [
     { key: 'home' as const, label: 'Início', icon: homeSymbol, path: '/' },
@@ -24,19 +20,17 @@ export default function BottomNav({ active }: BottomNavProps) {
   ];
 
   return createPortal(
-    <nav ref={navRef} aria-label="Navegação principal" className="border-t border-border safe-area-bottom-nav">
-      <div className="flex h-14 max-w-3xl mx-auto">
+    <nav aria-label="Navegação principal" className="safe-area-bottom-nav">
+      <div className="floating-nav-items">
         {navItems.map(({ key, label, icon, path }) => (
           <button
             key={key}
             aria-label={label}
             onClick={() => navigate(path)}
             aria-current={(active === key || (active === 'profile' && key === 'settings')) ? 'page' : undefined}
-            className={`flex-1 min-w-0 min-h-11 flex flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium transition-colors active:opacity-70 ${
-              active === key ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-            }`}
+            className="floating-nav-item"
           >
-            <img src={icon} alt={label} aria-hidden="true" className="sf-symbol-icon h-7 w-7 object-contain" />
+            <span aria-hidden="true" className="floating-nav-icon" style={{ maskImage: `url(${icon})`, WebkitMaskImage: `url(${icon})` }} />
           </button>
         ))}
       </div>

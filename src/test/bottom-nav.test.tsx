@@ -23,27 +23,15 @@ it('keeps icon-only navigation accessible and navigates from its body portal', (
   }
 });
 
-it('anchors the iPhone PWA nav on launch and viewport changes, counting its inset only once', () => {
-  vi.useFakeTimers();
+it('uses the floating layout on iPhone without inline viewport positioning', () => {
   vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('iPhone');
   vi.stubGlobal('matchMedia', () => ({ matches: true }));
-  const viewport = Object.assign(new EventTarget(), { height: 800, offsetTop: 0 });
-  vi.stubGlobal('visualViewport', viewport);
-  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
-  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ height: 90 } as DOMRect);
-  const { unmount } = render(<MemoryRouter><BottomNav active="home" /></MemoryRouter>);
+  render(<MemoryRouter><BottomNav active="profile" /></MemoryRouter>);
   const nav = screen.getByRole('navigation');
-  vi.advanceTimersByTime(30);
-  expect(nav.style.top).toBe('710px');
-  expect(nav.dataset.viewportAnchored).toBe('true');
-  viewport.height = 850;
-  viewport.dispatchEvent(new Event('resize'));
-  vi.advanceTimersByTime(30);
-  expect(nav.style.top).toBe('760px');
-  viewport.height = 800;
   window.dispatchEvent(new Event('pageshow'));
-  vi.advanceTimersByTime(900);
-  expect(nav.style.top).toBe('710px');
-  unmount();
-  expect(vi.getTimerCount()).toBe(0);
+  expect(nav.style.top).toBe('');
+  expect(nav.querySelectorAll('.floating-nav-item')).toHaveLength(4);
+  expect(nav.querySelectorAll('.floating-nav-icon')).toHaveLength(4);
+  expect(screen.getByRole('button', { name: 'Ajustes' }).getAttribute('aria-current')).toBe('page');
+  expect(nav.textContent).toBe('');
 });
