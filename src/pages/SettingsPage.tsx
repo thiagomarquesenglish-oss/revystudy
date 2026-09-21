@@ -1,4 +1,5 @@
 import SyncUpdatesButton from '@/components/SyncUpdatesButton';
+import NavigationDiagnostics from '@/components/NavigationDiagnostics';
 import { useAuth } from '@/hooks/useAuth';
 import { Cloud, LogOut, User, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
@@ -64,6 +65,7 @@ export default function SettingsPage() {
       <section className="space-y-3">
         <Button variant="ghost" className="text-destructive hover:text-destructive justify-start px-0" onClick={signOut}><LogOut className="h-4 w-4 mr-2" />Sair da conta</Button>
       </section>
+      <NavigationDiagnostics />
       <p className="pb-4 text-center text-xs text-muted-foreground" aria-label={`Versão do aplicativo ${__APP_VERSION__}`}>RevyStudy · Versão {__APP_VERSION__}</p>
     </main>
   </div>;
