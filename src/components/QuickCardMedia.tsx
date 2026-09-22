@@ -1,5 +1,5 @@
 import {useRef,useState,type ReactNode} from 'react';
-import {Pause,Play} from 'lucide-react';
+import {Copy,Pause,Play} from 'lucide-react';
 import {toast} from 'sonner';
 import {supabase} from '@/integrations/supabase/client';
 import {escapeHtml,readSituation} from '@/lib/situation';
@@ -17,6 +17,10 @@ export default function QuickCardMedia({card,onSaved,children}:{card:Flashcard;o
   const [savedCard,setSavedCard]=useState<Flashcard|null>(null);
   const shown=savedCard||card;
   const existing=mediaDetails(shown.front+shown.back);
+  const situation=readSituation(shown.front,shown.back);
+  const english=situation?.english || shown.dictationAnswer || '';
+  const prompt=situation?.imagePrompt || situation?.pedagogy?.imagePrompt || situation?.context || '';
+  const copy=async(text:string)=>{try{await navigator.clipboard.writeText(text);toast.success('Copiado!');}catch{toast.error('Não foi possível copiar. Tente novamente.');}};
   const saving=useRef(false);
   const [busy,setBusy]=useState<'image'|'audio'|null>(null),[playing,setPlaying]=useState(false),[dragging,setDragging]=useState(false),audioRef=useRef<HTMLAudioElement>(null);
   const saveFiles=async(files:File[])=>{
@@ -54,7 +58,9 @@ export default function QuickCardMedia({card,onSaved,children}:{card:Flashcard;o
   return <div className={`relative group overflow-hidden rounded-2xl border bg-card transition-colors ${dragging?'border-primary ring-2 ring-primary/40':'border-border'}`} onDragEnter={e=>{e.preventDefault();setDragging(true)}} onDragOver={e=>e.preventDefault()} onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node))setDragging(false)}} onDrop={drop}>
     {children}
     {busy&&<div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 text-sm font-medium">{busy==='image'?'Salvando imagem…':'Salvando áudio…'}</div>}
-    {existing.audio&&<div className="flex justify-center border-t border-border p-2" onClick={event=>event.stopPropagation()}>
+    {(existing.audio||english||prompt)&&<div className="flex items-center justify-evenly gap-1 border-t border-border p-2" onClick={event=>event.stopPropagation()}>
+      {prompt&&<button type="button" aria-label="Copiar prompt" onClick={()=>void copy(prompt)} className="flex min-h-11 flex-col items-center justify-center gap-1 px-2 text-xs"><Copy aria-hidden="true" className="h-4 w-4"/>Prompt</button>}
+      {english&&<button type="button" aria-label="Copiar inglês" onClick={()=>void copy(english)} className="flex min-h-11 flex-col items-center justify-center gap-1 px-2 text-xs"><Copy aria-hidden="true" className="h-4 w-4"/>Inglês</button>}
       {existing.audio&&<div className="flex min-h-12 items-center justify-center rounded-lg bg-secondary"><audio ref={audioRef} src={existing.audio} onEnded={()=>setPlaying(false)} onPause={()=>setPlaying(false)}/><button type="button" aria-label={playing?'Pausar áudio':'Ouvir áudio'} className="rounded-full bg-primary/15 p-2 text-primary" onClick={()=>{const audio=audioRef.current;if(!audio)return;if(playing)audio.pause();else void audio.play().then(()=>setPlaying(true)).catch(()=>toast.error('Não foi possível reproduzir o áudio.'))}}>{playing?<Pause className="h-5 w-5"/>:<Play className="h-5 w-5"/>}</button></div>}
     </div>}
   </div>;

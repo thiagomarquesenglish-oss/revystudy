@@ -57,7 +57,7 @@ export default function SituationEditForm({ cardId, deckId, audioId, initial, on
       const finalAudio=audio?await upload(audio):audioUrl;
       const media=`${finalImage?`<img src="${escapeHtml(finalImage)}" alt="Situação visual">`:''}${finalAudio?`<div data-audio="true" data-src="${escapeHtml(finalAudio)}" data-filename="${escapeHtml(audioName)}" class="audio-node"><audio src="${escapeHtml(finalAudio)}" class="audio-node-element"></audio></div>`:''}`;
       const pedagogy=stage===initial.pedagogy?.stage?initial.pedagogy:manualPedagogy(stage,initial.pedagogy);
-      const html=buildSituationHtml({english:english.trim(),context:hint.trim(),portuguese:portuguese.trim(),mediaHtml:media,pedagogy});
+      const html=buildSituationHtml({english:english.trim(),context:hint.trim(),portuguese:portuguese.trim(),mediaHtml:media,pedagogy,imagePrompt:initial.imagePrompt});
       await updateCard(cardId,{front:html.front,back:html.back,dictationAnswer:english.trim()});
       toast.success('Situação atualizada!');
       onSaved();

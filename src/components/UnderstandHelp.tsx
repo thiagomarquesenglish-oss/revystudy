@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { addCard, getCardsByDeck } from '@/lib/storage';
 import { buildSituationHtml, escapeHtml, readSituation } from '@/lib/situation';
-import { exampleKey, fiveNewExamples, splitExplanation, type ExplanationExample } from '@/lib/explanation-examples';
-import { requestMoreExamples } from '@/lib/learning-help';
+import { exampleKey, fiveNewExamples, formatExample, splitExplanation, type ExplanationExample } from '@/lib/explanation-examples';
+import { requestMoreExamples, requestScenePrompt } from '@/lib/learning-help';
 import { findExplanations, markExplanationUsed, requestExplanation, saveExplanation, type LearningExplanation } from '@/lib/learning-help';
 
 type Props = { sentence: string; portuguese: string; deckId: string; level?: string; open?: boolean; onOpenChange?: (open: boolean) => void; hideTrigger?: boolean };
@@ -55,13 +55,13 @@ export default function UnderstandHelp({ sentence, portuguese, deckId, level = '
     setAdded(new Set(excluded.map(exampleKey)));
     const split = splitExplanation(item.explanation);
     const fresh = await fiveNewExamples(split.examples, excluded, previous => requestMoreExamples(item.sentence, item.selectedText, previous, level));
-    const explanation = split.body + '\n\n' + fresh.map(example => `• ${example.english} → ${example.portuguese}`).join('\n');
+    const explanation = split.body + '\n\n' + fresh.map(formatExample).join('\n');
     if (explanation === item.explanation) return item;
     // Keep old examples in storage as an exclusion history; only show eligible examples below.
     const known = new Set(split.examples.map(example => exampleKey(example.english)));
     const additions = fresh.filter(example => !known.has(exampleKey(example.english)));
     if (!additions.length) return item;
-    const full = item.explanation + '\n\n' + additions.map(example => `• ${example.english} → ${example.portuguese}`).join('\n');
+    const full = item.explanation + '\n\n' + additions.map(formatExample).join('\n');
     return saveExplanation({...item, explanation:full, cardBack:full});
   };
 
@@ -101,7 +101,8 @@ export default function UnderstandHelp({ sentence, portuguese, deckId, level = '
     if (!current || created) return;
     setLoading(true);
     try {
-      await addCard(deckId, `<p><strong>${escapeHtml(current.selectedText)}</strong></p>`, `<p>${escapeHtml(current.explanation).replace(/\n/g, '<br>')}</p>`);
+      const visibleExplanation = current.explanation.split('\n').filter(line=>!line.startsWith('Cena: ')).join('\n');
+      await addCard(deckId, `<p><strong>${escapeHtml(current.selectedText)}</strong></p>`, `<p>${escapeHtml(visibleExplanation).replace(/\n/g, '<br>')}</p>`);
       setCreated(true); toast.success('Cartão de conceito criado.');
     } catch { toast.error('Não foi possível criar o cartão de conceito.'); }
     finally { setLoading(false); }
@@ -115,7 +116,8 @@ export default function UnderstandHelp({ sentence, portuguese, deckId, level = '
     try {
       const cards = await getCardsByDeck(deckId);
       if (!cards.some(card => exampleKey(readSituation(card.front, card.back)?.english || '') === key)) {
-        const html = buildSituationHtml({...example, context:'', mediaHtml:''});
+        const imagePrompt = example.imagePrompt || await requestScenePrompt(example);
+        const html = buildSituationHtml({...example, imagePrompt, context:'', mediaHtml:''});
         await addCard(deckId, html.front, html.back);
         toast.success('Exemplo adicionado ao baralho.');
       } else toast.info('Este exemplo já está no baralho.');
@@ -131,7 +133,7 @@ export default function UnderstandHelp({ sentence, portuguese, deckId, level = '
       const cards = await getCardsByDeck(deckId);
       const excluded = [sentence, current.sentence, ...parsed.examples.map(item=>item.english), ...cards.map(card=>readSituation(card.front, card.back)?.english || card.dictationAnswer || '')];
       const fresh = await fiveNewExamples([], excluded, previous => requestMoreExamples(current.sentence, current.selectedText, previous, level));
-      const explanation = current.explanation + '\n\n' + fresh.map(item => `• ${item.english} → ${item.portuguese}`).join('\n');
+      const explanation = current.explanation + '\n\n' + fresh.map(formatExample).join('\n');
       const saved = await saveExplanation({...current, explanation, cardBack:explanation});
       setCurrent(saved); setCreated(false);
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Não foi possível gerar mais exemplos.'); }

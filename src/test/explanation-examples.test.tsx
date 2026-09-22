@@ -1,11 +1,11 @@
 import {cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {afterEach, beforeEach, expect, it, vi} from 'vitest';
 import UnderstandHelp from '@/components/UnderstandHelp';
-import {fiveNewExamples, splitExplanation} from '@/lib/explanation-examples';
+import {fiveNewExamples, splitExplanation, formatExample} from '@/lib/explanation-examples';
 import {buildSituationHtml, readSituation} from '@/lib/situation';
 const mocks = vi.hoisted(()=>({add:vi.fn(), cards:vi.fn(), find:vi.fn(), more:vi.fn(), save:vi.fn()}));
 vi.mock('@/lib/storage',()=>({addCard:mocks.add,getCardsByDeck:mocks.cards}));
-vi.mock('@/lib/learning-help',()=>({findExplanations:mocks.find,requestMoreExamples:mocks.more,saveExplanation:mocks.save,markExplanationUsed:vi.fn(),requestExplanation:vi.fn()}));
+vi.mock('@/lib/learning-help',()=>({findExplanations:mocks.find,requestMoreExamples:mocks.more,saveExplanation:mocks.save,markExplanationUsed:vi.fn(),requestExplanation:vi.fn(),requestScenePrompt:vi.fn().mockResolvedValue('Homem experimentando uma sopa no restaurante.')}));
 vi.mock('sonner',()=>({toast:{success:vi.fn(),error:vi.fn(),info:vi.fn()}}));
 vi.mock('@/components/ui/drawer',()=>({Drawer:({children}:any)=><div>{children}</div>,DrawerContent:({children}:any)=><div>{children}</div>,DrawerHeader:({children}:any)=><div>{children}</div>,DrawerTitle:({children}:any)=><h2>{children}</h2>}));
 const explanation={id:'e',selectedText:'Try',sentence:'Try again.',title:'Try',quickMeaning:'Tentar',conceptKey:'examples-v2:try',explanation:'Try = tentar.\n• Try again. → Tente novamente.\n👉 tried = passado.',cardFront:'Try',cardBack:'',useCount:1};
@@ -14,6 +14,7 @@ beforeEach(()=>{vi.clearAllMocks();mocks.cards.mockResolvedValue([]);mocks.add.m
 afterEach(cleanup);
 async function open(){render(<UnderstandHelp sentence="Try again." portuguese="Tente novamente." deckId="deck" open/>);fireEvent.click(screen.getByRole('button',{name:'Try'}));fireEvent.click(screen.getByRole('button',{name:'Explicar “Try”'}));await screen.findByText('Exemplos para praticar');}
 it('retains the usage note',()=>{expect(splitExplanation(explanation.explanation).body).toContain('👉 tried');});
+it('persists short scene prompts without showing them as explanation text',()=>{const example={english:'Try the soup.',portuguese:'Experimente a sopa.',imagePrompt:'Homem experimentando uma sopa no restaurante.'};const parsed=splitExplanation('Try = tentar.\n'+formatExample(example));expect(parsed.examples).toEqual([example]);expect(parsed.body).not.toContain('Cena:');const html=buildSituationHtml({...example,context:'',mediaHtml:''});expect(readSituation(html.front,html.back)?.imagePrompt).toBe(example.imagePrompt);});
 it('shows five addable examples without the original sentence',async()=>{await open();expect(screen.queryByText('Try again.')).toBeNull();expect(screen.getAllByRole('button',{name:'Adicionar como cartão'})).toHaveLength(5);});
 it('creates a situation and removes it from suggestions',async()=>{await open();fireEvent.click(screen.getAllByRole('button',{name:'Adicionar como cartão'})[0]);await waitFor(()=>expect(screen.getAllByRole('button',{name:'Adicionar como cartão'})).toHaveLength(4));const [deck,front,back]=mocks.add.mock.calls[0];expect(deck).toBe('deck');expect(readSituation(front,back)?.english).toBe('Try this.');});
 it('rejects punctuation variants and replenishes to five',async()=>{const generate=vi.fn().mockResolvedValueOnce([{english:'TRY AGAIN!',portuguese:'Tente'},...examples.slice(0,3)]).mockResolvedValueOnce(examples);expect(await fiveNewExamples([],['Try again.'],generate)).toHaveLength(5);expect(generate).toHaveBeenCalledTimes(2);});

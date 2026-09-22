@@ -1,4 +1,5 @@
-export interface ExplanationExample { english: string; portuguese: string }
+export interface ExplanationExample { english: string; portuguese: string; imagePrompt?: string }
+export const formatExample = (item: ExplanationExample) => `• ${item.english} → ${item.portuguese}${item.imagePrompt ? '\nCena: '+item.imagePrompt.replace(/\n/g,' ') : ''}`;
 export const exampleKey = (text: string) => text.trim().toLocaleLowerCase('en').replace(/[’‘]/g, "'").replace(/[.!?,;:"“”]+/g, '').replace(/\s+/g, ' ');
 export async function fiveNewExamples(existing: ExplanationExample[], excluded: string[], generate: (previous: string[]) => Promise<ExplanationExample[]>) {
   const seen = new Set(excluded.map(exampleKey));
@@ -21,6 +22,7 @@ export function splitExplanation(text: string) {
   const examples: ExplanationExample[] = [];
   const seen = new Set<string>();
   const body = text.split('\n').filter(line => {
+    if (line.startsWith('Cena: ') && examples.length) { examples[examples.length-1].imagePrompt=line.slice(6).trim(); return false; }
     const match = line.match(/^\s*(?:[•*-]|\d+[.)])?\s*(.+?)\s*→\s*(.+?)\s*$/);
     if (!match || line.trim().startsWith('👉')) return true;
     const english = match[1].trim(), portuguese = match[2].trim();

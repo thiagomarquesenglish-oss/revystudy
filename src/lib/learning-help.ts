@@ -1,5 +1,13 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { ExplanationExample } from './explanation-examples';
+export async function requestScenePrompt(example: ExplanationExample): Promise<string> {
+  const {data:{session}} = await supabase.auth.getSession();
+  if (!session) throw new Error('Sua sessão expirou.');
+  const response = await fetch('/api/explain', {method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({mode:'scene',sentence:example.english,selectedText:example.english,portuguese:example.portuguese})});
+  const payload = await response.json().catch(()=>({}));
+  if (!response.ok || !payload.imagePrompt) throw new Error(payload.error || 'Não foi possível gerar o prompt da imagem.');
+  return payload.imagePrompt;
+}
 
 export async function requestMoreExamples(sentence: string, selectedText: string, previous: string[], level: string): Promise<ExplanationExample[]> {
   const { data: { session } } = await supabase.auth.getSession();
