@@ -1,3 +1,6 @@
+import 'fake-indexeddb/auto';
+import { localDB } from '@/lib/offline-db';
+import { answerSchedule, loadScheduledCards } from '@/lib/fsrs-scheduling';
 import {
   act,
   fireEvent,
@@ -24,6 +27,7 @@ vi.mock("@/lib/storage", () => ({
   addDeck: vi.fn(),
   updateCard: vi.fn(),
   deleteCard: vi.fn(),
+  getCardsByDeck: vi.fn(async () => [card]),
 }));
 vi.mock("@/lib/study-media", () => ({ prepareHtml: vi.fn() }));
 vi.mock("@/components/PageHeader", () => ({ default: () => null }));
@@ -68,9 +72,10 @@ it('finishes free practice without saving reviews or changing curriculum evidenc
   expect(await screen.findByText('Treino concluído')).toBeTruthy();
   expect(mocks.save).not.toHaveBeenCalled();
 });
-afterEach(() => {
+afterEach(async () => {
   cleanup();
   vi.clearAllMocks();
+  await localDB.clearForFullRestore();
 });
 const now = new Date().toISOString();
 const card: Flashcard = {
@@ -99,6 +104,7 @@ const card: Flashcard = {
   cardType: "standard",
 };
 const data = {
+  userId: 'test-user',
   cards: [card],
   events: [],
   decks: [{ id: "d", name: "English" }],
@@ -132,8 +138,12 @@ it("keeps the current exercise on failure and advances only after durable save",
   fireEvent.click(screen.getByRole("button", { name: "Avaliar one" }));
   fireEvent.click(screen.getByRole("button", { name: "Avaliar one" }));
   expect(mocks.save).toHaveBeenCalledTimes(2);
-  await act(async () => finish({ ...card, status: "learning" }));
-  expect(await screen.findByText("Revisão concluída")).toBeVisible();
+  await act(async () => {
+    const schedule = answerSchedule(mocks.save.mock.calls[1][3], 'good', new Date());
+    await localDB.saveSkillSchedules([schedule]);
+    finish({ ...card, status: "learning", schedule } as Flashcard);
+  });
+  expect(await screen.findByText("Aguardando a próxima revisão")).toBeVisible();
 });
 it("requires a valid preview and explicit batch approval before importing", async () => {
   mocks.load.mockResolvedValue({ ...data, cards: [] });
@@ -178,4 +188,24 @@ it("requires a valid preview and explicit batch approval before importing", asyn
   await waitFor(() => expect(mocks.import).toHaveBeenCalledOnce());
   expect(mocks.import.mock.calls[0][0]).toBe("d");
   expect(mocks.import.mock.calls[0][1][0].front).toContain("data-learning");
+});
+
+it('does not show an Easy exercise or its siblings after reopening study', async () => {
+  const exercises = await loadScheduledCards([card], data.userId);
+  await localDB.saveSkillSchedules([answerSchedule(exercises[0].schedule, 'easy')]);
+  mocks.load.mockResolvedValue(data);
+  const view = render(<MemoryRouter><StudyPage /></MemoryRouter>);
+  expect(await screen.findByText('Tudo revisado por enquanto')).toBeVisible();
+  expect(screen.queryByRole('button', {name:'Avaliar one'})).toBeNull();
+  view.unmount();
+  render(<MemoryRouter><StudyPage /></MemoryRouter>);
+  expect(await screen.findByText('Tudo revisado por enquanto')).toBeVisible();
+});
+
+it('integrates a newly created card without leaving the empty session', async () => {
+  mocks.load.mockResolvedValue({...data, cards:[]});
+  render(<MemoryRouter><StudyPage /></MemoryRouter>);
+  await screen.findByText('Tudo revisado por enquanto');
+  await act(async () => { window.dispatchEvent(new Event('revystudy:cards-updated')); });
+  expect(await screen.findByRole('button', {name:'Avaliar one'})).toBeVisible();
 });

@@ -6,6 +6,7 @@ import { localDB, offlineQueue } from './offline-db';
 import { invalidateCache } from './storage';
 import { syncOfflineQueue } from './sync';
 import { getPinnedStats } from './pinned-stats';
+import { validSkillSchedule, scheduleId, type SkillSchedule } from './fsrs-scheduling';
 
 export const FULL_BACKUP_FORMAT = 'revystudy-full-backup';
 export const FULL_BACKUP_VERSION = 1;
@@ -38,6 +39,7 @@ export interface FullBackupManifest {
   deckAudios: BackupAudioRow[];
   embeddedMedia: EmbeddedMediaEntry[];
   dictationReviews?: DictationReview[];
+  skillSchedules?: SkillSchedule[];
   preferences: {
     pinnedStats: string[];
     lastStudySession: unknown;
@@ -178,6 +180,7 @@ export async function createFullBackup(): Promise<Blob> {
     deckAudios,
     embeddedMedia,
     dictationReviews: getDictationEvents(user.id),
+    skillSchedules: (await localDB.getSkillSchedules()).filter(row => row.user_id === user.id && cards.some(card => card.id === row.card_id)),
     preferences: {
       pinnedStats: getPinnedStats(),
       lastStudySession: safeLocalStorageJson('memora-last-session'),
@@ -208,6 +211,7 @@ export async function inspectFullBackup(file: File): Promise<FullBackupManifest>
     throw new Error('A conferência do backup falhou. Nenhum dado foi alterado.');
   }
   if (manifest.dictationReviews !== undefined && (!Array.isArray(manifest.dictationReviews) || manifest.dictationReviews.some(e => !validDictationReview(e) || !manifest.cards.some(c => c.id === e.card_id && c.deck_id === e.deck_id) || !manifest.decks.some(d => d.id === e.deck_id) || !['again','hard','good','easy','legacy'].includes(e.rating) || !Number.isFinite(Date.parse(e.reviewed_at)) || typeof e.answer !== 'string'))) throw new Error('Histórico de escrita inválido no backup.');
+  if (manifest.skillSchedules !== undefined && (!Array.isArray(manifest.skillSchedules) || manifest.skillSchedules.some(row => !validSkillSchedule(row) || !manifest.cards.some(card => card.id === row.card_id && card.deck_id === row.deck_id)))) throw new Error('Agendamento FSRS inválido no backup.');
   return manifest;
 }
 
@@ -322,7 +326,15 @@ export async function restoreFullBackup(file: File, mode: RestoreMode) {
     localStorage.setItem('memora-last-session', JSON.stringify(manifest.preferences.lastStudySession));
   }
   localStorage.setItem('revystudy-last-restore', new Date().toISOString());
+  const schedules = mode === 'merge' ? await localDB.getSkillSchedules() : [];
+  for (const row of manifest.skillSchedules || []) {
+    const restored = {...row, user_id:user.id, id:scheduleId(user.id,row.card_id,row.skill)};
+    const index = schedules.findIndex(item => item.id === restored.id);
+    if (index < 0) schedules.push(restored);
+    else if (Date.parse(restored.updated_at) > Date.parse(schedules[index].updated_at)) schedules[index] = restored;
+  }
   await localDB.clearForFullRestore();
+  await localDB.saveSkillSchedules(schedules);
   invalidateCache();
 
   return manifest.counts;

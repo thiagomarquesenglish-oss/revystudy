@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Deck, Flashcard, CardStatus } from './types';
 import { localDB, offlineQueue } from './offline-db';
 import { persistMutations, syncOfflineQueue, announceSyncState } from './sync';
-import { processReview } from './srs';
+import { answerSchedule, loadScheduledCards, availableAt, type SkillSchedule } from './fsrs-scheduling';
 import { exerciseInfo, type ExerciseMode } from './adaptive-study';
 import type { Rating } from './types';
 import { localStudyDate } from './streak';
@@ -1029,19 +1029,29 @@ export async function importLearningCards(deckId:string,items:Array<{front:strin
 }
 
 /** Persist schedule and the actual modality before moving to another exercise. */
-export async function saveLearningReview(card:Flashcard,rating:Rating,mode?:ExerciseMode):Promise<Flashcard>{
+export async function saveLearningReview(card:Flashcard,rating:Rating,mode?:ExerciseMode, expectedSchedule?: SkillSchedule):Promise<Flashcard & { schedule: SkillSchedule }>{
   const userId=await getCachedUserId(),now=new Date().toISOString();
   // A card can be marked or edited from its options while the session holds
   // an older copy. Preserve the current content/mark when saving the review.
   const latest=(await getCardsByDeck(card.deckId)).find(item=>item.id===card.id)||card;
-  const updated={...card,...latest,...processReview(card,rating),updatedAt:now,progressUpdatedAt:now};
-  const review={id:crypto.randomUUID(),card_id:card.id,user_id:userId,rating,reviewed_at:now,skill:mode?exerciseInfo[mode].skill:null,exercise_mode:mode||null};
+  const schedules = await loadScheduledCards([latest], userId);
+  const selected = schedules.find(item => expectedSchedule ? item.schedule.id === expectedSchedule.id : item.schedule.skill === (mode ? exerciseInfo[mode].skill : card.cardType === 'typing' ? 'writing' : 'comprehension'));
+  if (!selected) throw new Error('Agendamento não encontrado. Reabra o estudo.');
+  if (expectedSchedule && (selected.schedule.updated_at !== expectedSchedule.updated_at || Date.parse(selected.schedule.memory.due) > Date.now())) throw new Error('Este exercício já foi respondido ou ainda não venceu. Reabra o estudo.');
+  const schedule = answerSchedule(selected.schedule, rating, new Date(now));
+  const next = schedules.map(item => item.sessionKey === selected.sessionKey ? {...item, schedule} : item);
+  const dueDate = new Date(Math.min(...next.map(item => availableAt(item, next, new Date(now))))).toISOString();
+  const status = (['new','learning','review','relearning'] as const)[schedule.memory.state];
+  const updated={...card,...latest,status,dueDate,interval:schedule.memory.scheduled_days,
+    reviewCount:latest.reviewCount+1,lapseCount:latest.lapseCount+(rating==='again'&&selected.schedule.memory.state===2?1:0),
+    updatedAt:now,progressUpdatedAt:now};
+  const review={id:crypto.randomUUID(),card_id:card.id,user_id:userId,rating,reviewed_at:now,skill:schedule.skill,exercise_mode:mode||null};
   const row=cardToRow(updated,userId);
-  await localDB.commitLearningReview(row,review);
+  await localDB.commitLearningReview(row,review,{...schedule},selected.schedule.updated_at);
   if(cache.cards)cache.cards=cache.cards.map(c=>c.id===card.id?updated:c);
   invalidateCache('reviewHistory');
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('revystudy:learning-updated'));
-  return updated;
+  return {...updated,schedule};
 }
 
 export interface CardReviewRow { id:string;card_id:string;rating:string;user_id:string;reviewed_at:string;skill:string|null;exercise_mode:string|null }

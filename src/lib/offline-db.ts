@@ -5,7 +5,7 @@
  */
 
 const DB_NAME = 'revystudy-offline';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export interface DeckSyncState {
   deckId: string;
@@ -44,9 +44,14 @@ function openDB(): Promise<IDBDatabase> {
       if (audiosStore && !audiosStore.indexNames.contains('deck_id')) audiosStore.createIndex('deck_id', 'deck_id');
       if (!db.objectStoreNames.contains('review_history')) db.createObjectStore('review_history', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('queue')) db.createObjectStore('queue', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('skill_schedules')) db.createObjectStore('skill_schedules', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('deck_sync_state')) db.createObjectStore('deck_sync_state', { keyPath: 'deckId' });
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      req.result.onversionchange = () => { req.result.close(); dbPromise = null; };
+      resolve(req.result);
+    };
+    req.onblocked = () => { dbPromise = null; reject(new Error('Feche outras abas do RevyStudy e tente novamente para atualizar o armazenamento.')); };
     req.onerror = () => reject(req.error);
   });
   return dbPromise;
@@ -214,13 +219,25 @@ export const localDB = {
       tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('Lote não salvo.'));
     });
   },
-  async commitLearningReview(card: Record<string, unknown>, review: Record<string, unknown>): Promise<void> {
+  async commitLearningReview(card: Record<string, unknown>, review: Record<string, unknown>, schedule?: Record<string, unknown>, expectedRevision?: string): Promise<void> {
     const db=await openDB();
     return new Promise((resolve,reject)=>{
-      const tx=db.transaction(['cards','review_history'],'readwrite');
-      try {
-      tx.objectStore('cards').put(card);tx.objectStore('review_history').put(review);
-      } catch(error) { tx.abort();reject(error);return; }
+      const tx=db.transaction(['cards','review_history','skill_schedules'],'readwrite');
+      const write = () => {
+        try {
+          tx.objectStore('cards').put(card);tx.objectStore('review_history').put(review);
+          if (schedule) tx.objectStore('skill_schedules').put(schedule);
+        } catch(error) { tx.abort();reject(error); }
+      };
+      if (schedule && expectedRevision) {
+        const request = tx.objectStore('skill_schedules').get(schedule.id as string);
+        request.onsuccess = () => {
+          if (request.result?.updated_at !== expectedRevision) {
+            tx.abort(); reject(new Error('Este exercício já foi atualizado. Reabra o estudo.')); return;
+          }
+          write();
+        };
+      } else write();
       tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('Revisão não salva.'));
     });
   },
@@ -269,6 +286,26 @@ export const localDB = {
   deleteDeckSyncState: (deckId: string) => deleteFromStore('deck_sync_state', deckId),
 
   // Review history
+  getSkillSchedules: () => getAllFromStore<any>('skill_schedules'),
+  saveSkillSchedules: (rows: any[]) => bulkPut('skill_schedules', rows),
+  async initializeSkillSchedules(rows: any[]): Promise<any[]> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('skill_schedules', 'readwrite');
+      const store = tx.objectStore('skill_schedules');
+      const result: any[] = [];
+      for (const row of rows) {
+        const request = store.get(row.id);
+        request.onsuccess = () => {
+          if (!request.result) store.add(row);
+          result.push(request.result || row);
+        };
+      }
+      tx.oncomplete = () => resolve(result);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error('Agendamento não salvo.'));
+    });
+  },
   getReviewHistory: () => getAllFromStore<any>('review_history'),
   saveReview: (review: any) => putInStore('review_history', review),
   replaceReviewHistory: async (reviews: any[]) => {
@@ -280,7 +317,7 @@ export const localDB = {
   // restored cloud snapshot. The next screen load rebuilds these stores from
   // the restored data.
   clearForFullRestore: async () => {
-    for (const store of ['decks', 'cards', 'deck_audios', 'review_history', 'queue', 'deck_sync_state']) {
+    for (const store of ['decks', 'cards', 'deck_audios', 'review_history', 'queue', 'deck_sync_state', 'skill_schedules']) {
       await clearStore(store);
     }
   },

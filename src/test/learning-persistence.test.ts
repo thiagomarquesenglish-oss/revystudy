@@ -36,3 +36,12 @@ it("records review and schedule locally without creating cloud mutations", async
   expect(await localDB.getReviewHistory()).toEqual([review]);
   expect(await offlineQueue.getAll()).toEqual([]);
 });
+it('commits FSRS atomically and rejects stale reviews from another tab', async () => {
+  await localDB.saveSkillSchedules([{id:'schedule', updated_at:'v1'}]);
+  await localDB.commitLearningReview({id:'one'}, {id:'first'}, {id:'schedule', updated_at:'v2'}, 'v1');
+  await expect(localDB.commitLearningReview({id:'one', wrong:true}, {id:'second'}, {id:'schedule', updated_at:'v3'}, 'v1')).rejects.toThrow();
+  expect(await localDB.getCard('one')).toEqual({id:'one'});
+  expect(await localDB.getReviewHistory()).toEqual([{id:'first'}]);
+  expect(await localDB.getSkillSchedules()).toEqual([{id:'schedule', updated_at:'v2'}]);
+  expect(await localDB.initializeSkillSchedules([{id:'schedule',updated_at:'old'}])).toEqual([{id:'schedule',updated_at:'v2'}]);
+});

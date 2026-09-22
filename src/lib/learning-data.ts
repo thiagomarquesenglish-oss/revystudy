@@ -123,5 +123,5 @@ export async function loadLearningData() {
     });
   }
   events.sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
-  return { cards, decks, events, offline, manualStage };
+  return { cards, decks, events, offline, manualStage, userId };
 }
