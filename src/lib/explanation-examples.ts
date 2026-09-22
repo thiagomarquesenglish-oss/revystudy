@@ -1,5 +1,22 @@
 export interface ExplanationExample { english: string; portuguese: string }
-export const exampleKey = (text: string) => text.trim().toLocaleLowerCase('en').replace(/[’‘]/g, "'").replace(/\s+/g, ' ');
+export const exampleKey = (text: string) => text.trim().toLocaleLowerCase('en').replace(/[’‘]/g, "'").replace(/[.!?,;:"“”]+/g, '').replace(/\s+/g, ' ');
+export async function fiveNewExamples(existing: ExplanationExample[], excluded: string[], generate: (previous: string[]) => Promise<ExplanationExample[]>) {
+  const seen = new Set(excluded.map(exampleKey));
+  const result: ExplanationExample[] = [];
+  const collect = (items: ExplanationExample[]) => {
+    for (const item of items) {
+      const key = exampleKey(item.english);
+      if (!key || !item.portuguese.trim() || seen.has(key)) continue;
+      seen.add(key); result.push(item);
+    }
+  };
+  collect(existing);
+  for (let attempt = 0; result.length < 5 && attempt < 3; attempt++) {
+    collect(await generate([...excluded, ...existing.map(item=>item.english), ...result.map(item=>item.english)]));
+  }
+  if (result.length < 5) throw new Error('A IA não forneceu cinco exemplos diferentes. Tente novamente.');
+  return result.slice(0,5);
+}
 export function splitExplanation(text: string) {
   const examples: ExplanationExample[] = [];
   const seen = new Set<string>();
