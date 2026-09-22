@@ -137,8 +137,8 @@ async function getAllByDeck(storeName: string, deckId: string): Promise<any[]> {
 function removeEmbeddedMediaPayload(html: unknown): string {
   if (typeof html !== 'string') return '';
   return html
-    .replace(/\s(?:src|data-src)=(['"])data:[\s\S]*?\1/gi, ' src=""')
-    .replace(/\s(?:src|data-src)=data:[^\s>]+/gi, ' src=""');
+    .replace(/\s(src|data-src)=(['"])data:[\s\S]*?\2/gi, ' $1="" data-embedded-media="true"')
+    .replace(/\s(src|data-src)=data:[^\s>]+/gi, ' $1="" data-embedded-media="true"');
 }
 
 async function getCardSummaries(): Promise<any[]> {

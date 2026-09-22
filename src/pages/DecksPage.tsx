@@ -1,4 +1,5 @@
 import LibraryManagePage from './LibraryManagePage';
+import { matchesCardMedia, mediaFilters, type CardMediaFilter } from '@/lib/card-media-filter';
 import { toast } from 'sonner';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -92,6 +93,7 @@ export default function DecksPage() {
     if (searchParams.get('flagged') === '1') setOnlyFlagged(true);
   }, [searchParams]);
   const [search, setSearch] = useState('');
+  const [mediaFilter, setMediaFilter] = useState<CardMediaFilter>('all');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [actionCard, setActionCard] = useState<Flashcard | null>(null);
 
@@ -123,8 +125,8 @@ export default function DecksPage() {
         stripHtml(c.back).toLowerCase().includes(q)
       );
     }
-    return result.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [cards, selectedDeck, search, onlyFlagged, searchParams]);
+    return result.filter(card => matchesCardMedia(card, mediaFilter)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }, [cards, selectedDeck, search, onlyFlagged, searchParams, mediaFilter]);
 
   const flaggedCount = useMemo(() => cards.filter(c => c.flagged && c.deckId === searchParams.get('deck')).length, [cards, searchParams]);
 
@@ -227,6 +229,12 @@ export default function DecksPage() {
 
         </div>
 
+        <label className="block space-y-2">
+          <span className="text-sm text-muted-foreground">Filtrar por mídia</span>
+          <select value={mediaFilter} onChange={event=>setMediaFilter(event.target.value as CardMediaFilter)} className="w-full rounded-xl border border-border bg-card px-3 py-3 text-sm text-foreground">
+            {mediaFilters.map(([value,label])=><option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
         <p className="text-xs text-muted-foreground">{filteredCards.length} {filteredCards.length === 1 ? 'situação' : 'situações'}</p>
 
         {filteredCards.length === 0 ? (
