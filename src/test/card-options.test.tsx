@@ -31,6 +31,15 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+it('shows only a centered icon while retaining an accessible options label', () => {
+  mount();
+  const button = screen.getByRole('button', { name: 'Opções' });
+  expect(button.textContent).toBe('');
+  expect(button).toHaveClass('items-center', 'justify-center', 'h-11', 'w-11');
+  fireEvent.click(button);
+  expect(screen.getByRole('dialog')).toBeTruthy();
+});
+
 it('saves blur only for the selected card and can restore it', async () => {
   mount(); fireEvent.click(screen.getByRole('button', { name: 'Opções' }));
   fireEvent.click(screen.getByRole('switch', { name: /Ocultar português/ }));

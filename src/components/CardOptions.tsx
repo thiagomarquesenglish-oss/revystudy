@@ -30,7 +30,7 @@ export default function CardOptions({ card, sentence, portuguese, level }: {
   const hidden = useBlurPortuguese(card.id);
   const row = 'w-full min-h-12 rounded-xl bg-secondary px-4 py-3 text-left';
   return <div onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
-    <button type="button" className="inline-flex min-h-11 items-center gap-2 px-4 text-sm text-muted-foreground" onClick={() => { setOpen(true); setConfirmDelete(false); }}><MoreHorizontal className="h-5 w-5" />Opções</button>
+    <button type="button" aria-label="Opções" className="inline-flex h-11 w-11 items-center justify-center text-muted-foreground" onClick={() => { setOpen(true); setConfirmDelete(false); }}><MoreHorizontal aria-hidden="true" className="h-5 w-5" /></button>
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerContent>
         <DrawerHeader><DrawerTitle>{confirmDelete ? 'Excluir cartão?' : 'Opções do cartão'}</DrawerTitle></DrawerHeader>
