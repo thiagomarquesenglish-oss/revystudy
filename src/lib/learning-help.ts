@@ -1,4 +1,15 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { ExplanationExample } from './explanation-examples';
+
+export async function requestMoreExamples(sentence: string, selectedText: string, previous: string[], level: string): Promise<ExplanationExample[]> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sua sessão expirou.');
+  const response = await fetch('/api/explain', {method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${session.access_token}`}, body:JSON.stringify({mode:'examples',sentence,selectedText,previous,level})});
+  const payload = await response.json().catch(()=>({}));
+  if (!response.ok) throw new Error(payload.error || 'Não foi possível gerar exemplos.');
+  if (!Array.isArray(payload.examples)) throw new Error('Exemplos inválidos. Tente novamente.');
+  return payload.examples;
+}
 
 export interface LearningExplanation {
   id: string;
