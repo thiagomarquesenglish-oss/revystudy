@@ -11,6 +11,7 @@ export type Memory = Omit<MemoryCard, 'due' | 'last_review'> & { due: string; la
 export interface SkillSchedule {
   id: string; user_id: string; card_id: string; deck_id: string; skill: LearningSkill;
   version: 1; memory: Memory; updated_at: string;
+  traditional?: { easeFactor: number; step: number };
 }
 export type ScheduledCard = Flashcard & { sessionKey: string; sessionMode?: ExerciseMode; schedule: SkillSchedule };
 const serialize = (card: MemoryCard): Memory => ({ ...card, due: card.due.toISOString(), last_review: card.last_review?.toISOString() });
@@ -48,12 +49,47 @@ export function migrateSchedule(card: Flashcard, userId: string, skill: Learning
 }
 
 export function answerSchedule(schedule: SkillSchedule, rating: Rating, now = new Date()): SkillSchedule {
-  const result = scheduler.next(schedule.memory, now, grades[rating]).card;
-  // Reviews use study days; short learning steps keep their exact timestamp.
-  if (result.state === State.Review) {
-    const due = studyDayStart(now); due.setDate(due.getDate() + Math.max(1, result.scheduled_days)); result.due = due;
+  const old = schedule.memory;
+  const memory = {...old, reps:old.reps+1, last_review:now.toISOString()};
+  let easeFactor = schedule.traditional?.easeFactor ?? 2.5;
+  let step = schedule.traditional?.step ?? (old.state === State.Learning && old.learning_steps > 0 ? 1 : 0);
+  const days = (interval: number) => {
+    const count = Math.min(36500, Math.max(1, Math.round(interval)));
+    const due = studyDayStart(now); due.setDate(due.getDate() + count);
+    memory.state = State.Review; memory.scheduled_days = count; memory.due = due.toISOString(); step = 0;
+  };
+  const minutes = (delay: number, state: State) => {
+    memory.state = state; memory.due = new Date(now.getTime()+delay*60000).toISOString();
+  };
+  if (old.state === State.Review) {
+    const interval = Math.max(1, old.scheduled_days);
+    const dueDay = studyDayStart(new Date(old.due));
+    const today = studyDayStart(now);
+    // Calendar days, not 24h units (DST may change the length of a day).
+    const serial = (date: Date) => Date.UTC(date.getFullYear(),date.getMonth(),date.getDate())/86400000;
+    const late = Math.max(0, serial(today)-serial(dueDay));
+    const hard = Math.max(interval+1, Math.round(interval*1.2));
+    const good = Math.max(hard+1, Math.round((interval+late/2)*easeFactor));
+    const easy = Math.max(good+1, Math.round((interval+late)*easeFactor*1.3));
+    if (rating === 'again') {
+      easeFactor = Math.max(1.3,easeFactor-.2); memory.lapses++; memory.scheduled_days=1; step=0; minutes(10,State.Relearning);
+    } else {
+      days(rating === 'hard' ? hard : rating === 'good' ? good : easy);
+      easeFactor = Math.max(1.3,easeFactor+(rating === 'hard' ? -.15 : rating === 'easy' ? .15 : 0));
+    }
+  } else if (old.state === State.Relearning) {
+    if (rating === 'again') minutes(10,State.Relearning);
+    else if (rating === 'hard') minutes(15,State.Relearning);
+    else days(rating === 'easy' ? Math.max(2,old.scheduled_days+1) : old.scheduled_days);
+  } else {
+    if (rating === 'easy') days(4);
+    else if (rating === 'again') { step=0; minutes(1,State.Learning); }
+    else if (rating === 'hard') minutes(step===0 ? 5.5 : 10,State.Learning);
+    else if (step===0) { step=1; minutes(10,State.Learning); }
+    else days(1);
   }
-  return { ...schedule, memory: serialize(result), updated_at: now.toISOString() };
+  memory.learning_steps=step;
+  return {...schedule, memory, traditional:{easeFactor,step}, updated_at:now.toISOString()};
 }
 
 export async function loadScheduledCards(cards: Flashcard[], userId: string): Promise<ScheduledCard[]> {
@@ -75,10 +111,8 @@ export async function loadScheduledCards(cards: Flashcard[], userId: string): Pr
 }
 
 export function availableAt(item: ScheduledCard, all: ScheduledCard[], now: Date): number {
-  const today = studyDayStart(now).getTime();
-  const sibling = all.some(other => other.id === item.id && other.sessionKey !== item.sessionKey &&
-    Date.parse(other.schedule.memory.last_review || '') >= today);
-  return Math.max(Date.parse(item.schedule.memory.due), sibling ? nextStudyDay(now).getTime() : 0);
+  // Other skills must never postpone or advance this exercise.
+  return Date.parse(item.schedule.memory.due);
 }
 
 export function pickDueCard(all: ScheduledCard[], now = new Date(), lastSkill?: LearningSkill): ScheduledCard | null {
@@ -96,5 +130,6 @@ export function validSkillSchedule(row: any): row is SkillSchedule {
     !!row.memory && Number.isFinite(Date.parse(row.memory.due)) && [0,1,2,3].includes(row.memory.state) &&
     ['stability','difficulty','elapsed_days','scheduled_days','learning_steps','reps','lapses'].every(key => Number.isFinite(row.memory[key]) && row.memory[key] >= 0) &&
     Number.isFinite(Date.parse(row.updated_at)) &&
-    (!row.memory.last_review || Number.isFinite(Date.parse(row.memory.last_review)));
+    (!row.memory.last_review || Number.isFinite(Date.parse(row.memory.last_review))) &&
+    (!row.traditional || (Number.isFinite(row.traditional.easeFactor) && row.traditional.easeFactor >= 1.3 && [0,1].includes(row.traditional.step)));
 }

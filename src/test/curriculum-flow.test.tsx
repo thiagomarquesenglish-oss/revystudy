@@ -118,6 +118,8 @@ it("selects a single available exercise without images or audio", () => {
   );
 });
 it("keeps the current exercise on failure and advances only after durable save", async () => {
+  const exercises = await loadScheduledCards([card], data.userId);
+  await localDB.saveSkillSchedules(exercises.filter(item=>item.schedule.skill!=='comprehension').map(item=>answerSchedule(item.schedule,'easy')));
   mocks.load.mockResolvedValue(data);
   mocks.save.mockRejectedValueOnce(new Error("storage full"));
   render(
@@ -190,9 +192,9 @@ it("requires a valid preview and explicit batch approval before importing", asyn
   expect(mocks.import.mock.calls[0][1][0].front).toContain("data-learning");
 });
 
-it('does not show an Easy exercise or its siblings after reopening study', async () => {
+it('does not show exercises rated Easy after reopening study', async () => {
   const exercises = await loadScheduledCards([card], data.userId);
-  await localDB.saveSkillSchedules([answerSchedule(exercises[0].schedule, 'easy')]);
+  await localDB.saveSkillSchedules(exercises.map(item=>answerSchedule(item.schedule, 'easy')));
   mocks.load.mockResolvedValue(data);
   const view = render(<MemoryRouter><StudyPage /></MemoryRouter>);
   expect(await screen.findByText('Tudo revisado por enquanto')).toBeVisible();

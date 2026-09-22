@@ -41,14 +41,50 @@ it('Again returns at one minute for a new exercise',()=>{
   expect(pickDueCard([updated],new Date(now.getTime()+59999))).toBeNull();
   expect(pickDueCard([updated],new Date(now.getTime()+60000))?.id).toBe('a');
 });
-it('buries siblings for the study day without changing their memory',()=>{
+it('leaves other skills eligible at their own due time',()=>{
   const reading=item(); const speaking=item(card,'production');
   const updated={...reading,schedule:answerSchedule(reading.schedule,'easy',now)};
   const original=JSON.stringify(speaking.schedule);
-  expect(pickDueCard([updated,speaking],now)).toBeNull();
-  expect(availableAt(speaking,[updated,speaking],now)).toBe(nextStudyDay(now).getTime());
+  expect(pickDueCard([updated,speaking],now)?.sessionKey).toBe(speaking.sessionKey);
+  expect(availableAt(speaking,[updated,speaking],now)).toBe(now.getTime());
   expect(pickDueCard([updated,speaking],nextStudyDay(now))?.sessionKey).toBe(speaking.sessionKey);
   expect(JSON.stringify(speaking.schedule)).toBe(original);
+});
+
+it('uses 330 seconds for Hard, two Good steps, and four study days for Easy',()=>{
+  const initial=item().schedule;
+  expect(Date.parse(answerSchedule(initial,'hard',now).memory.due)-now.getTime()).toBe(330000);
+  const good=answerSchedule(initial,'good',now);
+  const graduated=answerSchedule(good,'good',new Date(good.memory.due));
+  expect(graduated.memory.state).toBe(State.Review);
+  expect(graduated.memory.scheduled_days).toBe(1);
+  expect(answerSchedule(initial,'easy',now).memory.scheduled_days).toBe(4);
+});
+it('uses traditional review multipliers and updates each exercise ease',()=>{
+  const initial=item().schedule;
+  const review={...initial,memory:{...initial.memory,state:State.Review,scheduled_days:10},traditional:{easeFactor:2.5,step:0}};
+  expect(answerSchedule(review,'hard',now).memory.scheduled_days).toBe(12);
+  expect(answerSchedule(review,'good',now).memory.scheduled_days).toBe(25);
+  expect(answerSchedule(review,'easy',now).memory.scheduled_days).toBe(33);
+  expect(answerSchedule(review,'hard',now).traditional?.easeFactor).toBe(2.35);
+  const failed=answerSchedule(review,'again',now);
+  expect(failed.memory.state).toBe(State.Relearning);
+  expect(Date.parse(failed.memory.due)-now.getTime()).toBe(600000);
+  expect(failed.traditional?.easeFactor).toBe(2.3);
+});
+it('does not let an Easy speaking answer delay a failed writing exercise',()=>{
+  const writing=item(card,'writing'), speaking=item(card,'production');
+  writing.schedule=answerSchedule(writing.schedule,'again',now);
+  speaking.schedule=answerSchedule(speaking.schedule,'easy',now);
+  expect(pickDueCard([writing,speaking],new Date(now.getTime()+60000))?.sessionKey).toBe(writing.sessionKey);
+});
+it('credits overdue days and never lowers ease below 1.3',()=>{
+  const initial=item().schedule;
+  const due=new Date(now); due.setDate(due.getDate()-4);
+  const review={...initial,memory:{...initial.memory,due:due.toISOString(),state:State.Review,scheduled_days:10},traditional:{easeFactor:2.5,step:0}};
+  expect(answerSchedule(review,'good',now).memory.scheduled_days).toBe(30);
+  expect(answerSchedule(review,'easy',now).memory.scheduled_days).toBe(46);
+  expect(answerSchedule({...review,traditional:{easeFactor:1.3,step:0}},'again',now).traditional?.easeFactor).toBe(1.3);
 });
 it('preserves future legacy due dates for every skill during migration',async()=>{
   const due='2030-01-01T12:00:00.000Z';

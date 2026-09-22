@@ -1,4 +1,14 @@
-# Time-based scheduling (1.4.0)
+# Time-based scheduling (1.5.0)
+
+## Current behavior
+
+Each skill retains its own persistent schedule, but new answers now follow traditional Anki-style scheduling instead of FSRS. New/learning: Again 1 minute, Hard 5m30s on the first step (10m on the second), Good 10m then 1 study day, Easy 4 study days. Reviews: Hard x1.2, Good x ease, Easy x ease x1.3, with overdue credit, rounded days and ordered intervals. Ease starts at 2.5, minimum 1.3, changes -0.2/-0.15/0/+0.15. Lapses relearn at 10 minutes with a 1-day reset interval. Maximum 36500 days; day rollover at 04:00 local. No random fuzz in this implementation.
+
+No sibling burying: a failed writing exercise returns at its own due time even if speaking was rated Easy. Variations of visual presentation within the same skill share that skill's record, as before. Correct dictation now offers all four ratings; incorrect dictation records Again.
+
+Existing due dates and history are not reset. FSRS is retained only for reconstructing legacy histories with missing schedules, not for scheduling new answers. The optional `traditional` field stores independent ease and step information and is included in full backups. On the first traditional answer, an old FSRS record starts with ease 2.5 and its current learning step/state. Content sync and free practice are unchanged.
+
+## Historical implementation (1.4.0)
 
 Normal study uses `ts-fsrs` 5.4.2, the TypeScript FSRS implementation. This is not a port of the entire Anki scheduler or its collection format.
 
