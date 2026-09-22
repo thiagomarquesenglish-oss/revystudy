@@ -1,3 +1,4 @@
+import 'fake-indexeddb/auto';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
@@ -23,7 +24,8 @@ function Probe() {
 function mount() {
   return render(<MemoryRouter><CardOptions card={card} sentence="Try again." portuguese="Tente novamente." /><Probe /></MemoryRouter>);
 }
-beforeEach(() => {
+beforeEach(async () => {
+  await setBlurPortuguese('one', false);
   localStorage.clear(); vi.clearAllMocks();
   storage.getCardsByDeck.mockResolvedValue([card]);
   storage.updateCard.mockResolvedValue(undefined);
@@ -50,9 +52,20 @@ it('saves blur only for the selected card and can restore it', async () => {
   await waitFor(() => expect(screen.getByText('/|false')).toBeTruthy());
 });
 
-it('restores a saved preference on mounting', () => {
-  setBlurPortuguese('one', true); mount();
+it('restores a saved preference on mounting', async () => {
+  await setBlurPortuguese('one', true); mount();
   expect(screen.getByText('/|true')).toBeTruthy();
+});
+
+it('restores the durable preference even if the browser copy was reset', async () => {
+  await setBlurPortuguese('one', true);
+  localStorage.setItem('revystudy:blur-portuguese:one', 'false');
+  const view = mount();
+  await waitFor(() => expect(screen.getByText('/|true')).toBeTruthy());
+  view.unmount();
+  await setBlurPortuguese('one', false);
+  mount();
+  await waitFor(() => expect(screen.getByText('/|false')).toBeTruthy());
 });
 
 it('opens explanation separately from the options drawer', () => {

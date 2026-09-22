@@ -55,8 +55,10 @@ export default function CardOptions({ card, sentence, portuguese, level }: {
             <button type="button" className={row} onClick={() => { setOpen(false); navigate(`/card/${card.id}/edit`); }}>Editar cartão</button>
             <div className={`${row} flex items-center justify-between gap-4`}>
               <label htmlFor={`blur-${card.id}`}><span className="block">Ocultar português</span><span className="block text-xs text-muted-foreground">Desfocar neste cartão, neste aparelho</span></label>
-              <Switch id={`blur-${card.id}`} checked={hidden} disabled={!portuguese} onCheckedChange={value => {
-                try { setBlurPortuguese(card.id, value); } catch { toast.error('Não foi possível salvar a preferência.'); }
+              <Switch id={`blur-${card.id}`} checked={hidden} disabled={!portuguese||busy} onCheckedChange={async value => {
+                setBusy(true);
+                try { await setBlurPortuguese(card.id, value); } catch { toast.error('Não foi possível salvar a preferência.'); }
+                finally { setBusy(false); }
               }} />
             </div>
             <button type="button" className={`${row} text-destructive`} onClick={() => setConfirmDelete(true)}>Excluir cartão</button>

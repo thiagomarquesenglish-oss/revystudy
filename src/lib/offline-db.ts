@@ -5,7 +5,7 @@
  */
 
 const DB_NAME = 'revystudy-offline';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 export interface DeckSyncState {
   deckId: string;
@@ -45,6 +45,7 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains('review_history')) db.createObjectStore('review_history', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('queue')) db.createObjectStore('queue', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('skill_schedules')) db.createObjectStore('skill_schedules', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('card_display_preferences')) db.createObjectStore('card_display_preferences', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('deck_sync_state')) db.createObjectStore('deck_sync_state', { keyPath: 'deckId' });
     };
     req.onsuccess = () => {
@@ -287,6 +288,8 @@ export const localDB = {
 
   // Review history
   getSkillSchedules: () => getAllFromStore<any>('skill_schedules'),
+  getCardDisplayPreference: (id: string) => getFromStore<{id:string; hidden:boolean}>('card_display_preferences', id),
+  saveCardDisplayPreference: (id: string, hidden: boolean) => putInStore('card_display_preferences', {id, hidden}),
   saveSkillSchedules: (rows: any[]) => bulkPut('skill_schedules', rows),
   async initializeSkillSchedules(rows: any[]): Promise<any[]> {
     const db = await openDB();
