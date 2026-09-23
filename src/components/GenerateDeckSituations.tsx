@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from './ui/drawer';
@@ -49,13 +49,13 @@ export default function GenerateDeckSituations({deckId, onSaved}: {deckId: strin
         <div className="overflow-y-auto px-4 pb-6 space-y-4">
           <p className="text-sm text-muted-foreground">10 situações puxando o gancho do seu baralho e 10 com vocabulário novo. Em um baralho vazio, serão 20 situações iniciais. Confira antes de adicionar; imagens e áudios ficam para você anexar.</p>
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-          {!!items.length && <div className="space-y-3">{items.map(item => <article key={item.english} className="rounded-xl bg-secondary p-4 space-y-2">
+          {!!items.length && <div className="space-y-3">{items.map(item => <article key={item.english} className="relative rounded-xl bg-secondary p-4 pr-14 space-y-2">
             {!saved.has(item.english)&&<label className="flex items-center gap-2 text-sm"><input type="checkbox" aria-label={`Selecionar: ${item.english}`} checked={selected.has(item.english)} disabled={!!busy} onChange={()=>setSelected(old=>{const next=new Set(old);if(!next.delete(item.english))next.add(item.english);return next;})}/>Selecionar cartão</label>}
             <p className="text-xs text-muted-foreground">{item.kind === 'bridge' ? `Gancho: ${item.anchor}` : `Vocabulário novo: ${item.newVocabulary}`}</p>
             <p lang="en" className="font-medium">{item.english}</p><p>{item.portuguese}</p><p className="text-sm text-muted-foreground">{item.imagePrompt}</p>
             {item.kind === 'bridge' && <p className="text-xs text-muted-foreground">A partir de: {item.sourceEnglish}</p>}
             {saved.has(item.english) && <p className="text-xs text-primary">Adicionado</p>}
-            {!saved.has(item.english)&&<Button variant="outline" disabled={!!busy} onClick={()=>replace(item)}>{busy===item.english?'Trocando…':'Trocar esta'}</Button>}
+            {!saved.has(item.english)&&<button type="button" aria-label="Trocar esta" title="Trocar sugestão" aria-busy={busy===item.english} disabled={!!busy} className="absolute right-1 top-1 !mt-0 flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-background/40 hover:text-foreground disabled:opacity-40" onClick={()=>replace(item)}><RefreshCw aria-hidden="true" className={`h-5 w-5 ${busy===item.english?'animate-spin':''}`}/></button>}
           </article>)}</div>}
           {items.length > saved.size && <><Button className="w-full" disabled={!!busy||!items.some(item=>selected.has(item.english)&&!saved.has(item.english))} onClick={()=>save()}>{busy === 'save' ? 'Adicionando…' : 'Adicionar selecionadas'}</Button><Button variant="secondary" className="w-full" disabled={!!busy} onClick={()=>save(true)}>Adicionar todas as restantes</Button></>}
           {(!items.length || saved.size === items.length) && <Button className="w-full" disabled={!!busy} onClick={generate}>{busy === 'generate' ? 'Analisando o baralho e gerando…' : items.length ? 'Gerar mais 20 situações' : 'Gerar agora'}</Button>}
