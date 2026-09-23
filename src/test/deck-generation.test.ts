@@ -1,5 +1,5 @@
 import {beforeEach, expect, it, vi} from 'vitest';
-import {deckGenerationPrompt, validateDeckGeneration, sceneRules} from '../../server/deck-generation.js';
+import {deckGenerationPrompt, replacementPrompt, validateDeckGeneration, sceneRules, simpleEnglishRules} from '../../server/deck-generation.js';
 import {deckRepertoire, generateDeckSituations, saveGeneratedSituations} from '@/lib/deck-generation';
 import {buildSituationHtml, readSituation} from '@/lib/situation';
 import type {Flashcard} from '@/lib/types';
@@ -7,6 +7,19 @@ const mocks = vi.hoisted(() => ({cards:vi.fn(), add:vi.fn(), session:vi.fn()}));
 vi.mock('@/lib/storage', () => ({getCardsByDeck:mocks.cards, addCard:mocks.add}));
 vi.mock('@/integrations/supabase/client', () => ({supabase:{auth:{getSession:mocks.session}}}));
 const previous = ['I need a table.'];
+it('uses the same short natural English rules for batches and replacements',()=>{
+  expect(deckGenerationPrompt(previous)).toContain(simpleEnglishRules);
+  expect(replacementPrompt(previous,'bridge',[])).toContain(simpleEnglishRules);
+  expect(simpleEnglishRules).toContain('UMA única ideia');
+});
+it('accepts nine words but rejects ten in a replacement and a batch',()=>{
+  const batch=items();
+  batch[0].english='I need a new table by the window today.';
+  expect(validateDeckGeneration({situations:batch},previous)).toHaveLength(20);
+  batch[0].english='I need a new table by the window today please.';
+  expect(()=>validateDeckGeneration({situations:batch},previous)).toThrow('9 palavras');
+  expect(()=>validateDeckGeneration({situations:[batch[0]]},previous,{kind:'bridge'})).toThrow('9 palavras');
+});
 it('orders repertoire by creation date without mutating cards',()=>{
   const cards=[{...buildSituationHtml({english:'Old',portuguese:'Antigo',context:'',mediaHtml:''}),createdAt:'2020'},{...buildSituationHtml({english:'Recent',portuguese:'Recente',context:'',mediaHtml:''}),createdAt:'2025'}] as Flashcard[];
   expect(deckRepertoire(cards)).toEqual(['Recent','Old']);expect(cards[0].createdAt).toBe('2020');
