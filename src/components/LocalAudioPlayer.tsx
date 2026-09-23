@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Loader2, Pause, Play } from 'lucide-react';
 import { resolveOfflineMediaUrl } from '@/lib/offline-media';
+import { supportsDecodedAudio } from '@/lib/local-audio-engine';
+import DecodedAudioPlayer from './DecodedAudioPlayer';
 
 export default function LocalAudioPlayer({ src, centered, autoPlay = true }: { src: string; centered?: boolean; autoPlay?: boolean }) {
+  if (supportsDecodedAudio()) return <DecodedAudioPlayer key={src} src={src} centered={centered} autoPlay={autoPlay}/>;
   // A source change gets a fresh lifecycle; pending work cannot play the previous card.
   return <Player key={src} src={src} centered={centered} autoPlay={autoPlay} />;
 }
