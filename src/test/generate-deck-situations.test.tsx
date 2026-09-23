@@ -14,7 +14,7 @@ it('previews twenty before saving, then allows the next batch',async()=>{
   await screen.findByText('Sentence 19');
   expect(mocks.generate).toHaveBeenCalledWith('deck');expect(mocks.save).not.toHaveBeenCalled();
   expect(screen.getAllByText('Gancho: Can I')).toHaveLength(10);
-  fireEvent.click(screen.getByRole('button',{name:'Adicionar situações ao baralho'}));
+  fireEvent.click(screen.getByRole('button',{name:'Adicionar selecionadas'}));
   await screen.findByRole('button',{name:'Gerar mais 20 situações'});
   expect(screen.getAllByText('Adicionado')).toHaveLength(20);expect(changed).toHaveBeenCalledOnce();
 });
@@ -28,7 +28,28 @@ it('keeps the preview available after partial saving fails',async()=>{
   mocks.save.mockImplementation(async(_deck,items,done)=>{done(items[0].english);throw new Error('fail');});
   render(<GenerateDeckSituations deckId="deck" onSaved={()=>{}}/>);
   fireEvent.click(screen.getByRole('button',{name:'Gerar 20 situações'}));fireEvent.click(screen.getByRole('button',{name:'Gerar agora'}));
-  fireEvent.click(await screen.findByRole('button',{name:'Adicionar situações ao baralho'}));
+  fireEvent.click(await screen.findByRole('button',{name:'Adicionar selecionadas'}));
   await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('não serão duplicados'));
   expect(screen.getByText('Sentence 19')).toBeInTheDocument();expect(screen.getByText('Adicionado')).toBeInTheDocument();
+});
+it('saves only selected suggestions and can add the remainder',async()=>{
+  render(<GenerateDeckSituations deckId="deck" onSaved={()=>{}}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Gerar 20 situações'}));fireEvent.click(screen.getByRole('button',{name:'Gerar agora'}));
+  fireEvent.click(await screen.findByRole('checkbox',{name:'Selecionar: Sentence 0'}));
+  fireEvent.click(screen.getByRole('button',{name:'Adicionar selecionadas'}));
+  await waitFor(()=>expect(screen.getAllByText('Adicionado')).toHaveLength(19));
+  expect(mocks.save.mock.calls[0][1]).toHaveLength(19);
+  fireEvent.click(screen.getByRole('button',{name:'Adicionar todas as restantes'}));
+  await waitFor(()=>expect(screen.getAllByText('Adicionado')).toHaveLength(20));
+  expect(mocks.save.mock.calls[1][1]).toEqual([items[0]]);
+});
+it('replaces only one suggestion and includes discarded history',async()=>{
+  render(<GenerateDeckSituations deckId="deck" onSaved={()=>{}}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Gerar 20 situações'}));fireEvent.click(screen.getByRole('button',{name:'Gerar agora'}));
+  await screen.findByText('Sentence 19');
+  mocks.generate.mockResolvedValue([{...items[0],english:'Replacement'}]);
+  fireEvent.click(screen.getAllByRole('button',{name:'Trocar esta'})[0]);
+  await screen.findByText('Replacement');
+  expect(screen.queryByText('Sentence 0')).toBeNull();expect(screen.getByText('Sentence 19')).toBeInTheDocument();
+  expect(mocks.generate.mock.calls[1][1]).toEqual({kind:'bridge',excluded:items.map(item=>item.english)});
 });

@@ -16,7 +16,7 @@ export interface GeneratedSituation {
 
 export function deckRepertoire(cards: Flashcard[]) {
   const phrases: string[] = [];
-  for (const card of cards) {
+  for (const card of [...cards].sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || ''))) {
     const situation = readSituation(card.front, card.back);
     if (situation) phrases.push(situation.english);
     else {
@@ -34,17 +34,17 @@ export function deckRepertoire(cards: Flashcard[]) {
   return [...new Map(phrases.filter(line => line.trim()).map(line => [exampleKey(line), line.trim()])).values()];
 }
 
-export async function generateDeckSituations(deckId: string): Promise<GeneratedSituation[]> {
+export async function generateDeckSituations(deckId: string, replacement?: {kind: 'bridge' | 'new'; excluded: string[]}): Promise<GeneratedSituation[]> {
   const previous = deckRepertoire(await getCardsByDeck(deckId));
   const {data:{session}} = await supabase.auth.getSession();
   if (!session) throw new Error('Sua sessão expirou.');
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 120000);
   try {
-    const response = await fetch('/api/explain', {method:'POST', signal:controller.signal, headers:{'Content-Type':'application/json', Authorization:`Bearer ${session.access_token}`}, body:JSON.stringify({mode:'deck-batch', previous})});
+    const response = await fetch('/api/explain', {method:'POST', signal:controller.signal, headers:{'Content-Type':'application/json', Authorization:`Bearer ${session.access_token}`}, body:JSON.stringify({mode:replacement ? 'deck-replace' : 'deck-batch', previous, ...replacement})});
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || 'Não foi possível gerar as situações.');
-    if (!Array.isArray(payload.situations) || payload.situations.length !== 20) throw new Error('A IA retornou uma leva incompleta. Tente novamente.');
+    if (!Array.isArray(payload.situations) || payload.situations.length !== (replacement ? 1 : 20)) throw new Error('A IA retornou uma leva incompleta. Tente novamente.');
     return payload.situations;
   } catch (error) {
     if (controller.signal.aborted) throw new Error('A IA demorou demais. Tente novamente. Nenhum cartão foi adicionado.');

@@ -9,21 +9,34 @@ export default function GenerateDeckSituations({deckId, onSaved}: {deckId: strin
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<GeneratedSituation[]>([]);
   const [saved, setSaved] = useState<Set<string>>(new Set());
-  const [busy, setBusy] = useState<'generate' | 'save' | ''>('');
+  const [busy, setBusy] = useState<string>('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const history = useRef<string[]>([]);
   const [error, setError] = useState('');
   const lock = useRef(false);
   const generate = async () => {
     if (lock.current) return;
     lock.current = true; setBusy('generate'); setError('');
-    try { setItems(await generateDeckSituations(deckId)); setSaved(new Set()); }
+    try { const fresh = await generateDeckSituations(deckId); setItems(fresh); setSaved(new Set()); setSelected(new Set(fresh.map(item=>item.english))); history.current=fresh.map(item=>item.english); }
     catch (error) { setError(error instanceof Error ? error.message : 'Não foi possível gerar.'); }
     finally { lock.current = false; setBusy(''); }
   };
-  const save = async () => {
+  const replace = async (item: GeneratedSituation) => {
+    if (lock.current || saved.has(item.english)) return;
+    lock.current=true; setBusy(item.english); setError('');
+    try {
+      const [fresh]=await generateDeckSituations(deckId,{kind:item.kind,excluded:history.current});
+      setItems(old=>old.map(value=>value.english===item.english?fresh:value));
+      history.current=[...history.current,fresh.english];
+      setSelected(old=>{const next=new Set(old);if(next.delete(item.english))next.add(fresh.english);return next;});
+    } catch(error){setError(error instanceof Error?error.message:'Não foi possível trocar.');}
+    finally{lock.current=false;setBusy('');}
+  };
+  const save = async (all = false) => {
     if (lock.current) return;
     lock.current = true; setBusy('save'); setError('');
     try {
-      await saveGeneratedSituations(deckId, items, english => setSaved(old => new Set([...old, english])));
+      await saveGeneratedSituations(deckId, items.filter(item=>!saved.has(item.english)&&(all||selected.has(item.english))), english => setSaved(old => new Set([...old, english])));
       toast.success('Situações adicionadas ao baralho.');
     } catch { setError('Não foi possível adicionar tudo. Tente novamente: os cartões já salvos não serão duplicados.'); }
     finally { onSaved(); lock.current = false; setBusy(''); }
@@ -37,15 +50,17 @@ export default function GenerateDeckSituations({deckId, onSaved}: {deckId: strin
           <p className="text-sm text-muted-foreground">10 situações puxando o gancho do seu baralho e 10 com vocabulário novo. Em um baralho vazio, serão 20 situações iniciais. Confira antes de adicionar; imagens e áudios ficam para você anexar.</p>
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
           {!!items.length && <div className="space-y-3">{items.map(item => <article key={item.english} className="rounded-xl bg-secondary p-4 space-y-2">
+            {!saved.has(item.english)&&<label className="flex items-center gap-2 text-sm"><input type="checkbox" aria-label={`Selecionar: ${item.english}`} checked={selected.has(item.english)} disabled={!!busy} onChange={()=>setSelected(old=>{const next=new Set(old);if(!next.delete(item.english))next.add(item.english);return next;})}/>Selecionar cartão</label>}
             <p className="text-xs text-muted-foreground">{item.kind === 'bridge' ? `Gancho: ${item.anchor}` : `Vocabulário novo: ${item.newVocabulary}`}</p>
             <p lang="en" className="font-medium">{item.english}</p><p>{item.portuguese}</p><p className="text-sm text-muted-foreground">{item.imagePrompt}</p>
             {item.kind === 'bridge' && <p className="text-xs text-muted-foreground">A partir de: {item.sourceEnglish}</p>}
             {saved.has(item.english) && <p className="text-xs text-primary">Adicionado</p>}
+            {!saved.has(item.english)&&<Button variant="outline" disabled={!!busy} onClick={()=>replace(item)}>{busy===item.english?'Trocando…':'Trocar esta'}</Button>}
           </article>)}</div>}
-          {items.length > saved.size && <Button className="w-full" disabled={!!busy} onClick={save}>{busy === 'save' ? 'Adicionando…' : 'Adicionar situações ao baralho'}</Button>}
+          {items.length > saved.size && <><Button className="w-full" disabled={!!busy||!items.some(item=>selected.has(item.english)&&!saved.has(item.english))} onClick={()=>save()}>{busy === 'save' ? 'Adicionando…' : 'Adicionar selecionadas'}</Button><Button variant="secondary" className="w-full" disabled={!!busy} onClick={()=>save(true)}>Adicionar todas as restantes</Button></>}
           {(!items.length || saved.size === items.length) && <Button className="w-full" disabled={!!busy} onClick={generate}>{busy === 'generate' ? 'Analisando o baralho e gerando…' : items.length ? 'Gerar mais 20 situações' : 'Gerar agora'}</Button>}
-          {!!items.length && !saved.size && <Button variant="secondary" className="w-full" disabled={!!busy} onClick={generate}>{busy === 'generate' ? 'Gerando outra leva…' : 'Descartar prévia e gerar outra leva'}</Button>}
-          {!!items.length && saved.size < items.length && <p className="text-xs text-muted-foreground">Adicione esta leva antes de gerar a próxima. Fechar a gaveta mantém esta prévia enquanto você estiver nesta página.</p>}
+          {!!items.length && saved.size < items.length && <Button variant="secondary" className="w-full" disabled={!!busy} onClick={generate}>{busy === 'generate' ? 'Gerando outra leva…' : 'Descartar não adicionadas e gerar outra leva'}</Button>}
+          {!!items.length && <p className="text-xs text-muted-foreground">Fechar a gaveta mantém esta prévia enquanto você estiver nesta página. Cartões adicionados não são alterados ao trocar sugestões ou gerar outra leva.</p>}
         </div>
       </DrawerContent>
     </Drawer>

@@ -7,6 +7,16 @@ const mocks = vi.hoisted(() => ({cards:vi.fn(), add:vi.fn(), session:vi.fn()}));
 vi.mock('@/lib/storage', () => ({getCardsByDeck:mocks.cards, addCard:mocks.add}));
 vi.mock('@/integrations/supabase/client', () => ({supabase:{auth:{getSession:mocks.session}}}));
 const previous = ['I need a table.'];
+it('orders repertoire by creation date without mutating cards',()=>{
+  const cards=[{...buildSituationHtml({english:'Old',portuguese:'Antigo',context:'',mediaHtml:''}),createdAt:'2020'},{...buildSituationHtml({english:'Recent',portuguese:'Recente',context:'',mediaHtml:''}),createdAt:'2025'}] as Flashcard[];
+  expect(deckRepertoire(cards)).toEqual(['Recent','Old']);expect(cards[0].createdAt).toBe('2020');
+});
+it('validates a single replacement and rejects a previously seen suggestion',()=>{
+  const item={kind:'bridge',english:'I need a receipt.',portuguese:'Preciso de recibo.',imagePrompt:'Homem pedindo um recibo ao caixa de uma loja.',sourceEnglish:previous[0],anchor:'I need',newVocabulary:''};
+  expect(validateDeckGeneration({situations:[item]},previous,{kind:'bridge',excluded:[]})).toHaveLength(1);
+  expect(()=>validateDeckGeneration({situations:[item]},previous,{kind:'bridge',excluded:[item.english]})).toThrow();
+  expect(()=>validateDeckGeneration({situations:[item]},previous,{kind:'new',excluded:[]})).toThrow();
+});
 const items = () => Array.from({length:20}, (_,i) => ({kind:i<10?'bridge':'new', english:i<10?`I need item ${i}.`:`Please bring object${i}.`, portuguese:`Tradução ${i}.`, imagePrompt:'Mulher pedindo um objeto ao atendente de uma loja.', sourceEnglish:i<10?previous[0]:'', anchor:i<10?'I need':'', newVocabulary:i<10?'':`object${i}`}));
 beforeEach(() => {vi.clearAllMocks(); vi.unstubAllGlobals(); mocks.cards.mockResolvedValue([]); mocks.session.mockResolvedValue({data:{session:{access_token:'test'}}}); mocks.add.mockResolvedValue({id:'new'});});
 it('accepts exactly ten connected and ten novel situations', () => {
