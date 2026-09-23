@@ -19,6 +19,7 @@ export default function QuickCardMedia({card,onSaved,children}:{card:Flashcard;o
   const existing=mediaDetails(shown.front+shown.back);
   const situation=readSituation(shown.front,shown.back);
   const english=situation?.english || shown.dictationAnswer || '';
+  const portuguese=situation?.portuguese || '';
   const prompt=situation?.imagePrompt || situation?.pedagogy?.imagePrompt || situation?.context || '';
   const copy=async(text:string)=>{try{await navigator.clipboard.writeText(text);toast.success('Copiado!');}catch{toast.error('Não foi possível copiar. Tente novamente.');}};
   const saving=useRef(false);
@@ -58,10 +59,11 @@ export default function QuickCardMedia({card,onSaved,children}:{card:Flashcard;o
   return <div className={`relative group overflow-hidden rounded-2xl border bg-card transition-colors ${dragging?'border-primary ring-2 ring-primary/40':'border-border'}`} onDragEnter={e=>{e.preventDefault();setDragging(true)}} onDragOver={e=>e.preventDefault()} onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node))setDragging(false)}} onDrop={drop}>
     {children}
     {busy&&<div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 text-sm font-medium">{busy==='image'?'Salvando imagem…':'Salvando áudio…'}</div>}
-    {(existing.audio||english||prompt)&&<div className="flex items-center justify-evenly gap-1 border-t border-border p-2" onClick={event=>event.stopPropagation()}>
-      {prompt&&<button type="button" aria-label="Copiar prompt" onClick={()=>void copy(prompt)} className="flex min-h-11 flex-col items-center justify-center gap-1 px-2 text-xs"><Copy aria-hidden="true" className="h-4 w-4"/>Prompt</button>}
-      {english&&<button type="button" aria-label="Copiar inglês" onClick={()=>void copy(english)} className="flex min-h-11 flex-col items-center justify-center gap-1 px-2 text-xs"><Copy aria-hidden="true" className="h-4 w-4"/>Inglês</button>}
+    {existing.audio&&<div className="flex justify-center px-2 pb-2" onClick={event=>event.stopPropagation()}>
       {existing.audio&&<div className="flex min-h-12 items-center justify-center rounded-lg bg-secondary"><audio ref={audioRef} src={existing.audio} onEnded={()=>setPlaying(false)} onPause={()=>setPlaying(false)}/><button type="button" aria-label={playing?'Pausar áudio':'Ouvir áudio'} className="rounded-full bg-primary/15 p-2 text-primary" onClick={()=>{const audio=audioRef.current;if(!audio)return;if(playing)audio.pause();else void audio.play().then(()=>setPlaying(true)).catch(()=>toast.error('Não foi possível reproduzir o áudio.'))}}>{playing?<Pause className="h-5 w-5"/>:<Play className="h-5 w-5"/>}</button></div>}
+    </div>}
+    {(english||portuguese||prompt)&&<div className="grid grid-cols-3 gap-0.5 border-t border-border p-1" onClick={event=>event.stopPropagation()}>
+      {[[english,'Inglês','Copiar inglês'],[portuguese,'Português','Copiar português'],[prompt,'Prompt','Copiar prompt']].map(([text,label,aria])=><button key={aria} type="button" aria-label={aria} disabled={!text} title={text ? aria : `${label} indisponível`} onClick={()=>void copy(text)} className="flex min-h-11 min-w-0 flex-col items-center justify-center gap-1 text-[10px] sm:text-xs disabled:opacity-30"><Copy aria-hidden="true" className="h-4 w-4"/>{label}</button>)}
     </div>}
   </div>;
 }

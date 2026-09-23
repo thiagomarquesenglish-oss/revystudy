@@ -37,6 +37,7 @@ import PageHeader from '@/components/PageHeader';
 import PageTransition from '@/components/PageTransition';
 import CardThumbnail from '@/components/CardThumbnail';
 import QuickCardMedia from '@/components/QuickCardMedia';
+import GenerateDeckSituations from '@/components/GenerateDeckSituations';
 import { readSituation } from '@/lib/situation';
 
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -203,6 +204,7 @@ export default function DecksPage() {
       <PageTransition>
       <main className="max-w-3xl mx-auto px-3 py-4 space-y-4" style={{ paddingTop: 'calc(var(--app-header-height) + 1rem)' }}>
         <div className="flex gap-3"><Button variant="secondary" className="flex-1" onClick={() => navigate('/deck/' + deckFromParam + '/audios')}>Textos e áudios</Button><Button variant="secondary" className="flex-1" onClick={() => navigate('/deck/' + deckFromParam + '/add')}>Adicionar cartão</Button></div>
+        <GenerateDeckSituations key={deckFromParam} deckId={deckFromParam} onSaved={loadData}/>
         <h2 className="text-lg font-semibold pt-2">Cartões</h2>
         {/* Tabs: Todos / Marcados */}
         <div className="flex gap-1 bg-card p-1 rounded-xl">
