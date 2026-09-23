@@ -40,16 +40,18 @@ export default function StudyPage() {
   const all = useRef<ScheduledCard[]>([]);
   const currentRef = useRef<ScheduledCard | null>(null);
   const lastSkill = useRef<LearningSkill>();
+  const lastCardId = useRef<string>();
   const saving = useRef(false);
   const revision = useRef(0);
   const refreshRef = useRef<() => Promise<void>>(async () => {});
   const backPath = deckId ? '/deck/' + deckId : '/';
   const showNext = (items: ScheduledCard[]) => {
     all.current = items;
-    const next = pickDueCard(items, new Date(), lastSkill.current);
+    const next = pickDueCard(items, new Date(), lastSkill.current, lastCardId.current);
+    if (next) lastCardId.current = next.id;
     currentRef.current = next; setCurrent(next);
     setWaiting(!next && items.some(item => [1,3].includes(item.schedule.memory.state)));
-    const upcoming = next && pickDueCard(items.filter(item => item.id !== next.id), new Date(), next.schedule.skill);
+    const upcoming = next && pickDueCard(items.filter(item => item.id !== next.id), new Date(), next.schedule.skill, next.id);
     for (const card of [next, upcoming]) if (card) { void prepareHtml(card.front); void prepareHtml(card.back); }
   };
 
@@ -59,7 +61,7 @@ export default function StudyPage() {
     let userId = '';
     let knownDecks: Deck[] = [];
     all.current = []; currentRef.current = null; saving.current = false;
-    setLoading(true); setError(''); setAnswered(0); lastSkill.current = undefined;
+    setLoading(true); setError(''); setAnswered(0); lastSkill.current = undefined; lastCardId.current = undefined;
     const refresh = async () => {
       if (!active || !userId || saving.current || refreshing) return;
       refreshing = true;

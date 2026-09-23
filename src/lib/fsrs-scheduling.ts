@@ -115,13 +115,21 @@ export function availableAt(item: ScheduledCard, all: ScheduledCard[], now: Date
   return Date.parse(item.schedule.memory.due);
 }
 
-export function pickDueCard(all: ScheduledCard[], now = new Date(), lastSkill?: LearningSkill): ScheduledCard | null {
-  const due = all.filter(item => availableAt(item, all, now) <= now.getTime());
-  const priority = (item: ScheduledCard) => [State.Learning, State.Relearning].includes(item.schedule.memory.state) ? 0 : item.schedule.memory.state === State.Review ? 1 : 2;
-  due.sort((a,b) => priority(a)-priority(b) || Date.parse(a.schedule.memory.due)-Date.parse(b.schedule.memory.due) || a.sessionKey.localeCompare(b.sessionKey));
+export function pickDueCard(all: ScheduledCard[], now = new Date(), lastSkill?: LearningSkill, lastCardId?: string): ScheduledCard | null {
+  let due = all.filter(item => availableAt(item, all, now) <= now.getTime());
   if (!due.length) return null;
-  // Alternate skills only among eligible cards of the same scheduling priority.
-  return due.find(item => priority(item) === priority(due[0]) && item.schedule.skill !== lastSkill) || due[0];
+  // Interleave source cards, not just their skills. Never pull a future review forward.
+  const otherCards = due.filter(item => item.id !== lastCardId);
+  if (otherCards.length) due = otherCards;
+  const priority = (item: ScheduledCard) => [State.Learning, State.Relearning].includes(item.schedule.memory.state) ? 0 : item.schedule.memory.state === State.Review ? 1 : 2;
+  const firstPriority = Math.min(...due.map(priority));
+  due = due.filter(item => priority(item) === firstPriority);
+  const differentSkills = due.filter(item => item.schedule.skill !== lastSkill);
+  if (differentSkills.length) due = differentSkills;
+  const ids = [...new Set(due.map(item => item.id))];
+  const id = ids[Math.floor(Math.random() * ids.length)];
+  const variants = due.filter(item => item.id === id);
+  return variants[Math.floor(Math.random() * variants.length)];
 }
 
 export function validSkillSchedule(row: any): row is SkillSchedule {

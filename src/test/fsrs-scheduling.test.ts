@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, expect, it } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vitest';
 import { State } from 'ts-fsrs';
 import { answerSchedule, availableAt, cardModes, loadScheduledCards, migrateSchedule, nextStudyDay, pickDueCard, type ScheduledCard } from '@/lib/fsrs-scheduling';
 import { localDB } from '@/lib/offline-db';
@@ -13,6 +13,23 @@ const item = (base=card, skill:'comprehension'|'listening'|'production'|'writing
   return {...base,schedule,sessionKey:schedule.id};
 };
 beforeEach(async()=>{ await localDB.clearForFullRestore(); });
+it('interleaves source cards even when the same skill is the only alternative',()=>{
+  const variants=[item(card,'writing'),item(card,'listening'),item({...card,id:'b'},'production')];
+  expect(pickDueCard(variants,now,'production','a')?.id).toBe('b');
+});
+it('randomizes eligible cards instead of always using the first identifier',()=>{
+  const random=vi.spyOn(Math,'random');
+  try {
+    const candidates=[item(),item({...card,id:'b'}),item({...card,id:'c'})];
+    random.mockReturnValue(0);expect(pickDueCard(candidates,now)?.id).toBe('a');
+    random.mockReturnValue(.99);expect(pickDueCard(candidates,now)?.id).toBe('c');
+  } finally {random.mockRestore();}
+});
+it('only repeats a source when no other source is due, without advancing future cards',()=>{
+  const current=item();const future=item({...card,id:'b',dueDate:new Date(now.getTime()+60000).toISOString()});
+  expect(pickDueCard([current,future],now,undefined,'a')?.id).toBe('a');
+  expect(pickDueCard([future],now,undefined,'a')).toBeNull();
+});
 
 it('creates one independent schedule per skill, not per visual variation',()=>{
   expect(cardModes(card).map(item=>item.skill).sort()).toEqual(['comprehension','listening','production','writing']);
