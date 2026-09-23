@@ -1,5 +1,5 @@
 import {beforeEach, expect, it, vi} from 'vitest';
-import {deckGenerationPrompt, replacementPrompt, validateDeckGeneration, sceneRules, simpleEnglishRules} from '../../server/deck-generation.js';
+import {deckGenerationPrompt, replacementPrompt, validateDeckGeneration, sceneRules, simpleEnglishRules, grammarStyleRules} from '../../server/deck-generation.js';
 import {deckRepertoire, generateDeckSituations, saveGeneratedSituations} from '@/lib/deck-generation';
 import {buildSituationHtml, readSituation} from '@/lib/situation';
 import type {Flashcard} from '@/lib/types';
@@ -11,6 +11,9 @@ it('uses the same short natural English rules for batches and replacements',()=>
   expect(deckGenerationPrompt(previous)).toContain(simpleEnglishRules);
   expect(replacementPrompt(previous,'bridge',[])).toContain(simpleEnglishRules);
   expect(simpleEnglishRules).toContain('UMA única ideia');
+  expect(deckGenerationPrompt(previous)).toContain(grammarStyleRules);
+  expect(replacementPrompt(previous,'bridge',[])).toContain(grammarStyleRules);
+  for (const family of ['comandos/instruções','primeira pessoa','terceira pessoa','perguntas variadas']) expect(grammarStyleRules).toContain(family);
 });
 it('accepts nine words but rejects ten in a replacement and a batch',()=>{
   const batch=items();
