@@ -7,6 +7,7 @@ import BackupSettings from '@/components/BackupSettings';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import OfflineMediaSettings from '@/components/OfflineMediaSettings';
+import CloudAudioTest from '@/components/CloudAudioTest';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
@@ -59,6 +60,7 @@ export default function SettingsPage() {
         <Button variant="secondary" className="shrink-0" onClick={()=>void refreshApp()} disabled={refreshing}><RefreshCw className={refreshing?'animate-spin':''}/>{refreshing?'Atualizando…':'Atualizar agora'}</Button>
       </section>
       <OfflineMediaSettings />
+      <CloudAudioTest />
       <details className="bg-card rounded-2xl p-5"><summary className="font-semibold cursor-pointer">Atualizações</summary><div className="pt-4 flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Novidades dos seus baralhos</p><SyncUpdatesButton onInstalled={() => {}} /></div></details>
       <details className="bg-card rounded-2xl p-5"><summary className="font-semibold cursor-pointer">Backup e restaurar dados</summary><div className="pt-5"><BackupSettings /></div></details>
       <section className="space-y-3">
