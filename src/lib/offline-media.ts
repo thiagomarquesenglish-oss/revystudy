@@ -90,9 +90,12 @@ export async function cacheDeckMedia(cards: CardRow[], audios: AudioRow[], onPro
 }
 
 /** Return a blob URL backed by the downloaded file, bypassing mobile network/range requests. */
-export function resolveOfflineMediaUrl(url: string): Promise<string> {
+export function resolveOfflineMediaUrl(url: string, options: { fresh?: boolean } = {}): Promise<string> {
   if (!/^https:\/\//i.test(url)) return Promise.resolve(url);
   if (!('caches' in window)) return Promise.reject(new Error('O armazenamento local de áudio está indisponível neste navegador.'));
+  // Rebuild the temporary playback handle, not the downloaded file. Safari can
+  // leave a media element/blob handle unusable after interruption or suspension.
+  if (options.fresh) localObjectUrls.delete(url);
   const existing = localObjectUrls.get(url);
   if (existing) return existing;
   const resolved = caches.open(OFFLINE_MEDIA_CACHE)

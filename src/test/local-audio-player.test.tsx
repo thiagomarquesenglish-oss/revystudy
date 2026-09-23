@@ -40,6 +40,15 @@ it('leaves manual play usable after iPhone rejects autoplay', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Reproduzir áudio' }));
   expect(play).toHaveBeenCalledTimes(2);
 });
+it('resets a stalled autoplay locally before manual play', async () => {
+  mocks.resolve.mockResolvedValue('blob:downloaded');
+  const play = vi.spyOn(HTMLMediaElement.prototype,'play').mockReturnValueOnce(new Promise(()=>{})).mockResolvedValue(undefined);
+  render(<LocalAudioPlayer src="https://cdn.test/pending.mp3"/>);
+  await act(async()=>{});
+  fireEvent.click(screen.getByRole('button',{name:'Reproduzir áudio'}));
+  expect(HTMLMediaElement.prototype.load).toHaveBeenCalledOnce();
+  expect(play).toHaveBeenCalledTimes(2);
+});
 
 it('ignores a previous card that finishes preparing after navigation', async () => {
   let finish!: (url: string) => void;
@@ -61,5 +70,10 @@ it('ends an unresolved play attempt with an actionable error instead of spinning
   await act(async () => {});
   fireEvent.click(screen.getByRole('button', { name: 'Reproduzir áudio' }));
   act(() => { vi.advanceTimersByTime(12000); });
-  expect(screen.getByRole('alert')).toHaveTextContent('O áudio não iniciou');
+  expect(screen.getByRole('alert')).toHaveTextContent('player não iniciou');
+  const oldAudio = document.querySelector('audio');
+  fireEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }));
+  await act(async () => {});
+  expect(document.querySelector('audio')).not.toBe(oldAudio);
+  expect(mocks.resolve).toHaveBeenLastCalledWith('https://cdn.test/stalled.mp3', {fresh:true});
 });

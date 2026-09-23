@@ -48,9 +48,11 @@ describe('offline media', () => {
     localStorage.setItem('revystudy:offline-media-enabled', 'false');
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Network must not be used'));
     const response = new Response(new Blob(['audio'], { type: 'audio/mpeg' }));
-    vi.stubGlobal('caches', { open: vi.fn(async () => ({ match: vi.fn(async () => response) })) });
+    vi.stubGlobal('caches', { open: vi.fn(async () => ({ match: vi.fn(async () => response.clone()) })) });
     Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:local-audio') });
     await expect(resolveOfflineMediaUrl('https://cdn.test/local.mp3')).resolves.toBe('blob:local-audio');
+    await expect(resolveOfflineMediaUrl('https://cdn.test/local.mp3', {fresh:true})).resolves.toBe('blob:local-audio');
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(2);
     expect(fetchSpy).not.toHaveBeenCalled();
     localStorage.removeItem('revystudy:offline-media-enabled');
     vi.unstubAllGlobals();
