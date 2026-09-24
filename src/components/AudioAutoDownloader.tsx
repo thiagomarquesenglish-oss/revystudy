@@ -2,9 +2,9 @@ import { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { getCards, getDeckAudios, getDecks } from '@/lib/storage';
-import { extractAudioSrcs, prefetchAudios } from '@/lib/saved-audio';
+import { AUTO_AUDIO_EVENT, extractAudioSrcs, isAutoAudioEnabled, prefetchAudios } from '@/lib/saved-audio';
 
-/** Saves every card audio and deck audio on this device in the background, so play never waits for a download. */
+/** Optional (Settings switch): saves every card audio and deck audio in the background. */
 export default function AudioAutoDownloader() {
   const { user } = useAuth();
   const userId = user?.id;
@@ -14,7 +14,7 @@ export default function AudioAutoDownloader() {
     let running = false;
     let lastRun = 0;
     const run = async () => {
-      if (running || signal.cancelled || !navigator.onLine || document.hidden) return;
+      if (running || signal.cancelled || !isAutoAudioEnabled() || !navigator.onLine || document.hidden) return;
       if (lastRun && Date.now() - lastRun < 60_000) return;
       running = true;
       try {
@@ -31,9 +31,11 @@ export default function AudioAutoDownloader() {
     };
     const start = setTimeout(() => void run(), 3000); // let the app finish loading first
     const again = () => void run();
+    const toggled = () => { lastRun = 0; void run(); };
+    window.addEventListener(AUTO_AUDIO_EVENT, toggled);
     window.addEventListener('online', again);
     document.addEventListener('visibilitychange', again);
-    return () => { signal.cancelled = true; clearTimeout(start); window.removeEventListener('online', again); document.removeEventListener('visibilitychange', again); };
+    return () => { signal.cancelled = true; clearTimeout(start); window.removeEventListener('online', again); window.removeEventListener(AUTO_AUDIO_EVENT, toggled); document.removeEventListener('visibilitychange', again); };
   }, [userId]);
   return null;
 }

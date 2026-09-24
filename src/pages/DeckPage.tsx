@@ -5,6 +5,7 @@ import { Deck, Flashcard } from '@/lib/types';
 import { Flag, Play, Plus, Layers, MoreVertical, Music, RefreshCw, LayoutGrid, ListPlus, CloudDownload, Sparkles, ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageHeader from '@/components/PageHeader';
+import DeckMediaPanel from '@/components/DeckMediaPanel';
 import BulkAddCardsDrawer from '@/components/BulkAddCardsDrawer';
 import { toast } from 'sonner';
 import {
@@ -177,6 +178,7 @@ export default function DeckPage() {
             <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
+        {deckId && <DeckMediaPanel deckId={deckId} cards={cards} />}
       </main>
 
       {/* Menu drawer */}

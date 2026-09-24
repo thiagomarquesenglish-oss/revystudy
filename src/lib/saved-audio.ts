@@ -26,6 +26,14 @@ export async function readSavedAudio(src: string): Promise<Blob | null> {
   const blob = await response.blob();
   return blob.size ? typed(blob, src) : null;
 }
+// Opt-in: silently save every audio of every deck whenever the app opens (Settings switch, off by default).
+export const AUTO_AUDIO_KEY = 'revystudy:auto-audio';
+export const AUTO_AUDIO_EVENT = 'revystudy:auto-audio-changed';
+export function isAutoAudioEnabled(): boolean { try { return localStorage.getItem(AUTO_AUDIO_KEY) === '1'; } catch { return false; } }
+export function setAutoAudioEnabled(on: boolean) {
+  try { localStorage.setItem(AUTO_AUDIO_KEY, on ? '1' : '0'); } catch { /* restricted storage */ }
+  window.dispatchEvent(new Event(AUTO_AUDIO_EVENT));
+}
 /** Cheap existence check: does not read the audio bytes. */
 export async function hasSavedAudio(src: string): Promise<boolean> {
   if (!('caches' in globalThis)) return false;
@@ -44,14 +52,15 @@ export function extractAudioSrcs(html: string): string[] {
   return found;
 }
 /** Downloads many audios in the background, a couple at a time. Failures never stop the queue. */
-export async function prefetchAudios(sources: string[], options: { concurrency?: number; signal?: { cancelled: boolean } } = {}): Promise<{ total: number; failed: number }> {
+export async function prefetchAudios(sources: string[], options: { concurrency?: number; signal?: { cancelled: boolean }; onProgress?: (done: number, total: number) => void } = {}): Promise<{ total: number; failed: number }> {
   const list = [...new Set(sources.filter(isRemoteAudio))];
-  let next = 0; let failed = 0;
+  let next = 0; let failed = 0; let done = 0;
   const worker = async () => {
     while (!options.signal?.cancelled && navigator.onLine) {
       const index = next++;
       if (index >= list.length) return;
       try { await downloadAudio(list[index]); } catch { failed++; }
+      options.onProgress?.(++done, list.length);
     }
   };
   await Promise.all(Array.from({ length: options.concurrency ?? 2 }, worker));
