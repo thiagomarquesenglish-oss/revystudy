@@ -1,5 +1,3 @@
-import { resolveOfflineMediaUrl } from './offline-media';
-import { supportsDecodedAudio, prepareDecodedAudio } from './local-audio-engine';
 // Small, session-only lookahead cache. Never download the whole deck at once.
 const images = new Map<string, { ready: boolean; promise: Promise<void> }>();
 
@@ -37,17 +35,5 @@ export function imagesReady(html: string): boolean {
 }
 
 export function prepareHtml(html: string): Promise<void> {
-  const doc = document.createElement('div');
-  doc.innerHTML = html;
-  doc.querySelectorAll('audio, [data-audio]').forEach(node => {
-    const src = node.getAttribute('src') || node.getAttribute('data-src');
-    if (src) prepareAudio(src);
-  });
   return Promise.all(imageSources(html).map(prepareImage)).then(() => {});
-}
-
-export function prepareAudio(src: string): void {
-  // Prepare the same local file that the visible player will use. Hidden
-  // network-backed audio elements compete with playback on mobile Safari.
-  void (supportsDecodedAudio() ? prepareDecodedAudio(src) : resolveOfflineMediaUrl(src)).catch(() => {});
 }

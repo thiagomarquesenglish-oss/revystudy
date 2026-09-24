@@ -6,7 +6,6 @@ import { answerSchedule, loadScheduledCards, availableAt, type SkillSchedule } f
 import { exerciseInfo, type ExerciseMode } from './adaptive-study';
 import type { Rating } from './types';
 import { localStudyDate } from './streak';
-import { cacheDeckMedia, offlineMediaEnabled } from './offline-media';
 
 export async function getStreakHistory(): Promise<{date: string; count: number}[]> {
   const userId = await getCachedUserId();
@@ -671,15 +670,6 @@ export async function downloadDeckPackage(
   });
   await ensureInstalledDecks();
   installedDecks.add(update.deckId);
-  if (offlineMediaEnabled()) {
-    try {
-      await cacheDeckMedia(rows, audios, onProgress);
-    } catch (error) {
-      // The verified cards stay installed even if a flaky connection prevents
-      // one media file from being cached. Settings can resume the download.
-      console.error('Could not cache all deck media:', error);
-    }
-  }
   onProgress?.({ completed: totalSteps, total: totalSteps, label: 'Novidades instaladas; cartões existentes preservados' });
   return cards;
 }

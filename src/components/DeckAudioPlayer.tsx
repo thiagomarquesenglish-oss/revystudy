@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
+import { useState, useRef, useEffect, useMemo, useImperativeHandle, forwardRef } from 'react';
+import { cloudMediaUrl } from '@/lib/cloud-media';
 import { supabase } from '@/integrations/supabase/client';
 import { Play, Pause, ListMusic } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -30,7 +31,7 @@ const DeckAudioPlayer = forwardRef<DeckAudioPlayerHandle, DeckAudioPlayerProps>(
     const navigate = useNavigate();
 
     const { data } = supabase.storage.from('deck-audios').getPublicUrl(audio.file_path);
-    const audioUrl = data.publicUrl;
+    const audioUrl = useMemo(() => cloudMediaUrl(data.publicUrl), [data.publicUrl]);
 
     useImperativeHandle(ref, () => ({
       play: () => {
@@ -99,7 +100,7 @@ const DeckAudioPlayer = forwardRef<DeckAudioPlayerHandle, DeckAudioPlayerProps>(
         >
           <ListMusic className="w-4 h-4" /><span className="hidden sm:inline">Estudar linha a linha</span>
         </button>
-        <audio ref={audioRef} src={audioUrl} preload="metadata" onError={() => {setPlaying(false);setAudioError(true);}} onLoadedMetadata={event => setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0)} />
+        <audio ref={audioRef} src={audioUrl} playsInline preload="metadata" onError={() => {setPlaying(false);setAudioError(true);}} onLoadedMetadata={event => setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0)} />
       </div>
     );
   }

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { cloudMediaUrl } from '@/lib/cloud-media';
 import { ImagePlus, Volume2, MessageSquareText, CheckCircle2, X, Play, Pause, Upload } from 'lucide-react';
 import { addCard, getDeckAudios } from '@/lib/storage';
 import { buildSituationHtml, escapeHtml } from '@/lib/situation';
@@ -18,6 +19,7 @@ function extension(file: File) { return file.name.split('.').pop()?.toLowerCase(
 export function MediaDropBox({ kind, file, preview, fileName, onFile, onClear }: { kind: 'image'|'audio'; file: File|null; preview: string; fileName?: string; onFile:(file:File)=>void; onClear:()=>void }) {
   const input=useRef<HTMLInputElement>(null), audio=useRef<HTMLAudioElement>(null); const [drag,setDrag]=useState(false), [playing,setPlaying]=useState(false);
   const hasMedia=!!file||!!preview;
+  const audioSource=useMemo(()=>kind==='audio'?cloudMediaUrl(preview):preview,[kind,preview]);
   const choose=(candidate?:File)=>{if(!candidate)return;if(!candidate.type.startsWith(`${kind}/`)){toast.error(`Selecione um arquivo de ${kind==='image'?'imagem':'áudio'}.`);return;}if(candidate.size>MAX_MEDIA_BYTES){toast.error('O arquivo deve ter no máximo 25 MB.');return;}onFile(candidate);};
   return <div className="space-y-2"><Label>{kind==='image'?'Imagem sem texto':'Áudio em inglês'}</Label><div role="button" tabIndex={0} aria-label={kind==='image'?'Adicionar imagem':'Adicionar áudio'}
     onClick={()=>!hasMedia&&input.current?.click()} onKeyDown={e=>{if(!hasMedia&&(e.key==='Enter'||e.key===' '))input.current?.click();}}
@@ -25,7 +27,7 @@ export function MediaDropBox({ kind, file, preview, fileName, onFile, onClear }:
     className={`relative min-h-44 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center overflow-hidden transition-colors ${drag?'border-primary bg-primary/10':'border-border bg-background hover:border-primary/60'}`}>
     <input ref={input} type="file" accept={`${kind}/*`} className="hidden" onChange={e=>{choose(e.target.files?.[0]);e.target.value=''}}/>
     {!hasMedia?<><div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">{kind==='image'?<ImagePlus className="h-6 w-6 text-primary"/>:<Volume2 className="h-6 w-6 text-primary"/>}</div><strong>Arraste {kind==='image'?'a imagem':'o áudio'} aqui</strong><span className="text-xs text-muted-foreground mt-1">ou toque para escolher</span></>:
-      kind==='image'?<img src={preview} alt="Pré-visualização da situação" className="max-h-72 w-full object-contain"/>:<div className="flex flex-col items-center gap-3 px-4"><audio ref={audio} src={preview} preload="metadata" onEnded={()=>setPlaying(false)} onPause={()=>setPlaying(false)}/><Button type="button" className="h-20 w-20 rounded-full" aria-label={playing?'Pausar prévia do áudio':'Ouvir prévia do áudio'} onClick={e=>{e.stopPropagation();if(!audio.current)return;if(playing)audio.current.pause();else void audio.current.play().then(()=>setPlaying(true)).catch(()=>toast.error('Não foi possível reproduzir este áudio.'));}}>{playing?<Pause className="h-8 w-8"/>:<Play className="h-8 w-8"/>}</Button><span className="max-w-full truncate text-sm">{file?.name||fileName||'Áudio da situação'}</span></div>}
+      kind==='image'?<img src={preview} alt="Pré-visualização da situação" className="max-h-72 w-full object-contain"/>:<div className="flex flex-col items-center gap-3 px-4"><audio ref={audio} src={audioSource} playsInline preload="none" onEnded={()=>setPlaying(false)} onPause={()=>setPlaying(false)}/><Button type="button" className="h-20 w-20 rounded-full" aria-label={playing?'Pausar prévia do áudio':'Ouvir prévia do áudio'} onClick={e=>{e.stopPropagation();if(!audio.current)return;if(playing)audio.current.pause();else void audio.current.play().then(()=>setPlaying(true)).catch(()=>toast.error('Não foi possível reproduzir este áudio.'));}}>{playing?<Pause className="h-8 w-8"/>:<Play className="h-8 w-8"/>}</Button><span className="max-w-full truncate text-sm">{file?.name||fileName||'Áudio da situação'}</span></div>}
     {hasMedia&&<button type="button" aria-label={`Remover ${kind==='image'?'imagem':'áudio'}`} onClick={e=>{e.stopPropagation();onClear()}} className="absolute right-2 top-2 rounded-full bg-background/90 p-2 text-destructive"><X className="h-5 w-5"/></button>}
   </div></div>;
 }

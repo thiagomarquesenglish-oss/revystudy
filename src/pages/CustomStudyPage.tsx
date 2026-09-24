@@ -1,8 +1,8 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { addReviewHistory, getCardReviewRows, getDecks, getCardsByDeck, getDeckAudios } from '@/lib/storage';
-import { prepareHtml, prepareAudio } from '@/lib/study-media';
-import LocalAudioPlayer from '@/components/LocalAudioPlayer';
+import { prepareHtml } from '@/lib/study-media';
+import CloudAudioPlayer from '@/components/CloudAudioPlayer';
 import StudyMedia from '@/components/StudyMedia';
 import { Deck, Flashcard } from '@/lib/types';
 import PageHeader from '@/components/PageHeader';
@@ -61,7 +61,7 @@ function hasText(html: string) {
   return (d.textContent || '').trim().length > 0;
 }
 
-function AudioButton({ src, big }: { src: string; big?: boolean }) { return <LocalAudioPlayer src={src} centered />; }
+function AudioButton({ src, big }: { src: string; big?: boolean }) { return <CloudAudioPlayer src={src} centered />; }
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -140,7 +140,6 @@ export default function CustomStudyPage() {
       if (cancelled) return;
       if (data) {
         const { data: urlData } = supabase.storage.from('deck-audios').getPublicUrl(data.file_path);
-        prepareAudio(urlData.publicUrl);
         setResolvedDeckAudio({ cardId: currentId, url: urlData.publicUrl });
       } else {
         setResolvedDeckAudio({ cardId: currentId, url: null });

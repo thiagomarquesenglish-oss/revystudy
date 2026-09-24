@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { cloudMediaUrl } from '@/lib/cloud-media';
 import { Play, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,6 +11,7 @@ export default function DictationExercise({ card, audioSrc, onNext, onSkip, last
   card: Flashcard; audioSrc: string; onNext: (correct: boolean, rating?: DictationRating) => void; onSkip: () => void; last: boolean; ratings?: boolean; intervals?: Record<string, string>;
 }) {
   const audio = useRef<HTMLAudioElement>(null);
+  const source = useMemo(() => cloudMediaUrl(audioSrc), [audioSrc]);
   const [typed, setTyped] = useState('');
   const [result, setResult] = useState<ReturnType<typeof compareDictation> | null>(null);
   const [audioError, setAudioError] = useState(false);
@@ -28,7 +30,7 @@ export default function DictationExercise({ card, audioSrc, onNext, onSkip, last
 
   return <div className="space-y-6">
     <div className="rounded-2xl bg-card border border-border p-6 flex flex-col items-center gap-4">
-      <audio ref={audio} src={audioSrc} preload="metadata" onError={() => setAudioError(true)} />
+      <audio ref={audio} src={source} playsInline preload="none" onError={() => setAudioError(true)} />
       <Button type="button" onClick={play} className="h-20 w-20 rounded-full" aria-label="Ouvir áudio desde o início">
         <Play className="h-8 w-8" />
       </Button>

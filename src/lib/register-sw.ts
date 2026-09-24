@@ -4,6 +4,7 @@
  * and frees storage when the browser quota is nearly full (which was
  * crashing the installed PWA on iOS).
  */
+import { removeLegacyMediaDownloads } from './cloud-media';
 const SW_URL = "/sw.js";
 
 async function unregisterAppSW() {
@@ -71,7 +72,11 @@ export async function registerServiceWorker() {
     let updateReady = false;
     let lastInteraction = Date.now();
     for (const event of ['pointerdown', 'keydown', 'touchstart']) window.addEventListener(event, () => { lastInteraction = Date.now(); }, { passive: true });
-    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) updateReady = true; });
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (hadController) updateReady = true;
+      // An older worker may have written media before the update took control.
+      void removeLegacyMediaDownloads().catch(() => {});
+    });
     const registration = await navigator.serviceWorker.register(SW_URL, { scope: '/', updateViaCache: 'none' });
     const check = () => { if (navigator.onLine) void registration.update().catch(() => {}); };
     check();

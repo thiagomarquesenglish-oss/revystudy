@@ -6,6 +6,8 @@ import { Flashcard } from '@/lib/types';
 import { Play, Pause } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageHeader from '@/components/PageHeader';
+import { cloudMediaUrl } from '@/lib/cloud-media';
+import { toast } from 'sonner';
 
 export default function LineByLinePage() {
   const { audioId } = useParams<{ audioId: string }>();
@@ -62,8 +64,8 @@ export default function LineByLinePage() {
       return;
     }
 
-    el.src = src;
-    el.play();
+    el.src = cloudMediaUrl(src);
+    void el.play().catch(() => { setPlayingId(null); toast.error('Não foi possível reproduzir o áudio da nuvem.'); });
     setPlayingId(cardId);
   };
 
@@ -137,7 +139,7 @@ export default function LineByLinePage() {
           })
         )}
       </main>
-      <audio ref={audioRef} preload="none" />
+      <audio ref={audioRef} playsInline preload="none" />
     </div>
   );
 }

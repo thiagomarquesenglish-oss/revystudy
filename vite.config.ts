@@ -7,7 +7,7 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig(() => {
   return ({
   define: {
-    __APP_VERSION__: JSON.stringify('1.5.13'),
+    __APP_VERSION__: JSON.stringify('1.5.14'),
   },
   server: {
     host: "::",
@@ -33,21 +33,17 @@ export default defineConfig(() => {
             // Verified downloads must never be intercepted by the media cache.
             urlPattern: ({ url }) => url.searchParams.has('revystudy_download'),
             handler: 'NetworkOnly',
+            options: { fetchOptions: { cache: 'no-store' } },
           },
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/auth\/.*/i,
             handler: 'NetworkOnly',
           },
           {
-            // Files downloaded from Settings live in this bounded cache.
-            urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'revystudy-media-v1',
-              cacheableResponse: { statuses: [200] },
-              expiration: { maxEntries: 1200, maxAgeSeconds: 60 * 60 * 24 * 365, purgeOnQuotaError: true },
-              rangeRequests: true,
-            },
+            // Cloud media never falls back to the obsolete downloaded copy.
+            urlPattern: ({ url, request }) => /\.supabase\.co\/storage\//i.test(url.href) || ['audio', 'video', 'image'].includes(request.destination) && url.origin !== self.location.origin,
+            handler: 'NetworkOnly',
+            options: { fetchOptions: { cache: 'no-store' } },
           },
           {
             // IndexedDB is the app's single offline data cache. Keeping REST

@@ -6,8 +6,6 @@ import { toast } from 'sonner';
 import BackupSettings from '@/components/BackupSettings';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
-import OfflineMediaSettings from '@/components/OfflineMediaSettings';
-import CloudAudioTest from '@/components/CloudAudioTest';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
@@ -59,8 +57,10 @@ export default function SettingsPage() {
         <div><h2 className="font-semibold">Atualizar aplicativo</h2><p className="text-sm text-muted-foreground mt-1">Busca a versão mais recente e recarrega o RevyStudy, como atualizar a página no navegador.</p></div>
         <Button variant="secondary" className="shrink-0" onClick={()=>void refreshApp()} disabled={refreshing}><RefreshCw className={refreshing?'animate-spin':''}/>{refreshing?'Atualizando…':'Atualizar agora'}</Button>
       </section>
-      <OfflineMediaSettings />
-      <CloudAudioTest />
+      <section className="bg-card rounded-2xl p-5 space-y-2">
+        <h2 className="font-semibold">Mídias na nuvem</h2>
+        <p className="text-sm text-muted-foreground">Áudios e imagens são acessados pela internet. Não é necessário baixar mídias neste aparelho.</p>
+      </section>
       <details className="bg-card rounded-2xl p-5"><summary className="font-semibold cursor-pointer">Atualizações</summary><div className="pt-4 flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Novidades dos seus baralhos</p><SyncUpdatesButton onInstalled={() => {}} /></div></details>
       <details className="bg-card rounded-2xl p-5"><summary className="font-semibold cursor-pointer">Backup e restaurar dados</summary><div className="pt-5"><BackupSettings /></div></details>
       <section className="space-y-3">

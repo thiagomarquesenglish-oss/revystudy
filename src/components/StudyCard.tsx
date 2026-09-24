@@ -11,7 +11,7 @@ import { compareDictation } from '@/lib/dictation';
 import SkillBadge from './SkillBadge';
 import CardOptions from './CardOptions';
 import { useBlurPortuguese } from '@/lib/card-display-preferences';
-import AudioPlayButton from './LocalAudioPlayer';
+import AudioPlayButton from './CloudAudioPlayer';
 import { findExplanations, requestExplanation, saveExplanation } from '@/lib/learning-help';
 
 /** Normalize text for typing comparison: lowercase, strip accents, remove punctuation, collapse spaces */
