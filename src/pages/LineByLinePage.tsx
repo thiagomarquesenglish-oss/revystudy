@@ -1,13 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getCards } from '@/lib/storage';
 import { Flashcard } from '@/lib/types';
-import { Play, Pause } from 'lucide-react';
+import SavedAudioPlayer from '@/components/SavedAudioPlayer';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageHeader from '@/components/PageHeader';
-import { cloudMediaUrl } from '@/lib/cloud-media';
-import { toast } from 'sonner';
 
 export default function LineByLinePage() {
   const { audioId } = useParams<{ audioId: string }>();
@@ -15,8 +13,6 @@ export default function LineByLinePage() {
   const [audioName, setAudioName] = useState('');
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [loading, setLoading] = useState(true);
-  const [playingId, setPlayingId] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     async function load() {
@@ -54,28 +50,6 @@ export default function LineByLinePage() {
     return extractAudioSrc(card.front) || extractAudioSrc(card.back);
   };
 
-  const playCardAudio = (cardId: string, src: string) => {
-    const el = audioRef.current;
-    if (!el) return;
-
-    if (playingId === cardId) {
-      el.pause();
-      setPlayingId(null);
-      return;
-    }
-
-    el.src = cloudMediaUrl(src);
-    void el.play().catch(() => { setPlayingId(null); toast.error('Não foi possível reproduzir o áudio da nuvem.'); });
-    setPlayingId(cardId);
-  };
-
-  useEffect(() => {
-    const el = audioRef.current;
-    if (!el) return;
-    const onEnded = () => setPlayingId(null);
-    el.addEventListener('ended', onEnded);
-    return () => el.removeEventListener('ended', onEnded);
-  }, []);
 
   // Strip HTML tags for display
   const stripHtml = (html: string): string => {
@@ -124,22 +98,13 @@ export default function LineByLinePage() {
                   {backText && <p className="text-xs text-muted-foreground truncate mt-0.5">{backText}</p>}
                 </div>
                 {audioSrc && (
-                  <button
-                    onClick={() => playCardAudio(card.id, audioSrc)}
-                    className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0 active:scale-95 transition-transform"
-                  >
-                    {playingId === card.id
-                      ? <Pause className="w-3.5 h-3.5 text-primary-foreground" />
-                      : <Play className="w-3.5 h-3.5 text-primary-foreground ml-0.5" />
-                    }
-                  </button>
+                  <SavedAudioPlayer src={audioSrc} compact />
                 )}
               </div>
             );
           })
         )}
       </main>
-      <audio ref={audioRef} playsInline preload="none" />
     </div>
   );
 }

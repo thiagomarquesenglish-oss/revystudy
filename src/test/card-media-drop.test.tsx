@@ -2,6 +2,7 @@ import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import QuickCardMedia from '@/components/QuickCardMedia';
 import type {Flashcard} from '@/lib/types';
+vi.mock('@/lib/saved-audio',()=>({isRemoteAudio:()=>true,readSavedAudio:async()=>null,AUDIO_SAVED_EVENT:'saved',audioKey:(src:string)=>src}));
 const mocks=vi.hoisted(()=>({get:vi.fn(),update:vi.fn(),upload:vi.fn(),remove:vi.fn()}));
 vi.mock('@/lib/storage',()=>({getCardById:mocks.get,updateCard:mocks.update}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getUser:async()=>({data:{user:{id:'u'}}})},storage:{from:()=>({upload:mocks.upload,remove:mocks.remove,getPublicUrl:(path:string)=>({data:{publicUrl:'https://cdn.test/'+path}})})}}}));
@@ -15,7 +16,7 @@ it('accepts image and audio together on a plain card without replacing text',asy
   fireEvent.drop(screen.getByText('Card'),{dataTransfer:{files:[image,audio]}});
   await waitFor(()=>expect(saved).toHaveBeenCalledOnce());
   const patch=mocks.update.mock.calls[0][1];expect(patch.front).toContain('<p>Question</p>');expect(patch.front).toContain('<img');expect(patch.back).toContain('<p>Answer</p>');expect(patch.back).toContain('<audio');
-  expect(screen.getByRole('button',{name:'Ouvir áudio'})).toBeTruthy();
+  expect(await screen.findByRole('button',{name:'Baixar áudio'})).toBeTruthy();
 });
 it('loads original embedded media before adding audio',async()=>{
   mocks.get.mockResolvedValue({...card,front:'<p>Question</p><img src="data:image/png;base64,AAAA">'});

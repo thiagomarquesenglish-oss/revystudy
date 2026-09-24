@@ -29,9 +29,10 @@ describe('listening exercise', () => {
   });
   it('skips a broken audio without grading it', () => {
     const onNext = vi.fn(), onSkip = vi.fn();
-    const { container } = render(<DictationExercise card={card} audioSrc="https://example.com/broken.mp3" onNext={onNext} onSkip={onSkip} last />);
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+    const { container } = render(<DictationExercise card={card} audioSrc="blob:broken" onNext={onNext} onSkip={onSkip} last />);
     fireEvent.error(container.querySelector('audio')!);
-    expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível reproduzir');
+    expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível abrir o áudio salvo');
     fireEvent.click(screen.getByRole('button', { name: 'Pular cartão' }));
     expect(onSkip).toHaveBeenCalledOnce();
     expect(onNext).not.toHaveBeenCalled();

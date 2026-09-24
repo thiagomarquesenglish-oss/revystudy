@@ -1,6 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
-import { cloudMediaUrl } from '@/lib/cloud-media';
-import { Play, RotateCcw } from 'lucide-react';
+import { useRef, useState } from 'react';
+import SavedAudioPlayer, { type SavedAudioHandle } from './SavedAudioPlayer';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { compareDictation } from '@/lib/dictation';
@@ -10,35 +9,19 @@ import type { Flashcard } from '@/lib/types';
 export default function DictationExercise({ card, audioSrc, onNext, onSkip, last, ratings = false, intervals = {} }: {
   card: Flashcard; audioSrc: string; onNext: (correct: boolean, rating?: DictationRating) => void; onSkip: () => void; last: boolean; ratings?: boolean; intervals?: Record<string, string>;
 }) {
-  const audio = useRef<HTMLAudioElement>(null);
-  const source = useMemo(() => cloudMediaUrl(audioSrc), [audioSrc]);
+  const audio = useRef<SavedAudioHandle>(null);
   const [typed, setTyped] = useState('');
   const [result, setResult] = useState<ReturnType<typeof compareDictation> | null>(null);
-  const [audioError, setAudioError] = useState(false);
-
-  const play = () => {
-    if (!audio.current) return;
-    setAudioError(false);
-    audio.current.currentTime = 0;
-    void audio.current.play().catch(() => setAudioError(true));
-  };
   const check = () => {
     if (!typed.trim() || result) return;
-    audio.current?.pause();
+    audio.current?.stop();
     setResult(compareDictation(card.dictationAnswer || '', typed));
   };
 
   return <div className="space-y-6">
     <div className="rounded-2xl bg-card border border-border p-6 flex flex-col items-center gap-4">
-      <audio ref={audio} src={source} playsInline preload="none" onError={() => setAudioError(true)} />
-      <Button type="button" onClick={play} className="h-20 w-20 rounded-full" aria-label="Ouvir áudio desde o início">
-        <Play className="h-8 w-8" />
-      </Button>
+      <SavedAudioPlayer ref={audio} src={audioSrc} restart />
       <p className="text-sm text-muted-foreground text-center">Ouça e escreva a frase em inglês.</p>
-      {audioError && <div role="alert" className="space-y-2 text-sm text-center">
-        <p>Não foi possível reproduzir o áudio. Tente novamente ou pule este cartão.</p>
-        <Button variant="outline" onClick={() => { audio.current?.load(); play(); }}><RotateCcw className="mr-2 h-4 w-4" />Tentar áudio novamente</Button>
-      </div>}
     </div>
     <form onSubmit={event => { event.preventDefault(); check(); }} className="space-y-3">
       <label htmlFor="dictation-response" className="text-sm font-medium">O que você ouviu?</label>

@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import type { Flashcard } from '@/lib/types';
+vi.mock('@/lib/saved-audio', () => ({ isRemoteAudio: () => true, readSavedAudio: async () => null, AUDIO_SAVED_EVENT: 'saved', audioKey: (src: string) => src }));
 vi.mock('@/lib/storage', () => ({ updateCard: vi.fn() }));
 vi.mock('@/lib/situation', () => ({
   readSituation: (front: string) => ({ english: 'Hello', portuguese: 'Olá', mediaHtml: front, imagePrompt: front.includes('data-image-prompt') ? 'Homem cumprimentando uma amiga na rua.' : '' }),
@@ -19,11 +20,11 @@ it('copies the short prompt and English separately', () => {
   fireEvent.click(screen.getByRole('button',{name:'Copiar português'}));
   expect(writeText).toHaveBeenLastCalledWith('Olá');
 });
-it('shows English copy and audio actions', () => {
+it('shows English copy and audio download actions', async () => {
   const card = { front: '<audio src="https://cdn.test/audio.mp3"></audio>', back: '' } as Flashcard;
   render(<QuickCardMedia card={card} onSaved={() => {}}><p>Hello</p></QuickCardMedia>);
   expect(screen.getAllByRole('button')).toHaveLength(4);
-  const play = screen.getByRole('button', { name: 'Ouvir áudio' });
+  const play = await screen.findByRole('button', { name: 'Baixar áudio' });
   expect(play).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Copiar inglês' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Copiar prompt' })).toBeDisabled();
