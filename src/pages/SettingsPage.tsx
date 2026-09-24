@@ -58,8 +58,8 @@ export default function SettingsPage() {
         <Button variant="secondary" className="shrink-0" onClick={()=>void refreshApp()} disabled={refreshing}><RefreshCw className={refreshing?'animate-spin':''}/>{refreshing?'Atualizando…':'Atualizar agora'}</Button>
       </section>
       <section className="bg-card rounded-2xl p-5 space-y-2">
-        <h2 className="font-semibold">Download individual de áudio</h2>
-        <p className="text-sm text-muted-foreground">Toque na seta de download do áudio uma vez. Depois, o play usa o arquivo salvo neste aparelho, inclusive ao reabrir o aplicativo. As imagens continuam na nuvem.</p>
+        <h2 className="font-semibold">Áudio dos cartões</h2>
+        <p className="text-sm text-muted-foreground">Na página de estudo, os áudios do cartão são baixados em segundo plano e reutilizados nas próximas vezes. Os áudios da lista do baralho continuam com download manual. As imagens continuam na nuvem.</p>
       </section>
       <details className="bg-card rounded-2xl p-5"><summary className="font-semibold cursor-pointer">Atualizações</summary><div className="pt-4 flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Novidades dos seus baralhos</p><SyncUpdatesButton onInstalled={() => {}} /></div></details>
       <details className="bg-card rounded-2xl p-5"><summary className="font-semibold cursor-pointer">Backup e restaurar dados</summary><div className="pt-5"><BackupSettings /></div></details>

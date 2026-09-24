@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, act } from '@testing-library/react';
 import { beforeEach, afterEach, it, expect, vi } from 'vitest';
 import SavedAudioPlayer from '@/components/SavedAudioPlayer';
-import { downloadAudio, readSavedAudio, SAVED_AUDIO_CACHE } from '@/lib/saved-audio';
+import { audioMimeType, downloadAudio, readSavedAudio, SAVED_AUDIO_CACHE } from '@/lib/saved-audio';
 let entries: Map<string, Response>;
 beforeEach(() => {
   entries = new Map();
@@ -46,4 +46,17 @@ it('does not mark a failed download as saved', async () => {
   vi.mocked(fetch).mockResolvedValue(new Response('error', { status: 500 }));
   await expect(downloadAudio('https://example.com/failure.mp3')).rejects.toThrow();
   expect(await readSavedAudio('https://example.com/failure.mp3')).toBeNull();
+});
+it('gives iOS a real audio type when the server sends octet-stream or nothing', async () => {
+  expect(audioMimeType('https://x.co/a.m4a', 'application/octet-stream')).toBe('audio/mp4');
+  expect(audioMimeType('https://x.co/a.mp3', '')).toBe('audio/mpeg');
+  expect(audioMimeType('https://x.co/a.mp3', 'audio/x-m4a')).toBe('audio/x-m4a');
+  vi.mocked(fetch).mockResolvedValue(new Response('audio-bytes', { headers: { 'Content-Type': 'application/octet-stream' } }));
+  await downloadAudio('https://example.com/voice.m4a');
+  expect((await readSavedAudio('https://example.com/voice.m4a'))!.type).toBe('audio/mp4');
+});
+it('repairs the type of a previously saved audio without downloading again', async () => {
+  entries.set('https://example.com/old.m4a', new Response('audio-bytes', { headers: { 'Content-Type': 'application/octet-stream' } }));
+  expect((await readSavedAudio('https://example.com/old.m4a'))!.type).toBe('audio/mp4');
+  expect(fetch).not.toHaveBeenCalled();
 });

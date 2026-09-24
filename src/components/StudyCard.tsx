@@ -12,6 +12,7 @@ import SkillBadge from './SkillBadge';
 import CardOptions from './CardOptions';
 import { useBlurPortuguese } from '@/lib/card-display-preferences';
 import AudioPlayButton from './SavedAudioPlayer';
+import { downloadAudio, isRemoteAudio } from '@/lib/saved-audio';
 import { findExplanations, requestExplanation, saveExplanation } from '@/lib/learning-help';
 
 /** Normalize text for typing comparison: lowercase, strip accents, remove punctuation, collapse spaces */
@@ -130,6 +131,13 @@ export default function StudyCard({ card, onRate, forcedMode, remainingNew, rema
   // Only an audio node explicitly embedded in the front may play before flip.
   const frontAudioSrc = frontEmbeddedAudio;
   const backAudioSrc = backEmbeddedAudio || (!frontEmbeddedAudio && deckAudioUrl ? deckAudioUrl : null);
+
+  // Save the current card's audio in the background, including its answer side.
+  useEffect(() => {
+    for (const src of [frontAudioSrc, backAudioSrc]) {
+      if (src && isRemoteAudio(src) && navigator.onLine) void downloadAudio(src).catch(() => {});
+    }
+  }, [frontAudioSrc, backAudioSrc]);
 
   const situation=readSituation(card.front,card.back);
   if(situation)return <SituationStudyCard card={card} situation={situation} audioSrc={frontAudioSrc||backAudioSrc} onRate={onRate} forcedMode={forcedMode} remainingNew={remainingNew} remainingLearning={remainingLearning} remainingReview={remainingReview}/>;

@@ -85,7 +85,7 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
       className={`shrink-0 rounded-full bg-primary/15 hover:bg-primary/25 flex items-center justify-center disabled:opacity-50 ${compact ? 'w-10 h-10' : 'w-20 h-20'}`}>
       {busy || waiting ? <Loader2 className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary animate-spin`} /> : !source ? <Download className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary`} /> : playing ? <Pause className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary`} /> : <Play className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary`} />}
     </button>
-    <audio ref={audio} src={source || undefined} preload="none" playsInline
+    <audio ref={audio} src={source || undefined} preload="auto" playsInline
       onPlaying={() => { clearTimeout(timer.current); setWaiting(false); setPlaying(true); setError(''); }}
       onPause={() => { clearTimeout(timer.current); setWaiting(false); setPlaying(false); }}
       onEnded={() => { stop(); onEnded?.(); }}
