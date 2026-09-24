@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, act } from '@testing-library/react';
 import { beforeEach, afterEach, it, expect, vi } from 'vitest';
 import SavedAudioPlayer from '@/components/SavedAudioPlayer';
-import { audioMimeType, downloadAudio, readSavedAudio, SAVED_AUDIO_CACHE } from '@/lib/saved-audio';
+import { audioMimeType, downloadAudio, extractAudioSrcs, prefetchAudios, readSavedAudio, SAVED_AUDIO_CACHE } from '@/lib/saved-audio';
 let entries: Map<string, Response>;
 beforeEach(() => {
   entries = new Map();
@@ -13,6 +13,7 @@ beforeEach(() => {
   Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:saved') });
   Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
   vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+  vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});
   vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
   vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
 });
@@ -59,4 +60,30 @@ it('repairs the type of a previously saved audio without downloading again', asy
   entries.set('https://example.com/old.m4a', new Response('audio-bytes', { headers: { 'Content-Type': 'application/octet-stream' } }));
   expect((await readSavedAudio('https://example.com/old.m4a'))!.type).toBe('audio/mp4');
   expect(fetch).not.toHaveBeenCalled();
+});
+it('extracts remote audio urls from card html and ignores local ones', () => {
+  const html = '<p>x</p><div data-audio data-src="https://e.co/a.mp3"></div><audio><source src="https://e.co/b.m4a"></audio><audio src="blob:local"></audio>';
+  expect(extractAudioSrcs(html)).toEqual(['https://e.co/a.mp3', 'https://e.co/b.m4a']);
+  expect(extractAudioSrcs('<p>no audio</p>')).toEqual([]);
+});
+it('prefetches every audio once, skips saved ones, and survives a failure', async () => {
+  const urls = ['https://e.co/1.mp3', 'https://e.co/2.mp3', 'https://e.co/2.mp3', 'https://e.co/bad.mp3', 'blob:skip'];
+  vi.mocked(fetch).mockImplementation(async (input: any) => String(input).includes('bad') ? new Response('x', { status: 500 }) : new Response('audio-bytes', { headers: { 'Content-Type': 'audio/mpeg' } }));
+  const result = await prefetchAudios(urls);
+  expect(result).toEqual({ total: 3, failed: 1 });
+  expect(fetch).toHaveBeenCalledTimes(3);
+  await prefetchAudios(urls);
+  expect(fetch).toHaveBeenCalledTimes(4); // only the failed one is retried
+});
+it('automatically reloads a stuck first play instead of showing an error', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  const src = 'https://example.com/stuck.mp3';
+  await downloadAudio(src);
+  render(<SavedAudioPlayer src={src} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Reproduzir áudio' }));
+  expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
+  await act(async () => { await vi.advanceTimersByTimeAsync(3100); });
+  expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2);
+  expect(screen.queryByRole('alert')).toBeNull();
+  vi.useRealTimers();
 });

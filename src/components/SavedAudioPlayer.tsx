@@ -18,8 +18,9 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
   const alive = useRef(true);
   const sequence = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout>>();
+  const retry = useRef<ReturnType<typeof setTimeout>>();
   const lock = useRef(false);
-  const stop = () => { sequence.current++; clearTimeout(timer.current); audio.current?.pause(); setPlaying(false); setWaiting(false); };
+  const stop = () => { sequence.current++; clearTimeout(timer.current); clearTimeout(retry.current); audio.current?.pause(); setPlaying(false); setWaiting(false); };
   const fail = (message: string) => { stop(); setError(message); };
   useEffect(() => {
     alive.current = true;
@@ -48,7 +49,7 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
     document.addEventListener('visibilitychange', hide);
     return () => {
       cancelled = true; alive.current = false; sequence.current++;
-      clearTimeout(timer.current); element?.pause();
+      clearTimeout(timer.current); clearTimeout(retry.current); element?.pause();
       if (localUrl) URL.revokeObjectURL(localUrl);
       window.removeEventListener(AUDIO_SAVED_EVENT, saved);
       document.removeEventListener('visibilitychange', hide);
@@ -63,6 +64,10 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
     setError(''); setWaiting(true);
     clearTimeout(timer.current);
     timer.current = setTimeout(() => fail('O áudio salvo não iniciou. Toque em tentar novamente.'), 10000);
+    // iOS sometimes leaves a freshly attached file stuck; reloading it (what "Tentar novamente" did) unsticks it automatically.
+    clearTimeout(retry.current);
+    if (element.readyState === 0) element.load();
+    retry.current = setTimeout(() => { if (alive.current && current === sequence.current && element.paused) { element.load(); void element.play().catch(() => {}); } }, 3000);
     if (restart) element.currentTime = 0;
     void element.play().catch(() => { if (alive.current && current === sequence.current) fail('Não foi possível reproduzir o áudio salvo.'); });
   };
@@ -86,7 +91,7 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
       {busy || waiting ? <Loader2 className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary animate-spin`} /> : !source ? <Download className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary`} /> : playing ? <Pause className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary`} /> : <Play className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary`} />}
     </button>
     <audio ref={audio} src={source || undefined} preload="auto" playsInline
-      onPlaying={() => { clearTimeout(timer.current); setWaiting(false); setPlaying(true); setError(''); }}
+      onPlaying={() => { clearTimeout(timer.current); clearTimeout(retry.current); setWaiting(false); setPlaying(true); setError(''); }}
       onPause={() => { clearTimeout(timer.current); setWaiting(false); setPlaying(false); }}
       onEnded={() => { stop(); onEnded?.(); }}
       onLoadedMetadata={event => onDuration?.(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0)}

@@ -26,12 +26,43 @@ export async function readSavedAudio(src: string): Promise<Blob | null> {
   const blob = await response.blob();
   return blob.size ? typed(blob, src) : null;
 }
+/** Cheap existence check: does not read the audio bytes. */
+export async function hasSavedAudio(src: string): Promise<boolean> {
+  if (!('caches' in globalThis)) return false;
+  const response = await (await caches.open(SAVED_AUDIO_CACHE)).match(audioKey(src));
+  return !!response && response.status === 200 && response.type !== 'opaque';
+}
+/** Remote audio URLs embedded in a card's HTML (front or back). */
+export function extractAudioSrcs(html: string): string[] {
+  if (!html || !/audio|data-src/i.test(html)) return [];
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const found: string[] = [];
+  doc.querySelectorAll('audio, audio source, [data-audio]').forEach(element => {
+    const value = element.getAttribute('data-src') || element.getAttribute('src');
+    if (value && isRemoteAudio(value)) found.push(value);
+  });
+  return found;
+}
+/** Downloads many audios in the background, a couple at a time. Failures never stop the queue. */
+export async function prefetchAudios(sources: string[], options: { concurrency?: number; signal?: { cancelled: boolean } } = {}): Promise<{ total: number; failed: number }> {
+  const list = [...new Set(sources.filter(isRemoteAudio))];
+  let next = 0; let failed = 0;
+  const worker = async () => {
+    while (!options.signal?.cancelled && navigator.onLine) {
+      const index = next++;
+      if (index >= list.length) return;
+      try { await downloadAudio(list[index]); } catch { failed++; }
+    }
+  };
+  await Promise.all(Array.from({ length: options.concurrency ?? 2 }, worker));
+  return { total: list.length, failed };
+}
 export function downloadAudio(src: string): Promise<void> {
   const key = audioKey(src);
   const existing = pending.get(key);
   if (existing) return existing;
   const task = (async () => {
-    if (await readSavedAudio(src)) return;
+    if (await hasSavedAudio(src)) return;
     if (!navigator.onLine) throw new Error('Conecte-se à internet para baixar este áudio.');
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);

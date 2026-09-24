@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import OfflineBanner from "@/components/OfflineBanner";
+import AudioAutoDownloader from "@/components/AudioAutoDownloader";
 import TabLayout from "./components/TabLayout";
 import DeckAudiosPage from "./pages/DeckAudiosPage";
 import DeckPage from "./pages/DeckPage";
@@ -46,6 +47,7 @@ const App = () => (
         <BrowserRouter>
           <NavigationPosition />
           <OfflineBanner />
+          <AudioAutoDownloader />
           <AppNavigation />
           <TabLayout />
           <Routes>
