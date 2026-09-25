@@ -5,6 +5,7 @@ import { cloudMediaUrl } from '@/lib/cloud-media';
 import { audioDiagnosticId, audioSnapshot, recordAudio } from '@/lib/audio-diagnostics';
 import AudioDiagnosticCopy from '@/components/AudioDiagnosticCopy';
 import AudioFileCheck from '@/components/AudioFileCheck';
+import { decodeAudioSource, playDecodedAudio, supportsWebAudio, unlockAudio } from '@/lib/audio-engine';
 
 export interface SavedAudioHandle { play: () => void; stop: () => void }
 type Props = { src: string; centered?: boolean; compact?: boolean; autoPlay?: boolean; onEnded?: () => void; onDuration?: (duration: number) => void; restart?: boolean };
@@ -29,9 +30,10 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const retry = useRef<ReturnType<typeof setTimeout>>();
   const lock = useRef(false);
+  const decodedStop = useRef<(() => void) | null>(null);
   const [diagnosticId] = useState(audioDiagnosticId);
   const trace = (event: string, data: Record<string, unknown> = {}) => recordAudio(event, diagnosticId, { ...audioSnapshot(audio.current), attempt: sequence.current, ...data });
-  const stop = () => { sequence.current++; clearTimeout(timer.current); clearTimeout(retry.current); audio.current?.pause(); setPlaying(false); setWaiting(false); };
+  const stop = () => { sequence.current++; clearTimeout(timer.current); clearTimeout(retry.current); decodedStop.current?.(); decodedStop.current = null; audio.current?.pause(); setPlaying(false); setWaiting(false); };
   const fail = (message: string) => { trace('failure', { message }); stop(); setError(message); };
   useEffect(() => {
     trace('mount');
@@ -86,6 +88,7 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
     trace('play-request');
     const element = audio.current;
     if (!source || !element) return;
+    if (remote && supportsWebAudio()) { void playWithWebAudio(); return; }
     window.dispatchEvent(new CustomEvent('revystudy:audio-play', { detail: element }));
     const current = ++sequence.current;
     setError(''); setWaiting(true);
@@ -112,6 +115,21 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
     if (restart) element.currentTime = 0;
     void element.play().then(() => trace('play-resolved'), reason => { trace('play-rejected', { name: reason?.name, originalAttempt: current }); if (alive.current && current === sequence.current) fail('Não foi possível reproduzir o áudio salvo.'); });
   };
+  const playWithWebAudio = async () => {
+    const current = ++sequence.current;
+    clearTimeout(timer.current); clearTimeout(retry.current); decodedStop.current?.(); decodedStop.current = null;
+    setError(''); setWaiting(true); unlockAudio();
+    timer.current = setTimeout(() => { if (alive.current && current === sequence.current) fail('O áudio não iniciou. Tente novamente.'); }, 10000);
+    try {
+      const buffer = await decodeAudioSource(src, navigator.onLine);
+      if (!alive.current || current !== sequence.current) return;
+      decodedStop.current = playDecodedAudio(buffer, {
+        onStarted: () => { clearTimeout(timer.current); setWaiting(false); setPlaying(true); trace('web-audio-playing', { duration: buffer.duration }); },
+        onEnded: () => { decodedStop.current = null; setPlaying(false); onEnded?.(); },
+        onError: error => fail(error instanceof Error ? error.message : 'Não foi possível reproduzir o áudio.'),
+      });
+    } catch (error) { if (alive.current && current === sequence.current) fail(error instanceof Error ? error.message : 'Não foi possível decodificar o áudio.'); }
+  };
   useImperativeHandle(ref, () => ({ play, stop }));
   const download = async () => {
     trace('download-request');
@@ -134,7 +152,7 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
       className={`shrink-0 rounded-full bg-primary/15 hover:bg-primary/25 flex items-center justify-center disabled:opacity-50 ${compact ? 'w-10 h-10' : 'w-20 h-20'}`}>
       {busy || waiting ? <Loader2 className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary animate-spin`} /> : (remote && !saved) || !source ? <Download className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary`} /> : playing ? <Pause className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary`} /> : <Play className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary`} />}
     </button>
-    <audio ref={audio} src={source || undefined} preload="auto" playsInline
+    <audio ref={audio} src={remote && supportsWebAudio() ? undefined : source || undefined} preload="auto" playsInline
       onPlaying={() => { clearTimeout(timer.current); clearTimeout(retry.current); setWaiting(false); setPlaying(true); setError(''); }}
       onPause={() => { clearTimeout(timer.current); setWaiting(false); setPlaying(false); }}
       onEnded={() => { stop(); onEnded?.(); }}
