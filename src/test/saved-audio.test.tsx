@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, act } from '@testing-library/react';
 import { beforeEach, afterEach, it, expect, vi } from 'vitest';
 import SavedAudioPlayer from '@/components/SavedAudioPlayer';
-import { audioMimeType, downloadAudio, extractAudioSrcs, prefetchAudios, readSavedAudio, SAVED_AUDIO_CACHE } from '@/lib/saved-audio';
+import { AUDIO_SAVED_EVENT, audioKey, audioMimeType, downloadAudio, extractAudioSrcs, prefetchAudios, readSavedAudio, SAVED_AUDIO_CACHE } from '@/lib/saved-audio';
 let entries: Map<string, Response>;
 beforeEach(() => {
   entries = new Map();
@@ -125,4 +125,47 @@ it('does not retry after the user stops waiting', async () => {
   await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
   expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
   expect(screen.queryByRole('alert')).toBeNull();
+});
+it('materializes saved bytes without passing the cache blob to the player or rewriting it', async () => {
+  const original = new Uint8Array([73, 68, 51, 4, 0, 255, 251, 144, 196]);
+  const arrayBuffer = vi.fn(async () => original.buffer);
+  const blob = vi.fn(() => { throw new Error('Do not expose cache-backed blob'); });
+  const put = vi.fn();
+  vi.mocked(caches.open).mockResolvedValue({
+    match: async () => ({ status: 200, type: 'basic', headers: new Headers({ 'Content-Type': 'audio/mpeg' }), arrayBuffer, blob }), put,
+  } as unknown as Cache);
+  const saved = await readSavedAudio('https://example.com/memory.mp3');
+  const bytes = await new Promise<ArrayBuffer>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as ArrayBuffer);
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(saved!);
+  });
+  expect(new Uint8Array(bytes)).toEqual(original);
+  expect(saved?.type).toBe('audio/mpeg');
+  expect(arrayBuffer).toHaveBeenCalledOnce();
+  expect(blob).not.toHaveBeenCalled();
+  expect(put).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
+});
+it('does not revoke a prepared source on duplicate saved events', async () => {
+  const src = 'https://example.com/duplicate.mp3';
+  await downloadAudio(src);
+  const view = render(<SavedAudioPlayer src={src} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Reproduzir áudio' }));
+  await act(async () => {
+    window.dispatchEvent(new CustomEvent(AUDIO_SAVED_EVENT, { detail: audioKey(src) }));
+    window.dispatchEvent(new CustomEvent(AUDIO_SAVED_EVENT, { detail: audioKey(src) }));
+  });
+  expect(URL.createObjectURL).toHaveBeenCalledOnce();
+  expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+  view.unmount();
+  expect(URL.revokeObjectURL).toHaveBeenCalledOnce();
+});
+it('does not abort an active initial load when the user taps play', () => {
+  render(<SavedAudioPlayer src="blob:local" />);
+  Object.defineProperty(document.querySelector('audio')!, 'networkState', { configurable: true, value: 2 });
+  fireEvent.click(screen.getByRole('button', { name: 'Reproduzir áudio' }));
+  expect(HTMLMediaElement.prototype.load).not.toHaveBeenCalled();
+  expect(HTMLMediaElement.prototype.play).toHaveBeenCalledOnce();
 });

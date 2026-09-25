@@ -23,8 +23,12 @@ export async function readSavedAudio(src: string): Promise<Blob | null> {
   if (!('caches' in globalThis)) throw new Error('O navegador não disponibilizou armazenamento para áudio.');
   const response = await (await caches.open(SAVED_AUDIO_CACHE)).match(audioKey(src));
   if (!response || response.status !== 200 || response.type === 'opaque') return null;
-  const blob = await response.blob();
-  return blob.size ? typed(blob, src) : null;
+  // Fully materialize the saved response before handing it to the media player.
+  // response.blob() can retain the cache's backing file. A Blob built from its
+  // bytes is independent of that handle. Preserve all bytes, including ID3/C2PA;
+  // this is not transcoding and does not rewrite or redownload the saved file.
+  const bytes = await response.arrayBuffer();
+  return bytes.byteLength ? new Blob([bytes], { type: audioMimeType(src, response.headers.get('Content-Type') || '') }) : null;
 }
 // Opt-in: silently save every audio of every deck whenever the app opens (Settings switch, off by default).
 export const AUTO_AUDIO_KEY = 'revystudy:auto-audio';

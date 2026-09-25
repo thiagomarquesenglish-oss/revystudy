@@ -34,6 +34,9 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
     let localUrl = '';
     let revision = 0;
     const load = async () => {
+      // A download notifies every mounted player, and the initiating button
+      // notifies again. Never revoke a prepared source for the same immutable URL.
+      if (localUrl) { trace('saved-notification-ignored'); return; }
       const current = ++revision;
       try {
         trace('saved-read-start');
@@ -43,7 +46,7 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
         const next = blob ? URL.createObjectURL(blob) : '';
         if (localUrl) URL.revokeObjectURL(localUrl);
         localUrl = next;
-        trace('source-replaced');
+        trace('source-replaced', { preparation: 'saved-bytes', bytes: blob?.size });
         setSource(next);
       } catch (reason) {
         trace('saved-read-error', { name: reason instanceof Error ? reason.name : 'unknown' });
@@ -82,7 +85,8 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
     timer.current = setTimeout(() => fail('O áudio salvo não iniciou. Toque em tentar novamente.'), 10000);
     // iOS sometimes leaves a freshly attached file stuck; reloading it (what "Tentar novamente" did) unsticks it automatically.
     clearTimeout(retry.current);
-    if (element.readyState === 0) { trace('load-before-play'); element.load(); }
+    // Attaching src already starts loading. Do not abort that work on the tap.
+    if (element.readyState === 0 && element.networkState !== 2) { trace('load-before-play'); element.load(); }
     retry.current = setTimeout(() => {
       if (!alive.current || current !== sequence.current) return;
       // A pending play can have paused=false without having loaded any audio.
