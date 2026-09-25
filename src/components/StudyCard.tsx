@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import FlipCardFrame from './FlipCardFrame';
 import { Flashcard, Rating } from '@/lib/types';
+import { intervalLabel, type SkillSchedule } from '@/lib/fsrs-scheduling';
 import { supabase } from '@/integrations/supabase/client';
 import { getCardReviewRows, getDeckAudios } from '@/lib/storage';
 import StudyMedia from './StudyMedia';
@@ -35,7 +36,7 @@ function htmlToPlainText(html: string): string {
 }
 
 interface StudyCardProps {
-  card: Flashcard;
+  card: Flashcard & { schedule?: SkillSchedule };
   onRate: (rating: Rating, mode?: ExerciseMode) => void;
   forcedMode?: ExerciseMode;
   remainingNew: number;
@@ -89,6 +90,20 @@ function CardContent({ html, audioSrc, autoPlay = true }: { html: string; audioS
   );
 }
 
+function RatingButton({ rating, label, schedule, onRate }: {
+  rating: Rating;
+  label: string;
+  schedule?: SkillSchedule;
+  onRate: () => void;
+}) {
+  const interval = schedule ? intervalLabel(schedule, rating) : '';
+  const color = rating === 'again' ? 'bg-red-600' : rating === 'hard' ? 'bg-orange-500' : rating === 'good' ? 'bg-blue-600' : 'bg-green-700';
+  return <button onClick={onRate} aria-label={`${label}${interval ? ` — ${interval}` : ''}`} className={`rounded-full py-2 text-sm font-bold text-white ${color}`}>
+    <span className="block leading-tight">{label}</span>
+    {interval && <span className="block text-[11px] font-normal opacity-90">{interval}</span>}
+  </button>;
+}
+
 export default function StudyCard({ card, onRate, forcedMode, remainingNew, remainingLearning, remainingReview }: StudyCardProps) {
   const [flipped, setFlipped] = useState(false);
   const [deckAudioUrl, setDeckAudioUrl] = useState<string | null>(null);
@@ -140,12 +155,13 @@ export default function StudyCard({ card, onRate, forcedMode, remainingNew, rema
   }, [frontAudioSrc, backAudioSrc]);
 
   const situation=readSituation(card.front,card.back);
-  if(situation)return <SituationStudyCard card={card} situation={situation} audioSrc={frontAudioSrc||backAudioSrc} onRate={onRate} forcedMode={forcedMode} remainingNew={remainingNew} remainingLearning={remainingLearning} remainingReview={remainingReview}/>;
-  if (card.cardType !== 'typing') return <SimpleFlipCard card={card} onRate={onRate} backAudioSrc={backAudioSrc} />;
+  if(situation)return <SituationStudyCard card={card} schedule={card.schedule} situation={situation} audioSrc={frontAudioSrc||backAudioSrc} onRate={onRate} forcedMode={forcedMode} remainingNew={remainingNew} remainingLearning={remainingLearning} remainingReview={remainingReview}/>;
+  if (card.cardType !== 'typing') return <SimpleFlipCard card={card} schedule={card.schedule} onRate={onRate} backAudioSrc={backAudioSrc} />;
 
   return (
     <StudyCardInner
       card={card}
+      schedule={card.schedule}
       onRate={onRate}
       flipped={flipped}
       setFlipped={setFlipped}
@@ -162,7 +178,7 @@ export default function StudyCard({ card, onRate, forcedMode, remainingNew, rema
   );
 }
 
-function SimpleFlipCard({ card, onRate, backAudioSrc }: { card: Flashcard; onRate: (rating: Rating, mode?: ExerciseMode) => void; backAudioSrc: string | null }) {
+function SimpleFlipCard({ card, schedule, onRate, backAudioSrc }: { card: Flashcard; schedule?: SkillSchedule; onRate: (rating: Rating, mode?: ExerciseMode) => void; backAudioSrc: string | null }) {
   const [flipped, setFlipped] = useState(false);
   useEffect(() => setFlipped(false), [card.id]);
   return <div className="flex flex-col items-center w-full max-w-lg mx-auto">
@@ -171,11 +187,11 @@ function SimpleFlipCard({ card, onRate, backAudioSrc }: { card: Flashcard; onRat
       <div className="study-flip-face study-flip-front" aria-hidden={flipped}>{!flipped && <StudyMedia html={card.front}><CardContent html={card.front} audioSrc={null} autoPlay={false} /></StudyMedia>}</div>
       <div className="study-flip-face study-flip-back" aria-hidden={!flipped}>{flipped && <StudyMedia html={card.back}><CardContent html={card.back} audioSrc={backAudioSrc} autoPlay={false} /></StudyMedia>}</div>
     </FlipCardFrame>
-    {flipped && <div className="fixed bottom-0 left-0 right-0 z-10 bg-background/95 px-4 pt-3 backdrop-blur-xl sm:left-1/2 sm:right-auto sm:w-[480px] sm:-translate-x-1/2" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}><div className="grid grid-cols-4 gap-2">{ratingConfig.map(item => <button key={item.rating} onClick={() => { setFlipped(false); onRate(item.rating); }} className={`rounded-full py-3 text-sm font-bold text-white ${item.rating === 'again' ? 'bg-red-600' : item.rating === 'hard' ? 'bg-orange-500' : item.rating === 'good' ? 'bg-blue-600' : 'bg-green-700'}`}>{item.label}</button>)}</div></div>}
+    {flipped && <div className="fixed bottom-0 left-0 right-0 z-10 bg-background/95 px-4 pt-3 backdrop-blur-xl sm:left-1/2 sm:right-auto sm:w-[480px] sm:-translate-x-1/2" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}><div className="grid grid-cols-4 gap-2">{ratingConfig.map(item => <RatingButton key={item.rating} {...item} schedule={schedule} onRate={() => { setFlipped(false); onRate(item.rating); }} />)}</div></div>}
   </div>;
 }
 
-function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remainingNew,remainingLearning,remainingReview}:{card:Flashcard;situation:NonNullable<ReturnType<typeof readSituation>>;audioSrc:string|null;onRate:(rating:Rating,mode?:ExerciseMode)=>void;forcedMode?:ExerciseMode;remainingNew:number;remainingLearning:number;remainingReview:number}){
+function SituationStudyCard({card,schedule,situation,audioSrc,onRate,forcedMode,remainingNew,remainingLearning,remainingReview}:{card:Flashcard;schedule?:SkillSchedule;situation:NonNullable<ReturnType<typeof readSituation>>;audioSrc:string|null;onRate:(rating:Rating,mode?:ExerciseMode)=>void;forcedMode?:ExerciseMode;remainingNew:number;remainingLearning:number;remainingReview:number}){
   const blurPortuguese = useBlurPortuguese(card.id);
   const [mode,setMode]=useState<ExerciseMode>(forcedMode||'text-comprehension');
   const [flipped,setFlipped]=useState(false),[typed,setTyped]=useState(''),[dictation,setDictation]=useState<ReturnType<typeof compareDictation>|null>(null),[showPortuguese,setShowPortuguese]=useState(false);
@@ -218,7 +234,7 @@ function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remaining
       </div>
     </FlipCardFrame>
     <div className="flex-1"/>
-    <div className="fixed bottom-0 left-0 right-0 px-4 pt-3 bg-background/95 backdrop-blur-xl sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[480px] z-10" style={{paddingBottom:'max(env(safe-area-inset-bottom), 16px)'}}><div className="flex flex-col gap-2">{!reveal ? null : isDictation && !dictation?.correct?<button onClick={()=>finish('again')} className="w-full rounded-full py-3 font-bold text-white bg-red-600">Continuar</button>:<div className="grid grid-cols-4 gap-2">{ratingConfig.map(item=><button key={item.rating} onClick={()=>finish(item.rating)} className={`rounded-full py-3 text-sm font-bold text-white ${item.rating==='again'?'bg-red-600':item.rating==='hard'?'bg-orange-500':item.rating==='good'?'bg-blue-600':'bg-green-700'}`}>{item.label}</button>)}</div>}</div></div>
+    <div className="fixed bottom-0 left-0 right-0 px-4 pt-3 bg-background/95 backdrop-blur-xl sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[480px] z-10" style={{paddingBottom:'max(env(safe-area-inset-bottom), 16px)'}}><div className="flex flex-col gap-2">{!reveal ? null : isDictation && !dictation?.correct?<button onClick={()=>finish('again')} className="w-full rounded-full py-3 font-bold text-white bg-red-600">Continuar</button>:<div className="grid grid-cols-4 gap-2">{ratingConfig.map(item=><RatingButton key={item.rating} {...item} schedule={schedule} onRate={()=>finish(item.rating)} />)}</div>}</div></div>
   </div>;
 }
 
@@ -244,7 +260,7 @@ function WritingErrorExplanation({ sentence, portuguese, typed }: { sentence: st
   return <div className="w-full mt-2 rounded-xl bg-secondary/60 p-3 text-left text-sm">{!requested ? <button type="button" onClick={explain} className="w-full rounded-lg bg-card py-2 font-medium text-primary">Explicar meu erro</button> : <><span className="font-medium">Explicação</span>{loading ? <span className="ml-2 text-muted-foreground">Gerando…</span> : text ? <p className="mt-1 whitespace-pre-line text-muted-foreground">{text}</p> : <p className="mt-1 text-muted-foreground">Não foi possível gerar uma explicação agora.</p>}</>}</div>;
 }
 
-function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remainingLearning, remainingReview, frontAudioSrc, backAudioSrc, typed, setTyped, typingResult, setTypingResult }: StudyCardProps & { flipped: boolean; setFlipped: (v: boolean) => void; frontAudioSrc: string | null; backAudioSrc: string | null; typed: string; setTyped: (v: string) => void; typingResult: null | 'correct' | 'incorrect'; setTypingResult: (v: null | 'correct' | 'incorrect') => void }) {
+function StudyCardInner({ card, schedule, onRate, flipped, setFlipped, remainingNew, remainingLearning, remainingReview, frontAudioSrc, backAudioSrc, typed, setTyped, typingResult, setTypingResult }: StudyCardProps & { schedule?: SkillSchedule; flipped: boolean; setFlipped: (v: boolean) => void; frontAudioSrc: string | null; backAudioSrc: string | null; typed: string; setTyped: (v: string) => void; typingResult: null | 'correct' | 'incorrect'; setTypingResult: (v: null | 'correct' | 'incorrect') => void }) {
   const isTyping = card.cardType === 'typing';
   const expectedText = useMemo(() => htmlToPlainText(card.back), [card.back]);
   const supportedBack = useMemo(() => {
@@ -354,27 +370,7 @@ function StudyCardInner({ card, onRate, flipped, setFlipped, remainingNew, remai
             ) : (
               <div className="flex flex-col items-center gap-3">
                 <div className="grid grid-cols-4 gap-2 sm:gap-4 w-full">
-                  {ratingConfig.map(({ rating, label }) => {
-                    const colorMap: Record<string, string> = {
-                      again: 'bg-red-600',
-                      hard: 'bg-orange-500',
-                      good: 'bg-blue-600',
-                      easy: 'bg-green-700',
-                    };
-                    return (
-                      <button
-                        key={rating}
-                        onClick={() => {
-                          setFlipped(false);
-                          onRate(rating);
-                        }}
-                      >
-                        <span className={`w-full block py-3 rounded-full ${colorMap[rating]} text-sm font-bold text-white transition-all active:scale-95 active:opacity-70`}>
-                          {label}
-                        </span>
-                      </button>
-                    );
-                  })}
+                  {ratingConfig.map(({ rating, label }) => <RatingButton key={rating} rating={rating} label={label} schedule={schedule} onRate={() => { setFlipped(false); onRate(rating); }} />)}
                 </div>
               </div>
             )}

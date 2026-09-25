@@ -92,6 +92,26 @@ export function answerSchedule(schedule: SkillSchedule, rating: Rating, now = ne
   return {...schedule, memory, traditional:{easeFactor,step}, updated_at:now.toISOString()};
 }
 
+/**
+ * Human-readable preview of the next interval for the current exercise.
+ * This is intentionally calculated from the same scheduler used when the
+ * answer is saved, so the label shown on a rating button cannot drift from
+ * the actual due date.
+ */
+export function intervalLabel(schedule: SkillSchedule, rating: Rating, now = new Date()): string {
+  const next = answerSchedule(schedule, rating, now);
+  const due = Date.parse(next.memory.due);
+  if (!Number.isFinite(due)) return '';
+  if ([State.Learning, State.Relearning].includes(next.memory.state)) {
+    const minutes = Math.max(1, Math.round((due - now.getTime()) / 60000));
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.max(1, Math.round(minutes / 60));
+    return `${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+  }
+  const days = Math.max(1, next.memory.scheduled_days);
+  return `${days} ${days === 1 ? 'dia' : 'dias'}`;
+}
+
 export async function loadScheduledCards(cards: Flashcard[], userId: string): Promise<ScheduledCard[]> {
   if (!userId) throw new Error('Entre novamente para carregar o agendamento.');
   const [saved, history] = await Promise.all([localDB.getSkillSchedules(), localDB.getReviewHistory()]);

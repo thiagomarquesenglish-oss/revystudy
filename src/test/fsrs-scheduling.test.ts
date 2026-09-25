@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { State } from 'ts-fsrs';
-import { answerSchedule, availableAt, cardModes, loadScheduledCards, migrateSchedule, nextStudyDay, pickDueCard, type ScheduledCard } from '@/lib/fsrs-scheduling';
+import { answerSchedule, availableAt, cardModes, intervalLabel, loadScheduledCards, migrateSchedule, nextStudyDay, pickDueCard, type ScheduledCard } from '@/lib/fsrs-scheduling';
 import { localDB } from '@/lib/offline-db';
 import { buildSituationHtml } from '@/lib/situation';
 import type { Flashcard } from '@/lib/types';
@@ -76,6 +76,15 @@ it('uses 330 seconds for Hard, two Good steps, and four study days for Easy',()=
   expect(graduated.memory.state).toBe(State.Review);
   expect(graduated.memory.scheduled_days).toBe(1);
   expect(answerSchedule(initial,'easy',now).memory.scheduled_days).toBe(4);
+});
+it('shows the same changing interval that will be saved for each rating',()=>{
+  const initial=item().schedule;
+  expect(intervalLabel(initial,'again',now)).toBe('1 min');
+  expect(intervalLabel(initial,'hard',now)).toBe('6 min');
+  expect(intervalLabel(initial,'good',now)).toBe('10 min');
+  expect(intervalLabel(initial,'easy',now)).toBe('4 dias');
+  const review={...initial,memory:{...initial.memory,state:State.Review,scheduled_days:10},traditional:{easeFactor:2.5,step:0}};
+  expect(intervalLabel(review,'easy',now)).toBe('33 dias');
 });
 it('uses traditional review multipliers and updates each exercise ease',()=>{
   const initial=item().schedule;
