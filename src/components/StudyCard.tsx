@@ -262,6 +262,7 @@ function WritingErrorExplanation({ sentence, portuguese, typed }: { sentence: st
 
 function StudyCardInner({ card, schedule, onRate, flipped, setFlipped, remainingNew, remainingLearning, remainingReview, frontAudioSrc, backAudioSrc, typed, setTyped, typingResult, setTypingResult }: StudyCardProps & { schedule?: SkillSchedule; flipped: boolean; setFlipped: (v: boolean) => void; frontAudioSrc: string | null; backAudioSrc: string | null; typed: string; setTyped: (v: string) => void; typingResult: null | 'correct' | 'incorrect'; setTypingResult: (v: null | 'correct' | 'incorrect') => void }) {
   const isTyping = card.cardType === 'typing';
+  const typingInterval = schedule && typingResult ? intervalLabel(schedule, typingResult === 'correct' ? 'good' : 'again') : '';
   const expectedText = useMemo(() => htmlToPlainText(card.back), [card.back]);
   const supportedBack = useMemo(() => {
     const situation = readSituation(card.front, card.back);
@@ -365,7 +366,8 @@ function StudyCardInner({ card, schedule, onRate, flipped, setFlipped, remaining
                 onClick={handleContinue}
                 className={`w-full rounded-full py-3 text-sm font-bold text-white transition-all active:scale-95 active:opacity-70 ${typingResult === 'correct' ? 'bg-green-700' : 'bg-red-600'}`}
               >
-                Continuar
+                <span className="block leading-tight">Continuar</span>
+                {typingInterval && <span className="block text-[11px] font-normal opacity-90">Próxima revisão: {typingInterval}</span>}
               </button>
             ) : (
               <div className="flex flex-col items-center gap-3">
