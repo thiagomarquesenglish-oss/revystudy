@@ -157,10 +157,10 @@ it('does not revoke a prepared source on duplicate saved events', async () => {
     window.dispatchEvent(new CustomEvent(AUDIO_SAVED_EVENT, { detail: audioKey(src) }));
     window.dispatchEvent(new CustomEvent(AUDIO_SAVED_EVENT, { detail: audioKey(src) }));
   });
-  expect(URL.createObjectURL).toHaveBeenCalledOnce();
+  expect(URL.createObjectURL).not.toHaveBeenCalled();
   expect(URL.revokeObjectURL).not.toHaveBeenCalled();
   view.unmount();
-  expect(URL.revokeObjectURL).toHaveBeenCalledOnce();
+  expect(URL.revokeObjectURL).not.toHaveBeenCalled();
 });
 it('does not abort an active initial load when the user taps play', () => {
   render(<SavedAudioPlayer src="blob:local" />);

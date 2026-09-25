@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Download, Loader2, Pause, Play } from 'lucide-react';
 import { AUDIO_SAVED_EVENT, audioKey, downloadAudio, isRemoteAudio, readSavedAudio } from '@/lib/saved-audio';
+import { cloudMediaUrl } from '@/lib/cloud-media';
 import { audioDiagnosticId, audioSnapshot, recordAudio } from '@/lib/audio-diagnostics';
 import AudioDiagnosticCopy from '@/components/AudioDiagnosticCopy';
 import AudioFileCheck from '@/components/AudioFileCheck';
@@ -11,8 +12,13 @@ type Props = { src: string; centered?: boolean; compact?: boolean; autoPlay?: bo
 const SavedAudioPlayer = forwardRef<SavedAudioHandle, Props>((props, ref) => <Player key={props.src} {...props} ref={ref} />);
 const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, onEnded, onDuration, restart }, ref) => {
   const remote = isRemoteAudio(src);
-  const [source, setSource] = useState(remote ? '' : src);
-  const [checking, setChecking] = useState(remote);
+  // Safari on iOS can take tens of seconds to open a Cache API Blob URL even
+  // when the bytes are already present. Online playback therefore uses the
+  // direct storage URL; the saved copy remains the offline path.
+  const onlineRemote = remote && navigator.onLine;
+  const [source, setSource] = useState(onlineRemote ? cloudMediaUrl(src) : remote ? '' : src);
+  const [checking, setChecking] = useState(remote && !onlineRemote);
+  const [saved, setSaved] = useState(!remote);
   const [downloading, setDownloading] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [waiting, setWaiting] = useState(false);
@@ -43,6 +49,8 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
         const blob = await readSavedAudio(src);
         trace('saved-read-result', { found: !!blob, bytes: blob?.size, mime: blob?.type, discarded: cancelled || current !== revision });
         if (cancelled || current !== revision) return;
+        setSaved(!!blob);
+        if (onlineRemote) return;
         const next = blob ? URL.createObjectURL(blob) : '';
         if (localUrl) URL.revokeObjectURL(localUrl);
         localUrl = next;
@@ -77,7 +85,7 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
   const play = () => {
     trace('play-request');
     const element = audio.current;
-    if (!source || !element) return; // Never download or fall back to the cloud on play.
+    if (!source || !element) return;
     window.dispatchEvent(new CustomEvent('revystudy:audio-play', { detail: element }));
     const current = ++sequence.current;
     setError(''); setWaiting(true);
@@ -121,10 +129,10 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
   };
   const busy = checking || downloading;
   return <div className={`flex flex-col items-center gap-2 ${centered ? 'self-center' : 'self-start'}`}>
-    <button type="button" disabled={busy} aria-label={checking ? 'Verificando áudio salvo' : downloading ? 'Baixando áudio' : !source ? 'Baixar áudio' : playing || waiting ? 'Pausar áudio' : 'Reproduzir áudio'}
-      onClick={event => { event.stopPropagation(); if (!source) void download(); else if (playing || waiting) stop(); else play(); }}
+    <button type="button" disabled={busy} aria-label={checking ? 'Verificando áudio salvo' : downloading ? 'Baixando áudio' : remote && !saved ? 'Baixar áudio' : !source ? 'Baixar áudio' : playing || waiting ? 'Pausar áudio' : 'Reproduzir áudio'}
+      onClick={event => { event.stopPropagation(); if ((remote && !saved) || !source) void download(); else if (playing || waiting) stop(); else play(); }}
       className={`shrink-0 rounded-full bg-primary/15 hover:bg-primary/25 flex items-center justify-center disabled:opacity-50 ${compact ? 'w-10 h-10' : 'w-20 h-20'}`}>
-      {busy || waiting ? <Loader2 className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary animate-spin`} /> : !source ? <Download className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary`} /> : playing ? <Pause className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary`} /> : <Play className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary`} />}
+      {busy || waiting ? <Loader2 className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary animate-spin`} /> : (remote && !saved) || !source ? <Download className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary`} /> : playing ? <Pause className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary`} /> : <Play className={`${compact ? 'w-5 h-5' : 'w-9 h-9'} text-primary`} />}
     </button>
     <audio ref={audio} src={source || undefined} preload="auto" playsInline
       onPlaying={() => { clearTimeout(timer.current); clearTimeout(retry.current); setWaiting(false); setPlaying(true); setError(''); }}
