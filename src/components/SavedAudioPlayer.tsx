@@ -3,6 +3,7 @@ import { Download, Loader2, Pause, Play } from 'lucide-react';
 import { AUDIO_SAVED_EVENT, audioKey, downloadAudio, isRemoteAudio, readSavedAudio } from '@/lib/saved-audio';
 import { audioDiagnosticId, audioSnapshot, recordAudio } from '@/lib/audio-diagnostics';
 import AudioDiagnosticCopy from '@/components/AudioDiagnosticCopy';
+import AudioFileCheck from '@/components/AudioFileCheck';
 
 export interface SavedAudioHandle { play: () => void; stop: () => void }
 type Props = { src: string; centered?: boolean; compact?: boolean; autoPlay?: boolean; onEnded?: () => void; onDuration?: (duration: number) => void; restart?: boolean };
@@ -130,6 +131,7 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
     {error && <div role="alert" className="max-w-xs text-xs text-center text-destructive"><p>{error}</p>
       {source && <button type="button" className="underline p-2" onClick={event => { event.stopPropagation(); trace('manual-retry'); audio.current?.load(); play(); }}>Tentar novamente</button>}
       <AudioDiagnosticCopy />
+      {remote && <AudioFileCheck src={src} player={diagnosticId} />}
     </div>}
   </div>;
 });
