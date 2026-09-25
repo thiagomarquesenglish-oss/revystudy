@@ -1,6 +1,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Download, Loader2, Pause, Play } from 'lucide-react';
 import { AUDIO_SAVED_EVENT, audioKey, downloadAudio, isRemoteAudio, readSavedAudio } from '@/lib/saved-audio';
+import { audioDiagnosticId, audioSnapshot, recordAudio } from '@/lib/audio-diagnostics';
+import AudioDiagnosticCopy from '@/components/AudioDiagnosticCopy';
 
 export interface SavedAudioHandle { play: () => void; stop: () => void }
 type Props = { src: string; centered?: boolean; compact?: boolean; autoPlay?: boolean; onEnded?: () => void; onDuration?: (duration: number) => void; restart?: boolean };
@@ -20,9 +22,12 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const retry = useRef<ReturnType<typeof setTimeout>>();
   const lock = useRef(false);
+  const [diagnosticId] = useState(audioDiagnosticId);
+  const trace = (event: string, data: Record<string, unknown> = {}) => recordAudio(event, diagnosticId, { ...audioSnapshot(audio.current), attempt: sequence.current, ...data });
   const stop = () => { sequence.current++; clearTimeout(timer.current); clearTimeout(retry.current); audio.current?.pause(); setPlaying(false); setWaiting(false); };
-  const fail = (message: string) => { stop(); setError(message); };
+  const fail = (message: string) => { trace('failure', { message }); stop(); setError(message); };
   useEffect(() => {
+    trace('mount');
     alive.current = true;
     let cancelled = false;
     let localUrl = '';
@@ -30,24 +35,33 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
     const load = async () => {
       const current = ++revision;
       try {
+        trace('saved-read-start');
         const blob = await readSavedAudio(src);
+        trace('saved-read-result', { found: !!blob, bytes: blob?.size, mime: blob?.type, discarded: cancelled || current !== revision });
         if (cancelled || current !== revision) return;
         const next = blob ? URL.createObjectURL(blob) : '';
         if (localUrl) URL.revokeObjectURL(localUrl);
         localUrl = next;
+        trace('source-replaced');
         setSource(next);
       } catch (reason) {
+        trace('saved-read-error', { name: reason instanceof Error ? reason.name : 'unknown' });
         if (!cancelled) setError(reason instanceof Error ? reason.message : 'Não foi possível acessar o áudio salvo.');
       } finally { if (!cancelled) setChecking(false); }
     };
     const saved = (event: Event) => { if ((event as CustomEvent).detail === audioKey(src)) void load(); };
     if (remote) { void load(); window.addEventListener(AUDIO_SAVED_EVENT, saved); }
     const element = audio.current;
-    const hide = () => { if (document.hidden) stop(); };
-    const another = (event: Event) => { if ((event as CustomEvent).detail !== element) stop(); };
+    const events = ['loadstart', 'loadedmetadata', 'loadeddata', 'canplay', 'play', 'playing', 'waiting', 'stalled', 'suspend', 'pause', 'ended', 'error', 'emptied', 'abort'];
+    const observe = (event: Event) => trace(`media:${event.type}`);
+    events.forEach(name => element?.addEventListener(name, observe));
+    const hide = () => { trace('visibility'); if (document.hidden) stop(); };
+    const another = (event: Event) => { if ((event as CustomEvent).detail !== element) { trace('stopped-by-other-player'); stop(); } };
     window.addEventListener('revystudy:audio-play', another);
     document.addEventListener('visibilitychange', hide);
     return () => {
+      trace('unmount');
+      events.forEach(name => element?.removeEventListener(name, observe));
       cancelled = true; alive.current = false; sequence.current++;
       clearTimeout(timer.current); clearTimeout(retry.current); element?.pause();
       if (localUrl) URL.revokeObjectURL(localUrl);
@@ -57,6 +71,7 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
     };
   }, [src, remote]);
   const play = () => {
+    trace('play-request');
     const element = audio.current;
     if (!source || !element) return; // Never download or fall back to the cloud on play.
     window.dispatchEvent(new CustomEvent('revystudy:audio-play', { detail: element }));
@@ -66,20 +81,23 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
     timer.current = setTimeout(() => fail('O áudio salvo não iniciou. Toque em tentar novamente.'), 10000);
     // iOS sometimes leaves a freshly attached file stuck; reloading it (what "Tentar novamente" did) unsticks it automatically.
     clearTimeout(retry.current);
-    if (element.readyState === 0) element.load();
-    retry.current = setTimeout(() => { if (alive.current && current === sequence.current && element.paused) { element.load(); void element.play().catch(() => {}); } }, 3000);
+    if (element.readyState === 0) { trace('load-before-play'); element.load(); }
+    retry.current = setTimeout(() => { if (alive.current && current === sequence.current && element.paused) { trace('automatic-retry'); element.load(); void element.play().catch(reason => { trace('retry-rejected', { name: reason?.name }); }); } }, 3000);
     if (restart) element.currentTime = 0;
-    void element.play().catch(() => { if (alive.current && current === sequence.current) fail('Não foi possível reproduzir o áudio salvo.'); });
+    void element.play().then(() => trace('play-resolved'), reason => { trace('play-rejected', { name: reason?.name, originalAttempt: current }); if (alive.current && current === sequence.current) fail('Não foi possível reproduzir o áudio salvo.'); });
   };
   useImperativeHandle(ref, () => ({ play, stop }));
   const download = async () => {
+    trace('download-request');
     if (lock.current) return;
     lock.current = true; setDownloading(true); setError('');
     try {
       await downloadAudio(src);
+      trace('download-complete');
       // Also refresh when another player had already saved the same file.
       if (alive.current) window.dispatchEvent(new CustomEvent(AUDIO_SAVED_EVENT, { detail: audioKey(src) }));
     } catch (reason) {
+      trace('download-error', { name: reason instanceof Error ? reason.name : 'unknown' });
       if (alive.current) setError(reason instanceof Error && reason.name !== 'AbortError' ? reason.message : 'O download demorou demais. Tente novamente.');
     } finally { lock.current = false; if (alive.current) setDownloading(false); }
   };
@@ -97,7 +115,8 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
       onLoadedMetadata={event => onDuration?.(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0)}
       onError={() => { if (source) fail('Não foi possível abrir o áudio salvo.'); }} />
     {error && <div role="alert" className="max-w-xs text-xs text-center text-destructive"><p>{error}</p>
-      {source && <button type="button" className="underline p-2" onClick={event => { event.stopPropagation(); audio.current?.load(); play(); }}>Tentar novamente</button>}
+      {source && <button type="button" className="underline p-2" onClick={event => { event.stopPropagation(); trace('manual-retry'); audio.current?.load(); play(); }}>Tentar novamente</button>}
+      <AudioDiagnosticCopy />
     </div>}
   </div>;
 });
