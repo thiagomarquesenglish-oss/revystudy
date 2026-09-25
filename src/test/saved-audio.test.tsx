@@ -17,7 +17,7 @@ beforeEach(() => {
   vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
   vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
 });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 it('downloads only on tap, then reuses the saved file after reopening offline', async () => {
   const src = 'https://example.com/audio.mp3';
   const view = render(<SavedAudioPlayer src={src} />);
@@ -68,7 +68,7 @@ it('extracts remote audio urls from card html and ignores local ones', () => {
 });
 it('prefetches every audio once, skips saved ones, and survives a failure', async () => {
   const urls = ['https://e.co/1.mp3', 'https://e.co/2.mp3', 'https://e.co/2.mp3', 'https://e.co/bad.mp3', 'blob:skip'];
-  vi.mocked(fetch).mockImplementation(async (input: any) => String(input).includes('bad') ? new Response('x', { status: 500 }) : new Response('audio-bytes', { headers: { 'Content-Type': 'audio/mpeg' } }));
+  vi.mocked(fetch).mockImplementation(async (input: any) => new URL(String(input)).pathname === '/bad.mp3' ? new Response('x', { status: 500 }) : new Response('audio-bytes', { headers: { 'Content-Type': 'audio/mpeg' } }));
   const result = await prefetchAudios(urls);
   expect(result).toEqual({ total: 3, failed: 1 });
   expect(fetch).toHaveBeenCalledTimes(3);
@@ -86,4 +86,43 @@ it('automatically reloads a stuck first play instead of showing an error', async
   expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2);
   expect(screen.queryByRole('alert')).toBeNull();
   vi.useRealTimers();
+});
+it('recovers a non-paused stalled play and ignores the old promise aborted by reload', async () => {
+  vi.useFakeTimers();
+  let rejectFirst!: (error: Error) => void;
+  vi.mocked(HTMLMediaElement.prototype.play)
+    .mockImplementationOnce(() => new Promise<void>((_, reject) => { rejectFirst = reject; }))
+    .mockResolvedValue(undefined);
+  render(<SavedAudioPlayer src="blob:local" />);
+  const element = document.querySelector('audio')!;
+  Object.defineProperty(element, 'paused', { configurable: true, value: false });
+  Object.defineProperty(element, 'readyState', { configurable: true, value: 0 });
+  fireEvent.click(screen.getByRole('button', { name: 'Reproduzir áudio' }));
+  vi.mocked(HTMLMediaElement.prototype.load).mockImplementation(() => rejectFirst(new DOMException('Reload', 'AbortError')));
+  await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+  expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2);
+  expect(screen.queryByRole('alert')).toBeNull();
+  fireEvent.playing(element);
+  await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2);
+});
+it('stops after the deadline if recovery also stalls', async () => {
+  vi.useFakeTimers();
+  vi.mocked(HTMLMediaElement.prototype.play).mockImplementation(() => new Promise<void>(() => {}));
+  render(<SavedAudioPlayer src="blob:local" />);
+  Object.defineProperty(document.querySelector('audio')!, 'paused', { configurable: true, value: false });
+  fireEvent.click(screen.getByRole('button', { name: 'Reproduzir áudio' }));
+  await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
+  expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2);
+  expect(screen.getByRole('alert')).toHaveTextContent('O áudio salvo não iniciou');
+});
+it('does not retry after the user stops waiting', async () => {
+  vi.useFakeTimers();
+  render(<SavedAudioPlayer src="blob:local" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Reproduzir áudio' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Pausar áudio' }));
+  await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
+  expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
+  expect(screen.queryByRole('alert')).toBeNull();
 });

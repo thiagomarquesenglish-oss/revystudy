@@ -82,7 +82,20 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
     // iOS sometimes leaves a freshly attached file stuck; reloading it (what "Tentar novamente" did) unsticks it automatically.
     clearTimeout(retry.current);
     if (element.readyState === 0) { trace('load-before-play'); element.load(); }
-    retry.current = setTimeout(() => { if (alive.current && current === sequence.current && element.paused) { trace('automatic-retry'); element.load(); void element.play().catch(reason => { trace('retry-rejected', { name: reason?.name }); }); } }, 3000);
+    retry.current = setTimeout(() => {
+      if (!alive.current || current !== sequence.current) return;
+      // A pending play can have paused=false without having loaded any audio.
+      if (!element.paused && element.readyState >= 3) return;
+      // load() aborts the old play promise. Invalidate it before restarting so
+      // its AbortError cannot stop the new attempt.
+      const recovery = ++sequence.current;
+      trace('automatic-retry');
+      element.load();
+      void element.play().catch(reason => {
+        trace('retry-rejected', { name: reason?.name });
+        if (alive.current && recovery === sequence.current) fail('Não foi possível reproduzir o áudio salvo.');
+      });
+    }, 3000);
     if (restart) element.currentTime = 0;
     void element.play().then(() => trace('play-resolved'), reason => { trace('play-rejected', { name: reason?.name, originalAttempt: current }); if (alive.current && current === sequence.current) fail('Não foi possível reproduzir o áudio salvo.'); });
   };
