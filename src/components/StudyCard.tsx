@@ -201,19 +201,19 @@ function SituationStudyCard({card,situation,audioSrc,onRate,forcedMode,remaining
       {mode==='text-comprehension'&&<div className="text-2xl text-white text-center" lang="en">{situation.english}</div>}
       {mode==='translation-production'&&<div className="text-2xl text-white text-center" lang="pt">{situation.portuguese}</div>}
       {isDictation&&!dictation&&<div className="w-full px-2 space-y-3"><textarea value={typed} onChange={e=>setTyped(e.target.value)} rows={3} autoFocus lang="en" spellCheck={false} placeholder="Escreva em inglês..." className="w-full bg-card text-foreground text-lg rounded-lg p-3 border border-border resize-none"/><button disabled={!typed.trim()} onClick={()=>setDictation(compareDictation(situation.english,typed))} className="w-full bg-primary text-primary-foreground rounded-full py-3 disabled:opacity-40">Verificar</button><button onClick={()=>finish('again')} className="w-full rounded-full bg-secondary py-3 text-sm text-muted-foreground hover:text-foreground">Pular</button></div>}
-      {dictation&&<div className="w-full px-2 space-y-2 text-center">
-        <p className={dictation.correct?'text-green-500':'text-red-500'}>{dictation.correct?'Correto!':'Compare com a resposta.'}</p>
-        {!dictation.correct&&<>
-          <div className="text-sm text-muted-foreground"><span className="block text-xs">Sua resposta</span><span className="text-foreground line-through">{typed || '—'}</span></div>
-          <div className="text-sm text-muted-foreground"><span className="block text-xs">Resposta correta</span><span className="text-foreground font-semibold" lang="en">{situation.english}</span></div>
-        </>}
-        {!dictation.correct&&<WritingErrorExplanation sentence={situation.english} portuguese={situation.portuguese} typed={typed}/>} 
-      </div>}
     </div>
       {!reveal && options}
       </div>
       <div className="study-flip-face study-flip-back" style={{ paddingBottom: '5rem' }}>
         <StudyMedia html={showImageAnswer?media:''}><div className="w-full flex flex-col items-center gap-3">{showEnglishAnswer&&<div className="text-2xl text-white text-center font-semibold" lang="en">{situation.english}</div>}{showImageAnswer&&renderedImage}{!['translation-production','image-translation-production'].includes(mode)&&((showPortuguese||blurPortuguese)?<div className="text-base text-muted-foreground text-center" lang="pt">{situation.portuguese}</div>:<button className="text-sm text-primary py-2" onClick={()=>setShowPortuguese(true)}>Mostrar significado</button>)}{!['audio-comprehension','audio-dictation','image-audio'].includes(mode)&&audioSrc&&<AudioPlayButton src={audioSrc} centered autoPlay={exerciseInfo[mode].skill !== 'production'}/>}</div></StudyMedia>
+        {dictation&&<div className="w-full px-2 mt-4 space-y-2 text-center">
+          <p className={`font-semibold ${dictation.correct?'text-green-500':'text-red-500'}`}>{dictation.correct?'Correto!':'Incorreto!'}</p>
+          {!dictation.correct&&<>
+            <div className="text-sm text-muted-foreground"><span className="block text-xs">Sua resposta</span><span className="text-foreground line-through">{typed || '—'}</span></div>
+            <div className="text-sm text-muted-foreground"><span className="block text-xs">Resposta correta</span><span className="text-foreground font-semibold" lang="en">{situation.english}</span></div>
+            <WritingErrorExplanation sentence={situation.english} portuguese={situation.portuguese} typed={typed}/>
+          </>}
+        </div>}
         {reveal && options}
       </div>
     </FlipCardFrame>
