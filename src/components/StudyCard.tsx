@@ -9,7 +9,6 @@ import { readSituation, translationSupportLevel } from '@/lib/situation';
 import { Play, Pause, Check, X, Loader2 } from 'lucide-react';
 import { availableSituationModes, chooseAdaptiveMode, exerciseInfo, parseAdaptiveEvent, type ExerciseMode } from '@/lib/adaptive-study';
 import { compareDictation } from '@/lib/dictation';
-import SkillBadge from './SkillBadge';
 import CardOptions from './CardOptions';
 import { useBlurPortuguese } from '@/lib/card-display-preferences';
 import AudioPlayButton from './SavedAudioPlayer';
@@ -182,7 +181,6 @@ function SimpleFlipCard({ card, schedule, onRate, backAudioSrc }: { card: Flashc
   const [flipped, setFlipped] = useState(false);
   useEffect(() => setFlipped(false), [card.id]);
   return <div className="flex flex-col items-center w-full max-w-lg mx-auto">
-    <div className="pt-5 flex justify-center"><SkillBadge skill="comprehension" /></div>
     <FlipCardFrame flipped={flipped} onFlip={() => setFlipped(value => !value)}>
       <div className="study-flip-face study-flip-front" aria-hidden={flipped}>{!flipped && <StudyMedia html={card.front}><CardContent html={card.front} audioSrc={null} autoPlay={false} /></StudyMedia>}</div>
       <div className="study-flip-face study-flip-back" aria-hidden={!flipped}>{flipped && <StudyMedia html={card.back}><CardContent html={card.back} audioSrc={backAudioSrc} autoPlay={false} /></StudyMedia>}</div>
@@ -206,7 +204,6 @@ function SituationStudyCard({card,schedule,situation,audioSrc,onRate,forcedMode,
   const renderedImage=<div className="rich-text-render max-w-full" dangerouslySetInnerHTML={{__html:media}}/>;
   const options = <div className="absolute bottom-4 inset-x-4 flex justify-center"><CardOptions key={card.id} card={card} sentence={situation.english} portuguese={situation.portuguese} /></div>;
   return <div className="study-exercise flex flex-col w-full max-w-lg mx-auto pb-36" data-blur-portuguese={blurPortuguese || undefined}>
-    <div className="pt-5 flex justify-center"><SkillBadge skill={exerciseInfo[mode].skill}/></div>
     <FlipCardFrame flipped={reveal} disabled={isDictation} onFlip={() => setFlipped(value => !value)}>
       <div className="study-flip-face study-flip-front" style={{ paddingBottom: '5rem' }}>
       <div className="w-full flex flex-col items-center gap-4">
@@ -296,7 +293,6 @@ function StudyCardInner({ card, schedule, onRate, flipped, setFlipped, remaining
 
   return (
     <div className="flex flex-col items-center w-full max-w-lg mx-auto">
-      <div className="pb-3"><SkillBadge skill={isTyping ? 'writing' : 'comprehension'} /></div>
       <div className={`study-exercise study-generic-flip-card flex flex-col w-full ${flipped ? 'is-flipped' : ''}`} onClick={event => { if (!isTyping && !(event.target as HTMLElement).closest('button, textarea, input, audio, a')) setFlipped(!flipped); }} role="button" tabIndex={0} onKeyDown={event => { if (!isTyping && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setFlipped(!flipped); } }} aria-label={flipped ? 'Mostrar frente do cartão' : 'Mostrar verso do cartão'} >
       {/* Content */}
       {!flipped && <StudyMedia html={card.front} key={`front-${card.id}`}>
