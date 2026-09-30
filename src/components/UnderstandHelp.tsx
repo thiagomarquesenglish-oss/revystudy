@@ -24,6 +24,7 @@ export default function UnderstandHelp({ sentence, portuguese, deckId, level = '
   const open = controlledOpen ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
   const [selected, setSelected] = useState<number[]>([]);
+  const [customQuestion, setCustomQuestion] = useState('');
   const [loading, setLoading] = useState(false);
   const [created, setCreated] = useState(false);
   const [current, setCurrent] = useState<LearningExplanation | null>(null);
@@ -41,7 +42,27 @@ export default function UnderstandHelp({ sentence, portuguese, deckId, level = '
   }, [deckId, current?.id]);
   const selectedText = [...selected].sort((a,b)=>a-b).map(index => words[index]).join(' ');
 
-  useEffect(() => { setSelected([]); setCurrent(null); setRelated([]); setCreated(false); }, [sentence]);
+  useEffect(() => { setSelected([]); setCustomQuestion(''); setCurrent(null); setRelated([]); setCreated(false); }, [sentence]);
+
+  const explainCustom = async () => {
+    const text = customQuestion.trim();
+    if (!text || loading || exampleLock.current || examplesBusy) return;
+    setLoading(true);
+    try {
+      const generated = await requestExplanation({
+        sentence: sentence || text, portuguese, selectedText: text.slice(0, 120),
+        question: `Responda a esta dúvida personalizada: ${text}. A frase do cartão é apenas contexto; a palavra ou dúvida pode não estar nela.`, level,
+      });
+      const saved = await saveExplanation({
+        conceptKey: generated.conceptKey, selectedText: text.slice(0, 120), sentence: sentence || text,
+        title: generated.title, explanation: generated.explanation,
+        quickMeaning: generated.quickMeaning, cardFront: generated.cardFront, cardBack: generated.cardBack,
+      });
+      setCurrent(saved); setRelated([]); setCreated(false);
+      setCurrent(await prepareExamples(saved));
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Não foi possível gerar a explicação personalizada.'); }
+    finally { setLoading(false); }
+  };
 
   const toggle = (index: number) => {
     if (exampleLock.current || loading) return;
@@ -152,6 +173,12 @@ export default function UnderstandHelp({ sentence, portuguese, deckId, level = '
             {words.map((word,index)=><button type="button" key={`${word}-${index}`} onClick={()=>toggle(index)} className={`rounded-lg border px-3 py-2 text-lg ${selected.includes(index)?'border-primary bg-primary/15 text-primary':'border-border bg-background'}`}>{word}</button>)}
           </div>
           <p className="text-center text-xs text-muted-foreground">Toque em uma ou mais partes que você não entendeu.</p>
+
+          <form className="space-y-2" onSubmit={event => { event.preventDefault(); void explainCustom(); }}>
+            <label htmlFor="custom-explanation" className="block text-sm font-medium">Explicação personalizada</label>
+            <textarea id="custom-explanation" value={customQuestion} onChange={event => setCustomQuestion(event.target.value)} maxLength={500} rows={2} placeholder="Digite uma palavra, frase ou dúvida…" disabled={loading || !!examplesBusy} className="w-full rounded-xl border border-border bg-background p-3 text-base text-foreground resize-none" />
+            <Button type="submit" variant="secondary" className="w-full" disabled={!customQuestion.trim() || loading || !!examplesBusy}>Explicar o que digitei</Button>
+          </form>
 
           {!current && <>
             {!!related.length && <div className="space-y-2"><p className="text-sm font-medium">Explicações que você já tem</p>{related.slice(0,3).map(item=><button key={item.id} type="button" onClick={()=>reuse(item)} className="w-full rounded-xl border border-border p-3 text-left"><span className="font-medium">{item.title}</span><span className="block text-xs text-muted-foreground mt-1">Exemplo: {item.sentence}</span></button>)}</div>}
