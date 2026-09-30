@@ -14,6 +14,7 @@ import DeckAudiosPage from "./pages/DeckAudiosPage";
 import DeckPage from "./pages/DeckPage";
 import StudyPage from "./pages/StudyPage";
 import FreePracticePage from "./pages/FreePracticePage";
+import VariationPracticePage from "./pages/VariationPracticePage";
 import CustomStudyPage from "./pages/CustomStudyPage";
 import DictationPage from "./pages/DictationPage";
 import AddCardPage from "./pages/AddCardPage";
@@ -53,6 +54,7 @@ const App = () => (
           <Routes>
             <Route path="/practice" element={<ProtectedRoute><FreePracticePage /></ProtectedRoute>} />
             <Route path="/practice/:deckId" element={<ProtectedRoute><FreePracticePage /></ProtectedRoute>} />
+            <Route path="/variations/:deckId" element={<ProtectedRoute><VariationPracticePage /></ProtectedRoute>} />
             <Route path="/curriculum/study" element={<Navigate to="/" replace />} />
             <Route path="/curriculum/content" element={<Navigate to="/decks" replace />} />
             <Route path="/library/manage" element={<ProtectedRoute><LibraryManagePage /></ProtectedRoute>} />

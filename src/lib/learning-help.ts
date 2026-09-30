@@ -77,3 +77,13 @@ export async function requestExplanation(args: { sentence: string; selectedText:
   if (!response.ok) throw new Error(payload.error || 'Não foi possível gerar a explicação.');
   return payload as { conceptKey: string; title: string; explanation: string; quickMeaning: string; cardFront: string; cardBack: string };
 }
+
+export interface VariationCorrection { correct: boolean; related: boolean; corrected: string; portuguese: string; explanation: string; imagePrompt: string }
+export async function correctVariation(sentence: string, variation: string): Promise<VariationCorrection> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sua sessão expirou.');
+  const response = await fetch('/api/explain', {method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${session.access_token}`}, body:JSON.stringify({mode:'variation',sentence,variation})});
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || 'Não foi possível corrigir sua variação.');
+  return payload as VariationCorrection;
+}

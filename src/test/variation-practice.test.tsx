@@ -1,0 +1,27 @@
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { buildSituationHtml } from '@/lib/situation';
+const mocks = vi.hoisted(() => ({cards:vi.fn(), add:vi.fn(), correct:vi.fn()}));
+vi.mock('@/lib/storage', () => ({getCardsByDeck:mocks.cards, addCard:mocks.add}));
+vi.mock('@/lib/learning-help', () => ({correctVariation:mocks.correct}));
+vi.mock('@/components/PageHeader', () => ({default:() => null}));
+import VariationPracticePage from '@/pages/VariationPracticePage';
+afterEach(() => {cleanup(); vi.clearAllMocks();});
+it('corrects the submitted variation and only adds the corrected phrase after explicit selection', async () => {
+  mocks.cards.mockResolvedValue([{...buildSituationHtml({english:'I need a table for two.',portuguese:'Preciso de uma mesa para dois.',context:'',mediaHtml:''})}]);
+  mocks.correct.mockResolvedValue({correct:false,related:true,corrected:'I need a table for four people.',portuguese:'Preciso de uma mesa para quatro pessoas.',explanation:'People já é plural.',imagePrompt:''});
+  mocks.add.mockResolvedValue(undefined);
+  render(<MemoryRouter initialEntries={['/variations/deck']}><Routes><Route path="/variations/:deckId" element={<VariationPracticePage />} /></Routes></MemoryRouter>);
+  await screen.findByText('I need a table for two.');
+  fireEvent.change(screen.getByRole('textbox'), {target:{value:'I need a table for four peoples.'}});
+  fireEvent.click(screen.getByRole('button', {name:'Corrigir minha variação'}));
+  await screen.findByText('People já é plural.');
+  expect(mocks.correct).toHaveBeenCalledWith('I need a table for two.', 'I need a table for four peoples.');
+  expect(screen.getByText('I need a table for four peoples.', {selector:'p'})).toBeVisible();
+  expect(mocks.add).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', {name:'Adicionar como cartão'}));
+  await waitFor(() => expect(mocks.add).toHaveBeenCalledOnce());
+  expect(mocks.add.mock.calls[0][0]).toBe('deck');
+  expect(mocks.add.mock.calls[0][2]).toContain('I need a table for four people.');
+});
