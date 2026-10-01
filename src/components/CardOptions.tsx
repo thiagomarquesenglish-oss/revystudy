@@ -9,6 +9,7 @@ import { deleteCard, updateCard, getCardsByDeck } from '@/lib/storage';
 import { setBlurPortuguese, useBlurPortuguese } from '@/lib/card-display-preferences';
 import type { Flashcard } from '@/lib/types';
 import UnderstandHelp from './UnderstandHelp';
+import VariationPracticePage from '@/pages/VariationPracticePage';
 
 export default function CardOptions({ card, sentence, portuguese, level }: {
   card: Flashcard; sentence: string; portuguese: string; level?: string;
@@ -16,6 +17,7 @@ export default function CardOptions({ card, sentence, portuguese, level }: {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [explain, setExplain] = useState(false);
+  const [variationOpen, setVariationOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [flagged, setFlagged] = useState(card.flagged);
   const [busy, setBusy] = useState(false);
@@ -46,6 +48,7 @@ export default function CardOptions({ card, sentence, portuguese, level }: {
             <Button variant="secondary" className="w-full" disabled={busy} onClick={() => setConfirmDelete(false)}>Cancelar</Button>
           </> : <>
             <button type="button" className={row} onClick={() => { setOpen(false); setExplain(true); }}>Explicação</button>
+            {sentence.trim() && <button type="button" className={row} onClick={() => { setOpen(false); setVariationOpen(true); }}>Praticar uma variação</button>}
             <button type="button" className={row} disabled={busy} onClick={async () => {
               setBusy(true);
               try { await updateCard(card.id, { flagged: !flagged }); setFlagged(!flagged); toast.success(flagged ? 'Cartão desmarcado' : 'Cartão marcado'); }
@@ -67,5 +70,13 @@ export default function CardOptions({ card, sentence, portuguese, level }: {
       </DrawerContent>
     </Drawer>
     <UnderstandHelp sentence={sentence} portuguese={portuguese} deckId={card.deckId} level={level} open={explain} onOpenChange={setExplain} hideTrigger />
+    <Drawer open={variationOpen} onOpenChange={setVariationOpen}>
+      <DrawerContent>
+        <DrawerHeader><DrawerTitle>Praticar uma variação</DrawerTitle></DrawerHeader>
+        <div className="overflow-y-auto max-h-[75dvh]">
+          {variationOpen && <VariationPracticePage key={card.id} referenceSentence={sentence} referenceDeckId={card.deckId} />}
+        </div>
+      </DrawerContent>
+    </Drawer>
   </div>;
 }

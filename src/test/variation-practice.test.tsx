@@ -8,6 +8,19 @@ vi.mock('@/lib/learning-help', () => ({correctVariation:mocks.correct}));
 vi.mock('@/components/PageHeader', () => ({default:() => null}));
 import VariationPracticePage from '@/pages/VariationPracticePage';
 afterEach(() => {cleanup(); vi.clearAllMocks();});
+it('uses the current card phrase in embedded practice without picking another deck phrase', async () => {
+  mocks.correct.mockResolvedValue({correct:true,related:true,corrected:'Can I have another drink?',portuguese:'Posso tomar outra bebida?',explanation:'Sua frase é natural.',imagePrompt:''});
+  render(<MemoryRouter><VariationPracticePage referenceSentence="Can I get a refill?" referenceDeckId="deck" /></MemoryRouter>);
+  await screen.findByText('Can I get a refill?');
+  expect(mocks.cards).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByRole('textbox'), {target:{value:'Can I have another drink?'}});
+  fireEvent.click(screen.getByRole('button', {name:'Corrigir minha variação'}));
+  await screen.findByText('Sua frase é natural.');
+  expect(mocks.correct).toHaveBeenCalledWith('Can I get a refill?', 'Can I have another drink?');
+  fireEvent.click(screen.getByRole('button', {name:'Escrever outra variação'}));
+  expect(screen.getByRole('textbox')).toHaveValue('');
+  expect(screen.getByText('Can I get a refill?')).toBeVisible();
+});
 it('corrects the submitted variation and only adds the corrected phrase after explicit selection', async () => {
   mocks.cards.mockResolvedValue([{...buildSituationHtml({english:'I need a table for two.',portuguese:'Preciso de uma mesa para dois.',context:'',mediaHtml:''})}]);
   mocks.correct.mockResolvedValue({correct:false,related:true,corrected:'I need a table for four people.',portuguese:'Preciso de uma mesa para quatro pessoas.',explanation:'People já é plural.',imagePrompt:''});

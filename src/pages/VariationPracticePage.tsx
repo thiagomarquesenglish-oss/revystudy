@@ -8,8 +8,10 @@ import { exampleKey } from '@/lib/explanation-examples';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 
-export default function VariationPracticePage() {
-  const { deckId } = useParams();
+export default function VariationPracticePage({ referenceSentence, referenceDeckId }: { referenceSentence?: string; referenceDeckId?: string } = {}) {
+  const params = useParams();
+  const deckId = referenceDeckId || params.deckId;
+  const embedded = referenceSentence !== undefined;
   const navigate = useNavigate();
   const [phrases, setPhrases] = useState<string[] | null>(null);
   const [index, setIndex] = useState(0);
@@ -22,6 +24,7 @@ export default function VariationPracticePage() {
   const lock = useRef(false);
   useEffect(() => {
     let active = true;
+    if (referenceSentence !== undefined) { setPhrases([referenceSentence]); setIndex(0); return; }
     setPhrases(null);
     void getCardsByDeck(deckId!).then(cards => {
       const values = [...new Set(cards.map(card => readSituation(card.front, card.back)?.english || card.dictationAnswer || '').map(value => value.trim()).filter(Boolean))];
@@ -29,7 +32,7 @@ export default function VariationPracticePage() {
       if (active) { setPhrases(values); setIndex(0); }
     }).catch(() => { if (active) setError('Não foi possível carregar as frases.'); });
     return () => { active = false; };
-  }, [deckId]);
+  }, [deckId, referenceSentence]);
   const sentence = phrases?.[index] || '';
   const correct = async () => {
     if (!typed.trim() || lock.current) return;
@@ -53,9 +56,9 @@ export default function VariationPracticePage() {
     } catch { toast.error('Não foi possível adicionar o cartão. Tente novamente.'); }
     finally { lock.current = false; setBusy(false); }
   };
-  return <div className="min-h-screen bg-background safe-page">
-    <PageHeader title="Estudar variações" onBack={() => navigate(`/deck/${deckId}`)} />
-    <main className="max-w-lg mx-auto px-4 pb-28 space-y-5" style={{paddingTop:'calc(var(--app-header-height, 48px) + 1rem)'}}>
+  return <div className={embedded ? '' : 'min-h-screen bg-background safe-page'}>
+    {!embedded && <PageHeader title="Estudar variações" onBack={() => navigate(`/deck/${deckId}`)} />}
+    <main className={`max-w-lg mx-auto px-4 space-y-5 ${embedded ? 'pb-6' : 'pb-28'}`} style={embedded ? undefined : {paddingTop:'calc(var(--app-header-height, 48px) + 1rem)'}}>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       {!phrases ? !error && <p role="status">Carregando frases…</p> : !sentence ? <p>Este baralho ainda não tem frases em inglês para praticar.</p> : <>
         <div className="rounded-2xl bg-card p-6"><p className="text-xs text-muted-foreground mb-3">Frase de referência</p><p lang="en" className="text-2xl font-semibold text-center">{sentence}</p></div>
@@ -72,7 +75,7 @@ export default function VariationPracticePage() {
           {!result.related && <p className="text-sm text-muted-foreground">Na próxima, tente aproveitar uma palavra ou estrutura da frase de referência.</p>}
           <Button variant="secondary" className="w-full" disabled={busy || added} onClick={save}>{added ? 'Já está no baralho' : 'Adicionar como cartão'}</Button>
         </section>}
-        <Button variant="outline" className="w-full" disabled={busy} onClick={() => { setIndex(value => (value + 1) % phrases.length); setTyped(''); setSubmitted(''); setResult(null); setAdded(false); setError(''); }}>Outra frase</Button>
+        <Button variant="outline" className="w-full" disabled={busy} onClick={() => { setIndex(value => (value + 1) % phrases.length); setTyped(''); setSubmitted(''); setResult(null); setAdded(false); setError(''); }}>{embedded ? 'Escrever outra variação' : 'Outra frase'}</Button>
       </>}
     </main>
   </div>;
