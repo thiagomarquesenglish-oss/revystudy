@@ -1,0 +1,28 @@
+import { afterEach, expect, it, vi } from 'vitest';
+vi.mock('@/lib/cloud-media', () => ({cloudMediaUrl:(src:string) => src}));
+vi.mock('@/lib/saved-audio', () => ({readSavedAudio:vi.fn()}));
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.resetModules(); });
+it('evicts old decoded audio and suspends only after playback is idle', async () => {
+  vi.useFakeTimers();
+  const buffer = {length:100,numberOfChannels:1};
+  const node = {buffer:null as unknown, onended:null as null | (() => void),connect:vi.fn(),disconnect:vi.fn(),start:vi.fn(),stop:vi.fn()};
+  const ctx = {state:'running',destination:{},resume:vi.fn().mockResolvedValue(undefined),suspend:vi.fn().mockResolvedValue(undefined),decodeAudioData:vi.fn().mockResolvedValue(buffer),createBufferSource:() => node};
+  vi.stubGlobal('AudioContext', class {constructor(){return ctx;}});
+  const fetcher = vi.fn().mockResolvedValue({ok:true,type:'cors',arrayBuffer:async () => new ArrayBuffer(8)});
+  vi.stubGlobal('fetch',fetcher);
+  const engine = await import('@/lib/audio-engine');
+  for(let i=0;i<9;i++) await engine.decodeAudioSource(`https://audio/${i}`,true);
+  await engine.decodeAudioSource('https://audio/8',true);
+  expect(fetcher).toHaveBeenCalledTimes(9);
+  await engine.decodeAudioSource('https://audio/0',true);
+  expect(fetcher).toHaveBeenCalledTimes(10);
+  const ended = vi.fn();
+  engine.playDecodedAudio(buffer as AudioBuffer,{onStarted:vi.fn(),onEnded:ended,onError:vi.fn()});
+  await vi.advanceTimersByTimeAsync(20000);
+  expect(ctx.suspend).not.toHaveBeenCalled();
+  node.onended?.();
+  expect(ended).toHaveBeenCalledOnce();
+  expect(node.buffer).toBeNull();
+  await vi.advanceTimersByTimeAsync(15000);
+  expect(ctx.suspend).toHaveBeenCalledOnce();
+});

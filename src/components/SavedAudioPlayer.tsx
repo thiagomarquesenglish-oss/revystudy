@@ -77,6 +77,7 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
       trace('unmount');
       events.forEach(name => element?.removeEventListener(name, observe));
       cancelled = true; alive.current = false; sequence.current++;
+      decodedStop.current?.(); decodedStop.current = null;
       clearTimeout(timer.current); clearTimeout(retry.current); element?.pause();
       if (localUrl) URL.revokeObjectURL(localUrl);
       window.removeEventListener(AUDIO_SAVED_EVENT, saved);
