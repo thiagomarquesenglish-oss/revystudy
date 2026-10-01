@@ -9,9 +9,9 @@ import { exampleKey, fiveNewExamples, formatExample, splitExplanation, type Expl
 import { requestMoreExamples, requestScenePrompt } from '@/lib/learning-help';
 import { findExplanations, markExplanationUsed, requestExplanation, saveExplanation, type LearningExplanation } from '@/lib/learning-help';
 
-type Props = { sentence: string; portuguese: string; deckId: string; level?: string; open?: boolean; onOpenChange?: (open: boolean) => void; hideTrigger?: boolean };
+type Props = { sentence: string; portuguese: string; deckId: string; level?: string; open?: boolean; onOpenChange?: (open: boolean) => void; hideTrigger?: boolean; textOnly?: boolean };
 
-export default function UnderstandHelp({ sentence, portuguese, deckId, level = 'iniciante', open: controlledOpen, onOpenChange, hideTrigger }: Props) {
+export default function UnderstandHelp({ sentence, portuguese, deckId, level = 'iniciante', open: controlledOpen, onOpenChange, hideTrigger, textOnly = false }: Props) {
   const words = useMemo(() => {
     const unique = new Map<string,string>();
     for (const word of sentence.match(/[\p{L}\p{N}'’-]+/gu) || []) {
@@ -167,12 +167,12 @@ export default function UnderstandHelp({ sentence, portuguese, deckId, level = '
     </button>}
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerContent>
-        <DrawerHeader><DrawerTitle>Explicar esta frase</DrawerTitle></DrawerHeader>
+        <DrawerHeader><DrawerTitle>{textOnly ? 'Pedir explicação' : 'Explicar esta frase'}</DrawerTitle></DrawerHeader>
         <div className="px-4 pb-6 space-y-5 overflow-y-auto max-h-[75dvh]">
-          <div className="flex flex-wrap justify-center gap-2" lang="en">
+          {!textOnly && <><div className="flex flex-wrap justify-center gap-2" lang="en">
             {words.map((word,index)=><button type="button" key={`${word}-${index}`} onClick={()=>toggle(index)} className={`rounded-lg border px-3 py-2 text-lg ${selected.includes(index)?'border-primary bg-primary/15 text-primary':'border-border bg-background'}`}>{word}</button>)}
           </div>
-          <p className="text-center text-xs text-muted-foreground">Toque em uma ou mais partes que você não entendeu.</p>
+          <p className="text-center text-xs text-muted-foreground">Toque em uma ou mais partes que você não entendeu.</p></>}
 
           <form className="space-y-2" onSubmit={event => { event.preventDefault(); void explainCustom(); }}>
             <label htmlFor="custom-explanation" className="block text-sm font-medium">Explicação personalizada</label>
@@ -180,7 +180,7 @@ export default function UnderstandHelp({ sentence, portuguese, deckId, level = '
             <Button type="submit" variant="secondary" className="w-full" disabled={!customQuestion.trim() || loading || !!examplesBusy}>Explicar o que digitei</Button>
           </form>
 
-          {!current && <>
+          {!current && !textOnly && <>
             {!!related.length && <div className="space-y-2"><p className="text-sm font-medium">Explicações que você já tem</p>{related.slice(0,3).map(item=><button key={item.id} type="button" onClick={()=>reuse(item)} className="w-full rounded-xl border border-border p-3 text-left"><span className="font-medium">{item.title}</span><span className="block text-xs text-muted-foreground mt-1">Exemplo: {item.sentence}</span></button>)}</div>}
             <Button className="w-full" disabled={!selectedText||loading} onClick={lookup}>{loading?<Loader2 className="h-4 w-4 animate-spin"/>:related.length?'Gerar uma nova explicação':`Explicar “${selectedText || 'trecho'}”`}</Button>
           </>}
