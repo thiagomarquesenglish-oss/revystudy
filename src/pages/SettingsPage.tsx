@@ -8,14 +8,13 @@ import { toast } from 'sonner';
 import BackupSettings from '@/components/BackupSettings';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { isAutoAudioEnabled, setAutoAudioEnabled } from '@/lib/saved-audio';
+import { SAVED_AUDIO_CACHE } from '@/lib/saved-audio';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
   const {isOnline,isSyncing,pendingCount,syncError,syncNow}=useOnlineStatus();
   const [refreshing,setRefreshing]=useState(false);
-  const [autoAudio, setAutoAudio] = useState(isAutoAudioEnabled);
+  const [clearingAudio, setClearingAudio] = useState(false);
 
   const refreshApp=async()=>{
     if(refreshing)return;
@@ -65,8 +64,13 @@ export default function SettingsPage() {
       <section className="bg-card rounded-2xl p-5 space-y-2">
         <h2 className="font-semibold">Áudio dos cartões</h2>
         <AudioDiagnosticCopy />
-        <p className="text-sm text-muted-foreground">Dentro de cada baralho, o painel <b>Áudios do baralho</b> mostra quantos áudios faltam baixar e baixa todos com um toque. Os áudios do cartão que você está estudando também são baixados em segundo plano. As imagens continuam na nuvem.</p>
-        <label className="flex items-center justify-between gap-3 pt-2"><span className="text-sm">Baixar todos os áudios automaticamente ao abrir o app</span><Switch checked={autoAudio} onCheckedChange={on => { setAutoAudio(on); setAutoAudioEnabled(on); }} aria-label="Baixar áudios automaticamente" /></label>
+        <p className="text-sm text-muted-foreground">Os áudios são reproduzidos pela nuvem. É necessário estar conectado à internet.</p>
+        <Button variant="secondary" disabled={clearingAudio} onClick={async () => {
+          setClearingAudio(true);
+          try { if ('caches' in globalThis) await caches.delete(SAVED_AUDIO_CACHE); localStorage.removeItem('revystudy:auto-audio'); toast.success('Áudios baixados removidos deste aparelho.'); }
+          catch { toast.error('Não foi possível remover os áudios baixados.'); }
+          finally { setClearingAudio(false); }
+        }}>{clearingAudio ? 'Removendo…' : 'Apagar áudios baixados deste aparelho'}</Button>
       </section>
       <details className="bg-card rounded-2xl p-5"><summary className="font-semibold cursor-pointer">Atualizações</summary><div className="pt-4 flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Novidades dos seus baralhos</p><SyncUpdatesButton onInstalled={() => {}} /></div></details>
       <PerformanceDiagnostics />

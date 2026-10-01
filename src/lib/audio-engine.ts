@@ -1,5 +1,4 @@
 import { cloudMediaUrl } from './cloud-media';
-import { readSavedAudio } from './saved-audio';
 
 type ContextCtor = typeof AudioContext;
 const contextClass = (): ContextCtor | undefined => typeof window === 'undefined' ? undefined : window.AudioContext || (window as unknown as { webkitAudioContext?: ContextCtor }).webkitAudioContext;
@@ -34,14 +33,10 @@ export async function decodeAudioSource(src: string, online: boolean): Promise<A
   const work = (async () => {
     const ctx = getContext();
     if (!ctx) throw new Error('Web Audio não está disponível neste navegador.');
-    const bytes = online ? await (async () => {
+    const bytes = await (async () => {
       const response = await fetch(cloudMediaUrl(src), { mode: 'cors', credentials: 'omit', cache: 'no-store' });
       if (!response.ok || response.type === 'opaque') throw new Error(`Não foi possível carregar o áudio (HTTP ${response.status}).`);
       return response.arrayBuffer();
-    })() : await (async () => {
-      const blob = await readSavedAudio(src);
-      if (!blob) throw new Error('O áudio não está salvo neste aparelho.');
-      return blob.arrayBuffer();
     })();
     if (!bytes.byteLength) throw new Error('O arquivo de áudio está vazio.');
     // Safari may detach the buffer during decoding; pass an independent copy.

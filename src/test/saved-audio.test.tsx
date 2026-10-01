@@ -18,26 +18,27 @@ beforeEach(() => {
   vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
-it('downloads only on tap, then reuses the saved file after reopening offline', async () => {
+it('plays from the cloud without reading downloaded files and requires internet', async () => {
   const src = 'https://example.com/audio.mp3';
   const view = render(<SavedAudioPlayer src={src} />);
-  const download = await screen.findByRole('button', { name: 'Baixar áudio' });
+  const play = await screen.findByRole('button', { name: 'Reproduzir áudio' });
   expect(fetch).not.toHaveBeenCalled();
-  fireEvent.click(download);
-  await screen.findByRole('button', { name: 'Reproduzir áudio' });
-  expect(fetch).toHaveBeenCalledOnce();
-  expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+  expect(screen.queryByRole('button', { name: 'Baixar áudio' })).toBeNull();
+  fireEvent.click(play);
+  expect(HTMLMediaElement.prototype.play).toHaveBeenCalledOnce();
+  expect(caches.open).not.toHaveBeenCalled();
+  expect(document.querySelector('audio')!.src).toContain('audio.mp3');
   view.unmount();
   vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
   render(<SavedAudioPlayer src={src} />);
   fireEvent.click(await screen.findByRole('button', { name: 'Reproduzir áudio' }));
   expect(HTMLMediaElement.prototype.play).toHaveBeenCalledOnce();
-  expect(fetch).toHaveBeenCalledOnce();
-  expect(document.querySelector('audio')!.src).toBe('blob:saved');
+  expect(fetch).not.toHaveBeenCalled();
+  expect(screen.getByRole('alert')).toHaveTextContent('Conecte-se à internet');
 });
 it('shares one download across duplicate players and repeated calls', async () => {
   render(<><SavedAudioPlayer src="https://example.com/shared.mp3" /><SavedAudioPlayer src="https://example.com/shared.mp3" /></>);
-  await screen.findAllByRole('button', { name: 'Baixar áudio' });
+  await screen.findAllByRole('button', { name: 'Reproduzir áudio' });
   await act(async () => { await Promise.all([downloadAudio('https://example.com/shared.mp3'), downloadAudio('https://example.com/shared.mp3')]); });
   expect(await screen.findAllByRole('button', { name: 'Reproduzir áudio' })).toHaveLength(2);
   await downloadAudio('https://example.com/shared.mp3');
@@ -115,7 +116,7 @@ it('stops after the deadline if recovery also stalls', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Reproduzir áudio' }));
   await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
   expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2);
-  expect(screen.getByRole('alert')).toHaveTextContent('O áudio salvo não iniciou');
+  expect(screen.getByRole('alert')).toHaveTextContent('O áudio não iniciou');
 });
 it('does not retry after the user stops waiting', async () => {
   vi.useFakeTimers();
