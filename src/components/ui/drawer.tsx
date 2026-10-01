@@ -6,7 +6,7 @@ const Drawer = ({
   shouldScaleBackground = false,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
-  <DrawerPrimitive.Root shouldScaleBackground={shouldScaleBackground} noBodyStyles disablePreventScroll={false} {...props} />
+  <DrawerPrimitive.Root shouldScaleBackground={shouldScaleBackground} {...props} />
 );
 Drawer.displayName = "Drawer";
 
@@ -31,14 +31,14 @@ const DrawerContent = React.forwardRef<
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto max-h-[85vh] flex-col rounded-t-[28px] border-0 bg-card sm:max-w-xl sm:mx-auto",
+        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto max-h-[85dvh] flex-col overflow-hidden rounded-t-[28px] border-0 bg-card sm:max-w-xl sm:mx-auto",
         className,
       )}
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       {...props}
     >
       <div className="mx-auto mt-3 h-1 w-9 rounded-full bg-muted-foreground/40 shrink-0" />
-      <div className="flex-1 overflow-y-auto overscroll-contain">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {children}
       </div>
     </DrawerPrimitive.Content>

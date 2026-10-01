@@ -73,7 +73,7 @@ export default function CardOptions({ card, sentence, portuguese, level }: {
     <Drawer open={variationOpen} onOpenChange={setVariationOpen}>
       <DrawerContent>
         <DrawerHeader><DrawerTitle>Praticar uma variação</DrawerTitle></DrawerHeader>
-        <div className="overflow-y-auto max-h-[75dvh]">
+        <div>
           {variationOpen && <VariationPracticePage key={card.id} referenceSentence={sentence} referenceDeckId={card.deckId} />}
         </div>
       </DrawerContent>

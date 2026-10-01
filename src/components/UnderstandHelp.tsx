@@ -168,7 +168,7 @@ export default function UnderstandHelp({ sentence, portuguese, deckId, level = '
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerContent>
         <DrawerHeader><DrawerTitle>{textOnly ? 'Pedir explicação' : 'Explicar esta frase'}</DrawerTitle></DrawerHeader>
-        <div className="px-4 pb-6 space-y-5 overflow-y-auto max-h-[75dvh]">
+        <div className="px-4 pb-6 space-y-5">
           {!textOnly && <><div className="flex flex-wrap justify-center gap-2" lang="en">
             {words.map((word,index)=><button type="button" key={`${word}-${index}`} onClick={()=>toggle(index)} className={`rounded-lg border px-3 py-2 text-lg ${selected.includes(index)?'border-primary bg-primary/15 text-primary':'border-border bg-background'}`}>{word}</button>)}
           </div>

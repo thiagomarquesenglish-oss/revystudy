@@ -31,7 +31,7 @@ export default function PerformanceDiagnostics() {
     <p className="text-sm text-muted-foreground">Ative durante o uso para registrar a atividade do app. O iPhone não informa temperatura, CPU ou consumo de bateria.</p>
     {enabled && <Button variant="secondary" className="w-full" onClick={() => setOpen(true)}>Ver diagnóstico</Button>}
     <Drawer open={open} onOpenChange={setOpen}><DrawerContent><DrawerHeader><DrawerTitle>Diagnóstico de desempenho</DrawerTitle></DrawerHeader>
-      <div className="px-4 pb-6 space-y-3 overflow-y-auto max-h-[75dvh]">
+      <div className="px-4 pb-6 space-y-3">
         <p className="text-sm text-muted-foreground">Sessão atual · {data.seconds} segundos · atualização a cada 2 segundos</p>
         <dl className="space-y-2 text-sm">
           {Object.entries({'Requisições em andamento':data.activeRequests,'Requisições concluídas':data.completedRequests,'Falhas de requisição':data.failedRequests,'Imagens carregadas':data.resources.images,'Carregamento mais lento':`${data.resources.slowestMs} ms`,'Áudios preparados na memória':data.audio.cached,'Memória estimada dos áudios':`${(data.audio.bytes/1048576).toFixed(1)} MB`,'Áudios tocando':data.audio.playing,'Sistema de áudio':data.audio.state,'Atrasos da interface (>200 ms)':data.interfaceDelays,'Maior atraso':`${data.maxInterfaceDelayMs} ms`}).map(([label,value]) => <div key={label} className="flex justify-between gap-4"><dt>{label}</dt><dd>{value}</dd></div>)}
