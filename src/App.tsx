@@ -15,6 +15,7 @@ import DeckPage from "./pages/DeckPage";
 import StudyPage from "./pages/StudyPage";
 import FreePracticePage from "./pages/FreePracticePage";
 import VariationPracticePage from "./pages/VariationPracticePage";
+import ConversationPage from './pages/ConversationPage';
 import { PerformanceMonitor } from './components/PerformanceDiagnostics';
 import CustomStudyPage from "./pages/CustomStudyPage";
 import DictationPage from "./pages/DictationPage";
@@ -57,6 +58,7 @@ const App = () => (
             <Route path="/practice" element={<ProtectedRoute><FreePracticePage /></ProtectedRoute>} />
             <Route path="/practice/:deckId" element={<ProtectedRoute><FreePracticePage /></ProtectedRoute>} />
             <Route path="/variations/:deckId" element={<ProtectedRoute><VariationPracticePage /></ProtectedRoute>} />
+            <Route path="/conversation/:deckId" element={<ProtectedRoute><ConversationPage /></ProtectedRoute>} />
             <Route path="/curriculum/study" element={<Navigate to="/" replace />} />
             <Route path="/curriculum/content" element={<Navigate to="/decks" replace />} />
             <Route path="/library/manage" element={<ProtectedRoute><LibraryManagePage /></ProtectedRoute>} />

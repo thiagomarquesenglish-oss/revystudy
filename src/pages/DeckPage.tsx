@@ -183,6 +183,11 @@ export default function DeckPage() {
             <span className="min-w-0 flex-1"><span className="block font-bold">Estudar variações</span><span className="block text-sm text-muted-foreground">Escreva novas frases e receba uma correção</span></span>
             <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </button>
+          <button type="button" disabled={!cards.length} onClick={() => navigate('/conversation/' + deckId)} className="native-row disabled:opacity-50">
+            <Sparkles className="h-6 w-6 shrink-0 text-primary" />
+            <span className="min-w-0 flex-1"><span className="block font-bold">Treinar conversa</span><span className="block text-sm text-muted-foreground">Situações usando o vocabulário do baralho</span></span>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </button>
         </div>
       </main>
 
