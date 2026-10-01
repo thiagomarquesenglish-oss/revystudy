@@ -19,6 +19,7 @@ export const unlockAudio = () => { cancelIdle(); const ctx = getContext(); if (!
 
 const decoded = new Map<string, Promise<AudioBuffer>>();
 const sizes = new Map<string, number>();
+export const audioResourceSnapshot = () => ({cached:decoded.size,bytes:[...sizes.values()].reduce((total,size) => total+size,0),playing:activeSources,state:context?.state || 'não iniciado'});
 const trimCache = () => {
   let bytes = [...sizes.values()].reduce((total, size) => total + size, 0);
   for (const key of decoded.keys()) {

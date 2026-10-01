@@ -15,6 +15,7 @@ import DeckPage from "./pages/DeckPage";
 import StudyPage from "./pages/StudyPage";
 import FreePracticePage from "./pages/FreePracticePage";
 import VariationPracticePage from "./pages/VariationPracticePage";
+import { PerformanceMonitor } from './components/PerformanceDiagnostics';
 import CustomStudyPage from "./pages/CustomStudyPage";
 import DictationPage from "./pages/DictationPage";
 import AddCardPage from "./pages/AddCardPage";
@@ -46,6 +47,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <PerformanceMonitor />
           <NavigationPosition />
           <OfflineBanner />
           <AudioAutoDownloader />

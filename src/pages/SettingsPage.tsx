@@ -1,4 +1,5 @@
 import SyncUpdatesButton from '@/components/SyncUpdatesButton';
+import PerformanceDiagnostics from '@/components/PerformanceDiagnostics';
 import AudioDiagnosticCopy from '@/components/AudioDiagnosticCopy';
 import { useAuth } from '@/hooks/useAuth';
 import { Cloud, LogOut, User, RefreshCw } from 'lucide-react';
@@ -68,6 +69,7 @@ export default function SettingsPage() {
         <label className="flex items-center justify-between gap-3 pt-2"><span className="text-sm">Baixar todos os áudios automaticamente ao abrir o app</span><Switch checked={autoAudio} onCheckedChange={on => { setAutoAudio(on); setAutoAudioEnabled(on); }} aria-label="Baixar áudios automaticamente" /></label>
       </section>
       <details className="bg-card rounded-2xl p-5"><summary className="font-semibold cursor-pointer">Atualizações</summary><div className="pt-4 flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Novidades dos seus baralhos</p><SyncUpdatesButton onInstalled={() => {}} /></div></details>
+      <PerformanceDiagnostics />
       <details className="bg-card rounded-2xl p-5"><summary className="font-semibold cursor-pointer">Backup e restaurar dados</summary><div className="pt-5"><BackupSettings /></div></details>
       <section className="space-y-3">
         <Button variant="ghost" className="text-destructive hover:text-destructive justify-start px-0" onClick={signOut}><LogOut className="h-4 w-4 mr-2" />Sair da conta</Button>
