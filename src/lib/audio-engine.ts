@@ -34,7 +34,7 @@ export async function decodeAudioSource(src: string, online: boolean): Promise<A
     const ctx = getContext();
     if (!ctx) throw new Error('Web Audio não está disponível neste navegador.');
     const bytes = await (async () => {
-      const response = await fetch(cloudMediaUrl(src), { mode: 'cors', credentials: 'omit', cache: 'no-store' });
+      const response = await fetch(cloudMediaUrl(src), { mode: 'cors', credentials: 'omit', cache: 'default' });
       if (!response.ok || response.type === 'opaque') throw new Error(`Não foi possível carregar o áudio (HTTP ${response.status}).`);
       return response.arrayBuffer();
     })();

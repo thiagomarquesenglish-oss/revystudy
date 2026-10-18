@@ -3,7 +3,7 @@ export function cloudMediaUrl(src: string): string {
   if (!/^https?:\/\//i.test(src)) return src; // Keep unsaved upload previews/embedded imports intact.
   const url = new URL(src);
   // Older installed service workers already treat this marker as NetworkOnly.
-  url.searchParams.set('revystudy_download', crypto.randomUUID());
+  url.searchParams.set('revystudy_download', 'cloud-v2');
   return url.href;
 }
 
