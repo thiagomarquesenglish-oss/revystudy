@@ -1,0 +1,10 @@
+{
+  "name": "revystudy-cloud",
+  "account_id": "fc24c4132af894dd809f2365444590e6",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "assets": {"directory":"./assets","binding":"ASSETS","run_worker_first":true},
+  "d1_databases": [{"binding":"DB","database_name":"revystudy","database_id":"910ae66c-5367-434b-a1be-911b9d840c4a"}],
+  "vars": {"ALLOWED_ORIGIN":"https://revystudy.vercel.app"}
+}

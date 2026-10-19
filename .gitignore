@@ -15,6 +15,10 @@ dist-ssr
 .env.*
 !.env.example
 .vercel
+.migration-private/
+cloudflare/assets/
+cloudflare/.wrangler/
+cloudflare/.dev.vars
 
 # Editor directories and files
 .vscode/*
