@@ -1,6 +1,7 @@
 import SyncUpdatesButton from '@/components/SyncUpdatesButton';
 import PerformanceDiagnostics from '@/components/PerformanceDiagnostics';
 import AudioDiagnosticCopy from '@/components/AudioDiagnosticCopy';
+import LocalAudioProof from '@/components/LocalAudioProof';
 import { useAuth } from '@/hooks/useAuth';
 import { Cloud, LogOut, User, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
@@ -70,9 +71,10 @@ export default function SettingsPage() {
           try { if ('caches' in globalThis) await caches.delete(SAVED_AUDIO_CACHE); localStorage.removeItem('revystudy:auto-audio'); toast.success('Áudios baixados removidos deste aparelho.'); }
           catch { toast.error('Não foi possível remover os áudios baixados.'); }
           finally { setClearingAudio(false); }
-        }}>{clearingAudio ? 'Removendo…' : 'Apagar áudios baixados deste aparelho'}</Button>
+        }}>{clearingAudio ? 'Removendo…' : 'Apagar downloads antigos de áudio'}</Button>
       </section>
       <details className="bg-card rounded-2xl p-5"><summary className="font-semibold cursor-pointer">Atualizações</summary><div className="pt-4 flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Novidades dos seus baralhos</p><SyncUpdatesButton onInstalled={() => {}} /></div></details>
+      {user && <LocalAudioProof key={user.id} userId={user.id} />}
       <PerformanceDiagnostics />
       <details className="bg-card rounded-2xl p-5"><summary className="font-semibold cursor-pointer">Backup e restaurar dados</summary><div className="pt-5"><BackupSettings /></div></details>
       <section className="space-y-3">

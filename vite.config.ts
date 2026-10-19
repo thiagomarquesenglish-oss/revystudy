@@ -7,7 +7,7 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig(() => {
   return ({
   define: {
-    __APP_VERSION__: JSON.stringify('1.6.1'),
+    __APP_VERSION__: JSON.stringify('1.6.2'),
   },
   server: {
     host: "::",
@@ -24,7 +24,8 @@ export default defineConfig(() => {
       devOptions: { enabled: false },
       includeAssets: ["favicon.ico", "pwa-192x192.png", "pwa-512x512.png", "apple-touch-icon.png"],
       workbox: {
-        navigateFallbackDenylist: [/^\/~oauth/],
+        importScripts: ['/local-audio-sw.js'],
+        navigateFallbackDenylist: [/^\/~oauth/, /^\/__local_audio\//],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         cleanupOutdatedCaches: true,
