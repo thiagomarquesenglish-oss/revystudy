@@ -8,7 +8,7 @@ it('evicts old decoded audio and suspends only after playback is idle', async ()
   const node = {buffer:null as unknown, onended:null as null | (() => void),connect:vi.fn(),disconnect:vi.fn(),start:vi.fn(),stop:vi.fn()};
   const ctx = {state:'running',destination:{},resume:vi.fn().mockResolvedValue(undefined),suspend:vi.fn().mockResolvedValue(undefined),decodeAudioData:vi.fn().mockResolvedValue(buffer),createBufferSource:() => node};
   vi.stubGlobal('AudioContext', class {constructor(){return ctx;}});
-  const fetcher = vi.fn().mockResolvedValue({ok:true,type:'cors',arrayBuffer:async () => new ArrayBuffer(8)});
+  const fetcher = vi.fn().mockResolvedValue({ok:true,type:'cors',headers:new Headers(),arrayBuffer:async () => new ArrayBuffer(8)});
   vi.stubGlobal('fetch',fetcher);
   const engine = await import('@/lib/audio-engine');
   for(let i=0;i<9;i++) await engine.decodeAudioSource(`https://audio/${i}`,true);
@@ -25,4 +25,24 @@ it('evicts old decoded audio and suspends only after playback is idle', async ()
   expect(node.buffer).toBeNull();
   await vi.advanceTimersByTimeAsync(15000);
   expect(ctx.suspend).toHaveBeenCalledOnce();
+});
+
+it.each(['transferência', 'decodificação'])('discards a hung %s so the next tap can prepare audio again', async phase => {
+  vi.useFakeTimers();
+  const buffer = { length: 100, numberOfChannels: 1, duration: 1 };
+  const decode = vi.fn().mockResolvedValue(buffer);
+  if (phase === 'decodificação') decode.mockImplementationOnce(() => new Promise(() => {}));
+  vi.stubGlobal('AudioContext', class { state = 'running'; decodeAudioData = decode; suspend = vi.fn().mockResolvedValue(undefined); });
+  const response = {ok:true,status:200,type:'cors',headers:new Headers(),arrayBuffer:async () => new ArrayBuffer(8)};
+  const fetcher = vi.fn().mockResolvedValue(response);
+  if (phase === 'transferência') fetcher.mockImplementationOnce(() => new Promise(() => {}));
+  vi.stubGlobal('fetch', fetcher);
+  const engine = await import('@/lib/audio-engine');
+  const first = engine.decodeAudioSource('https://audio/test', true);
+  const rejected = expect(first).rejects.toThrow(phase);
+  await vi.advanceTimersByTimeAsync(8000);
+  await rejected;
+  expect(fetcher.mock.calls[0][1].signal.aborted).toBe(true);
+  await expect(engine.decodeAudioSource('https://audio/test', true)).resolves.toBe(buffer);
+  expect(fetcher).toHaveBeenCalledTimes(2);
 });

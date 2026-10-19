@@ -1,4 +1,5 @@
 import { cloudMediaUrl } from './cloud-media';
+import { recordAudio } from './audio-diagnostics';
 
 type ContextCtor = typeof AudioContext;
 const contextClass = (): ContextCtor | undefined => typeof window === 'undefined' ? undefined : window.AudioContext || (window as unknown as { webkitAudioContext?: ContextCtor }).webkitAudioContext;
@@ -33,14 +34,36 @@ export async function decodeAudioSource(src: string, online: boolean): Promise<A
   const work = (async () => {
     const ctx = getContext();
     if (!ctx) throw new Error('Web Audio não está disponível neste navegador.');
+    const controller = new AbortController();
+    let phase = 'transferência';
+    let deadline: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<never>((_, reject) => {
+      deadline = setTimeout(() => {
+        controller.abort();
+        reject(new Error(`O áudio travou na etapa de ${phase}. Toque para tentar novamente.`));
+      }, 8000);
+    });
+    recordAudio('prepare-start', 'engine', { state: ctx.state });
+    try {
+      return await Promise.race([(async () => {
     const bytes = await (async () => {
-      const response = await fetch(cloudMediaUrl(src), { mode: 'cors', credentials: 'omit', cache: 'default' });
+      const response = await fetch(cloudMediaUrl(src), { mode: 'cors', credentials: 'omit', cache: 'default', signal: controller.signal });
+      recordAudio('response', 'engine', { status: response.status, type: response.headers.get('content-type') });
       if (!response.ok || response.type === 'opaque') throw new Error(`Não foi possível carregar o áudio (HTTP ${response.status}).`);
       return response.arrayBuffer();
     })();
     if (!bytes.byteLength) throw new Error('O arquivo de áudio está vazio.');
+    phase = 'decodificação';
+    recordAudio('decode-start', 'engine', { bytes: bytes.byteLength, state: ctx.state });
     // Safari may detach the buffer during decoding; pass an independent copy.
-    return await ctx.decodeAudioData(bytes.slice(0));
+    const buffer = await ctx.decodeAudioData(bytes.slice(0));
+    recordAudio('decode-ready', 'engine', { duration: buffer.duration, state: ctx.state });
+    return buffer;
+      })(), timeout]);
+    } catch (error) {
+      recordAudio('prepare-failed', 'engine', { phase, message: error instanceof Error ? error.message : String(error), state: ctx.state });
+      throw error;
+    } finally { clearTimeout(deadline!); }
   })();
   decoded.set(key, work);
   trimCache();

@@ -4,7 +4,7 @@ import { isRemoteAudio } from '@/lib/saved-audio';
 import { cloudMediaUrl } from '@/lib/cloud-media';
 import { audioDiagnosticId, audioSnapshot, recordAudio } from '@/lib/audio-diagnostics';
 import AudioDiagnosticCopy from '@/components/AudioDiagnosticCopy';
-import { decodeAudioSource, playDecodedAudio, supportsWebAudio, unlockAudio } from '@/lib/audio-engine';
+import { decodeAudioSource, forgetAudioSource, playDecodedAudio, supportsWebAudio, unlockAudio } from '@/lib/audio-engine';
 
 export interface SavedAudioHandle { play: () => void; stop: () => void }
 type Props = { src: string; centered?: boolean; compact?: boolean; autoPlay?: boolean; onEnded?: () => void; onDuration?: (duration: number) => void; restart?: boolean };
@@ -83,10 +83,11 @@ const Player = forwardRef<SavedAudioHandle, Props>(({ src, centered, compact, on
     const current = ++sequence.current;
     clearTimeout(timer.current); clearTimeout(retry.current); decodedStop.current?.(); decodedStop.current = null;
     setError(''); setWaiting(true); unlockAudio();
-    timer.current = setTimeout(() => { if (alive.current && current === sequence.current) fail('O áudio não iniciou. Tente novamente.'); }, 10000);
+    timer.current = setTimeout(() => { if (alive.current && current === sequence.current) { forgetAudioSource(src); fail('O áudio foi preparado, mas a reprodução não iniciou. Tente novamente.'); } }, 10000);
     try {
       const buffer = await decodeAudioSource(src, true);
       if (!alive.current || current !== sequence.current) return;
+      trace('web-audio-start-request');
       decodedStop.current = playDecodedAudio(buffer, {
         onStarted: () => { clearTimeout(timer.current); setWaiting(false); setPlaying(true); trace('web-audio-playing', { duration: buffer.duration }); },
         onEnded: () => { decodedStop.current = null; setPlaying(false); onEnded?.(); },
