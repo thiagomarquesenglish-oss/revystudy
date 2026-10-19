@@ -18,6 +18,13 @@ try {
   const login=await client.auth.signInWithPassword({email:profile.email,password});
   assert.equal(login.error,null,login.error?.message);assert.equal(login.data.user.id,id);
   const session=login.data.session;
+  if(process.argv.includes('--app')) {
+    const conversation=await fetch('https://revystudy.vercel.app/api/conversation',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({deckId:randomUUID(),action:'themes'})});
+    assert.equal(conversation.status,400,'Conversation API must authenticate before reporting an empty deck');
+    const explanation=await fetch('https://revystudy.vercel.app/api/explain',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:'{}'});
+    assert.ok([400,503].includes(explanation.status),'Explanation API auth must reach input/config validation without generating billable content');
+    console.log('PASS: published conversation/explanation APIs authenticate against Cloudflare.');
+  }
   assert.equal((await client.auth.getUser()).data.user.id,id);
   const before=await client.from('decks').select('*');assert.equal(before.error,null);assert.deepEqual(before.data,[]);
   const created=await client.from('decks').insert({id:deckId,user_id:id,name:'Disposable migration test'}).select('*').single();assert.equal(created.error,null,JSON.stringify(created.error));
