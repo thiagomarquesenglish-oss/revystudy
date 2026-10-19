@@ -1,14 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
+import { backendAdmin } from '../server/backend.js';
 import JSZip from 'jszip';
 
 const PAGE_SIZE = 1000;
 const WEEKDAYS = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 
 function getAdminClient() {
-  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) throw new Error('O servidor de backup ainda não foi conectado ao Supabase.');
-  return createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  return backendAdmin();
 }
 
 async function fetchAll(client, table, userId) {

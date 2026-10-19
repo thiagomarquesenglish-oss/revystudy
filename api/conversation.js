@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { backendAdmin } from '../server/backend.js';
 
 export const words = text => String(text).toLowerCase().match(/[a-z]+(?:['’][a-z]+)?/g)?.map(word => word.replace('’', "'")) || [];
 export const usesDeckWords = (text, vocabulary) => words(text).every(word => vocabulary.has(word));
@@ -14,7 +14,7 @@ function sentenceOf(row) {
 export default async function handler(request,response) {
   if(request.method !== 'POST') return response.status(405).json({error:'Método não permitido.'});
   try {
-    const db = createClient(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}});
+    const db = backendAdmin();
     const {data:{user}} = await db.auth.getUser(String(request.headers.authorization || '').replace(/^Bearer\s+/i,''));
     if(!user) return response.status(401).json({error:'Sua sessão expirou.'});
     const deckId = request.body?.deckId;

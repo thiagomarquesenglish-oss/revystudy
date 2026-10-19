@@ -16,7 +16,7 @@ it('accepts image and audio together on a plain card without replacing text',asy
   fireEvent.drop(screen.getByText('Card'),{dataTransfer:{files:[image,audio]}});
   await waitFor(()=>expect(saved).toHaveBeenCalledOnce());
   const patch=mocks.update.mock.calls[0][1];expect(patch.front).toContain('<p>Question</p>');expect(patch.front).toContain('<img');expect(patch.back).toContain('<p>Answer</p>');expect(patch.back).toContain('<audio');
-  expect(await screen.findByRole('button',{name:'Baixar áudio'})).toBeTruthy();
+  expect(await screen.findByRole('button',{name:'Reproduzir áudio'})).toBeTruthy();
 });
 it('loads original embedded media before adding audio',async()=>{
   mocks.get.mockResolvedValue({...card,front:'<p>Question</p><img src="data:image/png;base64,AAAA">'});

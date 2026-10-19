@@ -20,11 +20,11 @@ it('copies the short prompt and English separately', () => {
   fireEvent.click(screen.getByRole('button',{name:'Copiar português'}));
   expect(writeText).toHaveBeenLastCalledWith('Olá');
 });
-it('shows English copy and audio download actions', async () => {
+it('shows English copy and cloud audio playback actions', async () => {
   const card = { front: '<audio src="https://cdn.test/audio.mp3"></audio>', back: '' } as Flashcard;
   render(<QuickCardMedia card={card} onSaved={() => {}}><p>Hello</p></QuickCardMedia>);
   expect(screen.getAllByRole('button')).toHaveLength(4);
-  const play = await screen.findByRole('button', { name: 'Baixar áudio' });
+  const play = await screen.findByRole('button', { name: 'Reproduzir áudio' });
   expect(play).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Copiar inglês' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Copiar prompt' })).toBeDisabled();

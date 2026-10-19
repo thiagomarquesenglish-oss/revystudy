@@ -32,7 +32,7 @@ describe('listening exercise', () => {
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
     const { container } = render(<DictationExercise card={card} audioSrc="blob:broken" onNext={onNext} onSkip={onSkip} last />);
     fireEvent.error(container.querySelector('audio')!);
-    expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível abrir o áudio salvo');
+    expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível abrir o áudio.');
     fireEvent.click(screen.getByRole('button', { name: 'Pular cartão' }));
     expect(onSkip).toHaveBeenCalledOnce();
     expect(onNext).not.toHaveBeenCalled();

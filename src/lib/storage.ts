@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { migrateMediaReferences } from '../../shared/backend-config.js';
 import { Deck, Flashcard, CardStatus } from './types';
 import { localDB, offlineQueue } from './offline-db';
 import { persistMutations, syncOfflineQueue, announceSyncState } from './sync';
@@ -259,7 +260,7 @@ function rowToDeck(row: any): Deck {
 
 function rowToCard(row: any): Flashcard {
   return {
-    id: row.id, front: row.front, back: row.back, deckId: row.deck_id,
+    id: row.id, front: migrateMediaReferences(row.front), back: migrateMediaReferences(row.back), deckId: row.deck_id,
     audioId: row.audio_id || null,
     dictationAnswer: row.dictation_answer || null,
     status: row.status as CardStatus, interval: row.interval, easeFactor: row.ease_factor,

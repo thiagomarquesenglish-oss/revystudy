@@ -35,6 +35,7 @@ export function readCopy(sql) {
 const quote = text => "'"+String(text).replaceAll("'","''")+"'";
 export async function prepare(database, storage) {
   const tables = readCopy(gunzipSync(await fs.readFile(database)).toString('utf8'));
+  if((tables.get('auth.mfa_factors')||[]).length)throw new Error('MFA accounts require a separate migration plan');
   const output = path.resolve('.migration-private');
   await fs.mkdir(output,{recursive:true});
   const statements = [await fs.readFile('cloudflare/schema.sql','utf8')];

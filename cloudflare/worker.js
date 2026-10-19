@@ -63,7 +63,7 @@ async function verifyPassword(env,password,hash) {
   const key=await crypto.subtle.importKey('jwk',JSON.parse(env.AUTH_BRIDGE_PRIVATE_JWK),{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['sign']);
   const signature=await crypto.subtle.sign('RSASSA-PKCS1-v1_5',key,encoder.encode(payload));
   const signed=btoa(String.fromCharCode(...new Uint8Array(signature)));
-  const response=await fetch('https://revystudy.vercel.app/api/verify-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({payload,signature:signed}),redirect:'error'});
+  const response=await fetch('https://revystudy.vercel.app/api/verify-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({payload,signature:signed}),redirect:'manual'});
   if(!response.ok)failure('Não foi possível verificar sua senha. Tente novamente.',503);
   return (await response.json()).valid===true;
 }
@@ -88,6 +88,7 @@ async function auth(request,url,env) {
     const dummy='$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
     const valid=await verifyPassword(env,password,user?.password_hash||dummy);
     if(!valid || !user)failure('Email ou senha incorretos.',400);
+    if(!JSON.parse(user.profile).email_confirmed_at)failure('O email desta conta ainda não foi confirmado.',403);
     return json(await sessionFor(env,user));
   }
   const user=await principal(request,env);
@@ -188,7 +189,10 @@ async function rest(request,url,env) {
       if(patch)statements.push(env.DB.prepare('UPDATE records SET data=? WHERE collection=? AND id=? AND user_id=?').bind(JSON.stringify(row),table,saved.id,saved.user_id));
       else {
         statements.push(env.DB.prepare('DELETE FROM records WHERE collection=? AND id=? AND user_id=?').bind(table,saved.id,saved.user_id));
-        if(table==='decks')statements.push(env.DB.prepare("DELETE FROM records WHERE collection IN ('cards','deck_audios','dictation_reviews','review_history') AND user_id=? AND json_extract(data,'$.deck_id')=?").bind(saved.user_id,saved.id));
+        if(table==='decks') {
+          statements.push(env.DB.prepare("DELETE FROM records WHERE collection IN ('review_history','dictation_reviews') AND user_id=? AND json_extract(data,'$.card_id') IN (SELECT id FROM records WHERE collection='cards' AND user_id=? AND json_extract(data,'$.deck_id')=?)").bind(saved.user_id,saved.user_id,saved.id));
+          statements.push(env.DB.prepare("DELETE FROM records WHERE collection IN ('cards','deck_audios','dictation_reviews','review_history') AND user_id=? AND json_extract(data,'$.deck_id')=?").bind(saved.user_id,saved.id));
+        }
         if(table==='cards')statements.push(env.DB.prepare("DELETE FROM records WHERE collection IN ('review_history','dictation_reviews') AND user_id=? AND json_extract(data,'$.card_id')=?").bind(saved.user_id,saved.id));
       }
       if(['cards','deck_audios'].includes(table))touched.set(saved.user_id+':'+old.deck_id,{owner:saved.user_id,deck:old.deck_id,updated:!patch || ['front','back','audio_id','name','file_path','dictation_answer'].some(key=>key in patch && patch[key]!==old[key])});
@@ -208,8 +212,50 @@ function safePath(value) {
   return decoded;
 }
 function typeFor(path){return ({mp3:'audio/mpeg',m4a:'audio/mp4',wav:'audio/wav',ogg:'audio/ogg',webm:'audio/webm',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',gif:'image/gif',zip:'application/zip'})[path.split('.').pop().toLowerCase()]||'application/octet-stream';}
+function rangedFile(bytes,request,headers) {
+  const range=request.headers.get('Range');
+  if(range) {
+    const match=range.match(/^bytes=(\d*)-(\d*)$/);if(!match||(!match[1]&&!match[2]))failure('Range inválido.',416);
+    const start=match[1]?Number(match[1]):Math.max(0,bytes.length-Number(match[2]));let end=match[1]?(match[2]?Number(match[2]):bytes.length-1):bytes.length-1;
+    if(start>=bytes.length||end<start)return new Response(null,{status:416,headers:{'Content-Range':`bytes */${bytes.length}`}});
+    end=Math.min(end,bytes.length-1);const resultHeaders=new Headers(headers);resultHeaders.set('Content-Range',`bytes ${start}-${end}/${bytes.length}`);resultHeaders.set('Content-Length',String(end-start+1));
+    return new Response(request.method==='HEAD'?null:bytes.slice(start,end+1),{status:206,headers:resultHeaders});
+  }
+  const resultHeaders=new Headers(headers);resultHeaders.set('Content-Length',String(bytes.length));
+  return new Response(request.method==='HEAD'?null:bytes,{headers:resultHeaders});
+}
+export function multipartFile(buffer,contentType) {
+  const boundary=contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i)?.slice(1).find(Boolean)?.trim();
+  if(!boundary||boundary.length>200)failure('Multipart inválido.');
+  const bytes=new Uint8Array(buffer),marker=encoder.encode('--'+boundary),separator=encoder.encode('\r\n\r\n'),nextMarker=encoder.encode('\r\n--'+boundary);
+  const find=(needle,start)=>{outer:for(let i=start;i<=bytes.length-needle.length;i++){for(let j=0;j<needle.length;j++)if(bytes[i+j]!==needle[j])continue outer;return i;}return -1;};
+  let position=find(marker,0);
+  for(let part=0;position>=0&&part<100;part++) {
+    const start=position+marker.length+2,headersEnd=find(separator,start);if(headersEnd<0||headersEnd-start>16384)break;
+    const headers=new TextDecoder().decode(bytes.subarray(start,headersEnd)),dataStart=headersEnd+4,dataEnd=find(nextMarker,dataStart);if(dataEnd<0)break;
+    if(/content-disposition:[^\r\n]*filename=/i.test(headers))return {bytes:buffer.slice(dataStart,dataEnd),contentType:headers.match(/content-type:\s*([^\r\n]+)/i)?.[1]||'application/octet-stream'};
+    position=dataEnd+2;
+  }
+  failure('Arquivo ausente.');
+}
 async function storage(request,url,env) {
   const route=url.pathname.slice('/storage/v1/'.length);
+  const signRoute=route.match(/^object\/sign\/([^/]+)\/(.+)$/);
+  if(signRoute && request.method==='POST') {
+    const user=await principal(request,env),bucket=signRoute[1],path=safePath(signRoute[2]);
+    if(!BUCKETS.has(bucket)||(!user.admin&&path.split('/')[0]!==user.id))failure('Acesso negado.',403);
+    const body=await request.json(),expiresIn=Number(body.expiresIn);
+    if(!Number.isInteger(expiresIn)||expiresIn<1||expiresIn>31*86400)failure('Prazo inválido.');
+    const signed=token();await env.DB.prepare("INSERT INTO records(collection,id,user_id,data) VALUES('signed_downloads',?,?,?)").bind(await digest(signed),path.split('/')[0],JSON.stringify({bucket,path,expires:now()+expiresIn})).run();
+    return json({signedURL:`/object/sign/${bucket}/${path}?token=${signed}`});
+  }
+  let signedAccess=false;
+  if(signRoute && ['GET','HEAD'].includes(request.method)) {
+    const saved=await env.DB.prepare("SELECT data FROM records WHERE collection='signed_downloads' AND id=?").bind(await digest(url.searchParams.get('token')||'')).first();
+    const grant=saved?JSON.parse(saved.data):null;
+    if(!grant || grant.expires<now() || grant.bucket!==signRoute[1] || grant.path!==safePath(signRoute[2]))failure('Link expirado ou inválido.',403);
+    signedAccess=true;
+  }
   if(request.method==='DELETE' && /^object\/[^/]+$/.test(route)) {
     const bucket=route.slice(7),user=await principal(request,env);if(!BUCKETS.has(bucket))failure('Bucket inválido.');
     const {prefixes}=await request.json();if(!Array.isArray(prefixes)||prefixes.length>100)failure('Lista inválida.');
@@ -222,7 +268,7 @@ async function storage(request,url,env) {
     }
     if(statements.length)await env.DB.batch(statements);return json(prefixes.map(name=>({name})));
   }
-  const match=route.match(/^object\/(public\/)?([^/]+)\/(.+)$/);
+  const match=route.match(/^object\/((?:public|sign)\/)?([^/]+)\/(.+)$/);
   if(!match)failure('Rota de arquivo não disponível.',404);
   const [,publicRoute,bucket,rawPath]=match,path=safePath(rawPath);
   if(!BUCKETS.has(bucket))failure('Bucket inválido.',404);
@@ -233,7 +279,7 @@ async function storage(request,url,env) {
     // Supabase SDK may wrap browser Blob uploads in FormData.
     let bytes;
     if(contentType.startsWith('multipart/form-data')) {
-      const form=await request.formData();const file=[...form.values()].find(value=>value instanceof Blob);if(!file)failure('Arquivo ausente.');bytes=await file.arrayBuffer();contentType=file.type||typeFor(path);
+      const file=multipartFile(await request.arrayBuffer(),contentType);bytes=file.bytes;contentType=file.contentType;
     } else bytes=await request.arrayBuffer();
     if(!/^(audio\/|image\/(png|jpeg|webp|gif)|application\/zip|application\/octet-stream)/i.test(contentType))failure('Tipo de arquivo não permitido.',415);
     if(bytes.byteLength>25*1024*1024 || !bytes.byteLength)failure('Tamanho de arquivo inválido.',413);
@@ -247,22 +293,23 @@ async function storage(request,url,env) {
     await env.DB.batch(statements);return json({Key:`${bucket}/${path}`,Id:crypto.randomUUID()},200);
   }
   if(!['GET','HEAD'].includes(request.method))failure('Método não permitido.',405);
-  if(!PUBLIC_BUCKETS.has(bucket)) {const user=await principal(request,env);if(!user.admin&&path.split('/')[0]!==user.id)failure('Acesso negado.',403);}
+  if(!PUBLIC_BUCKETS.has(bucket) && !signedAccess) {const user=await principal(request,env);if(!user.admin&&path.split('/')[0]!==user.id)failure('Acesso negado.',403);}
   const uploaded=await env.DB.prepare('SELECT * FROM uploads WHERE bucket=? AND path=?').bind(bucket,path).first();
   if(uploaded?.deleted)failure('Arquivo removido.',404);
   if(!uploaded) {
     const assetUrl=new URL(request.url);assetUrl.pathname='/storage/v1/object/public/'+bucket+'/'+path;assetUrl.search='';
-    const response=await env.ASSETS.fetch(new Request(assetUrl,{method:request.method,headers:request.headers}));
+    const assetHeaders=new Headers(request.headers);assetHeaders.delete('Range');
+    const response=await env.ASSETS.fetch(new Request(assetUrl,{method:request.headers.has('Range')?'GET':request.method,headers:assetHeaders}));
     if(response.status===404)failure('Arquivo não encontrado.',404);
-    const headers=new Headers(response.headers);headers.set('Content-Type',typeFor(path));headers.set('Cache-Control','public,max-age=86400');headers.set('X-Content-Type-Options','nosniff');
+    const headers=new Headers(response.headers);headers.set('Content-Type',typeFor(path));headers.set('Cache-Control',PUBLIC_BUCKETS.has(bucket)?'public,max-age=86400':'private,no-store');headers.set('X-Content-Type-Options','nosniff');
+    headers.set('Accept-Ranges','bytes');
+    if(request.headers.has('Range') && response.status===200)return rangedFile(new Uint8Array(await response.arrayBuffer()),request,headers);
     return new Response(response.body,{status:response.status,headers});
   }
   const parts=await env.DB.prepare('SELECT bytes FROM upload_parts WHERE bucket=? AND path=? ORDER BY part').bind(bucket,path).all();
   const bytes=new Uint8Array(uploaded.size);let offset=0;for(const part of parts.results){const data=new Uint8Array(part.bytes);bytes.set(data,offset);offset+=data.length;}
   const headers={'Content-Type':uploaded.content_type,'Cache-Control':PUBLIC_BUCKETS.has(bucket)?'public,max-age=86400':'private,no-store','Accept-Ranges':'bytes','X-Content-Type-Options':'nosniff'};
-  const range=request.headers.get('Range');
-  if(range){const match=range.match(/^bytes=(\d*)-(\d*)$/);if(!match)failure('Range inválido.',416);let start=match[1]?Number(match[1]):Math.max(0,bytes.length-Number(match[2]));let end=match[1]?(match[2]?Number(match[2]):bytes.length-1):bytes.length-1;if(start>=bytes.length||end<start)return new Response(null,{status:416,headers:{'Content-Range':`bytes */${bytes.length}`}});end=Math.min(end,bytes.length-1);return new Response(request.method==='HEAD'?null:bytes.slice(start,end+1),{status:206,headers:{...headers,'Content-Range':`bytes ${start}-${end}/${bytes.length}`,'Content-Length':String(end-start+1)}});}
-  return new Response(request.method==='HEAD'?null:bytes,{headers:{...headers,'Content-Length':String(bytes.length)}});
+  return rangedFile(bytes,request,headers);
 }
 export default {
   async fetch(request,env) {
@@ -274,7 +321,10 @@ export default {
     try {
       if(url.pathname==='/health')response=json({status:'ok',backend:'cloudflare'});
       else if(url.pathname.startsWith('/auth/v1/'))response=await auth(request,url,env);
-      else if(url.pathname.startsWith('/rest/v1/'))response=await rest(request,url,env);
+      else if(url.pathname.startsWith('/rest/v1/')) {
+        response=await rest(request,url,env);
+        if(response.headers.get('Content-Type')?.includes('application/json'))response=new Response((await response.text()).replaceAll('https://paomzgkwglvshrztebni.supabase.co/storage/v1/',url.origin+'/storage/v1/'),{status:response.status,headers:response.headers});
+      }
       else if(url.pathname.startsWith('/storage/v1/'))response=await storage(request,url,env);
       else response=json({message:'Não encontrado.'},404);
     }catch(error){if(!error.status)console.error('Backend request failed',url.pathname,error.message);response=json({message:error.status?error.message:'Não foi possível concluir a operação.',error:error.status?error.message:'Falha no servidor.',code:error.status===401?'bad_jwt':'request_failed'},error.status||500);}
